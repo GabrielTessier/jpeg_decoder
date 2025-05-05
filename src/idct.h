@@ -3,8 +3,8 @@
 #include "ycc2rgb.h"
 
 struct mcudct_s {
-  int8_t mcu[64];
+  int8_t data[8][8];
 };
 typedef struct mcudct_s mcudct_t;
 
-uint8_t* idct(mcudct_t mcu);
+mcuycc_t idct(mcudct_t *mcu);

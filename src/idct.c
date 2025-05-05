@@ -4,4 +4,4 @@
 // In:  mcudct_t*
 // Out: ycbcr
 
-mcuycc_t idct(mcudct_t mcu);
+mcuycc_t idct(mcudct_t *mcu);
