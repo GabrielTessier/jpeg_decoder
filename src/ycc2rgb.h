@@ -1,6 +1,10 @@
 #pragma once
-
 #include <stdint.h>
+
+struct mcuycc_s {
+  uint8_t data[8][8];
+};
+typedef struct mcuycc_s mcuycc_t;
 
 struct rgb_s {
   uint8_t r, g, b;
