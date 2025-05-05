@@ -7,4 +7,4 @@ struct mcudct_s {
 };
 typedef struct mcudct_s mcudct_t;
 
-mcuycc_t idct(mcudct_t mcu);
+uint8_t* idct(mcudct_t mcu);

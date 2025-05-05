@@ -8,7 +8,9 @@ struct ycc_s {
 typedef struct ycc_s ycc_t;
 
 struct mcuycc_s {
-  ycc_t mcu[64];
+  uint8_t y[64];
+  uint8_t cb[64];
+  uint8_t cr[64];
 };
 typedef struct mcuycc_s mcuycc_t;
 
@@ -17,3 +19,4 @@ struct rgb_s {
 };
 typedef struct rgb_s rgb_t;
 
+rgb_t* ycc2rgb(uint8_t y[64], uint8_t cb[64], uint8_t cr[64]);
