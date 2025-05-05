@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdlib.h>
 #include "idct.h"
 #include "ycc2rgb.h"
 
@@ -7,8 +8,8 @@
 
 float func_C(int khi) { return (khi == 0) ? 1 / sqrt(2) : 1; }
 
-mcuycc_t idct(mcudct_t *freq) {
-  mcuycc_t res;
+mcuycc_t *idct(mcudct_t *freq) {
+  mcuycc_t *res = (mcuycc_t*) malloc(sizeof(mcuycc_t));
   for (int x=0; x < 8; x++)
     for (int y=0; y < 8; y++) {
       float sum = 0; // double somme
@@ -17,8 +18,8 @@ mcuycc_t idct(mcudct_t *freq) {
           sum += func_C(lambda) * func_C(mu) *
             cos((2*x+1)*lambda*M_PI / 16) *
             cos((2*y+1)*mu*M_PI / 16) *
-            freq[lambda][mu];
-      res[x][y] = (uint8_t) 1/4 * sum + 128; // calcul de S(x,y) + offset
+            freq->data[lambda][mu];
+      res->data[x][y] = (uint8_t) 1/4 * sum + 128; // calcul de S(x,y) + offset
         }
     }
   return res;

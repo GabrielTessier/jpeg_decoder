@@ -1,11 +1,12 @@
-#include "idct.h"
+#include <stdlib.h>
 #include <stdint.h>
+#include "idct.h"
 #include "iqzz.h"
 
 
 // Parcours zig-zag en même temps que la quantification inverse
 mcudct_t *iqzz(mcuq_t *mcuq, qtable_t *qtable) {
-  mcudct_t *res;
+  mcudct_t *res = (mcudct_t*) malloc(sizeof(mcudct_t));
   int i=0, j=0, k=1, dir=0;
   for (int ix=0; ix < 64; ix++) {
     if (dir == 0) {        // sens descendant
