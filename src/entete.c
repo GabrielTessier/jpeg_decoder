@@ -160,7 +160,7 @@ void dht(FILE *fichier, img_t *img) {
             }
         }
         uint8_t symb[nb_codes];
-        fread(&symb, 1, nb_codes, fichier);
+	fread(&symb, 1, nb_codes, fichier);
 
 	idhtable_t **htables;
 	if (is_dc) htables = img->htables->dc;

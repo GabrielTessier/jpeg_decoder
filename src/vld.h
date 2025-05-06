@@ -16,11 +16,11 @@ typedef struct huffman_tree_s huffman_tree_t;
  * file : fichier
  * pos : position du début du code dans le fichier
  * size : nombre de dc à décoder */
-int8_t *decodeDC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint64_t size);
+int16_t *decodeDC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off, uint64_t size);
 
 
 /* Décode un macrobloc
  * ht : arbre de huffman
  * file : fichier
  * pos : position du début du code dans le fichier */
-int8_t *decodeAC(huffman_tree_t* ht, FILE* file, uint64_t pos);
+int16_t *decodeAC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off);

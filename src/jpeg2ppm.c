@@ -1,3 +1,4 @@
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,6 +7,7 @@
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
+#include "vld.h"
 #include "ycc2rgb.h"
 #include "entete.h"
 
@@ -16,6 +18,29 @@ void free_blocs(void **blocs, uint8_t nbblocs) {
   for (int i=0; i < nbblocs; i++)
     free(blocs[i]);
   free(blocs);
+}
+
+void print_hufftable(char* acu, huffman_tree_t* tree) {
+  if (tree->droit == NULL && tree->gauche == NULL) {
+    printf("path : %s symbol : %x\n", acu, tree->symb);
+    return;
+  }
+  int i = strlen(acu);
+  acu[i] = '0';
+  print_hufftable(acu, tree->gauche);
+  acu[i] = '1';
+  print_hufftable(acu, tree->droit);
+  acu[i] = 0;
+}
+
+int8_t* copy_arr_int16_to_int8(int16_t *tab, int nb) {
+  int8_t* res = malloc(sizeof(int8_t)*nb);
+  for (int i=0; i<nb; i++) {
+    if (tab[i] < -128) res[i] = -128;
+    else if (tab[i] > 127) res[i] = 127;
+    else res[i] = (int8_t) tab[i];
+  }
+  return res;
 }
 
 // Fonction principale appelée
@@ -34,6 +59,16 @@ int main(int argc, char *argv[]) {
   // Parsing de l'en-tête
   img_t *img = decode_entete(fichier);
 
+
+
+  char* acu = (char*) calloc(20, sizeof(char));
+  printf("huffman dc\n");
+  print_hufftable(acu, img->htables->dc[0]->htable);
+  printf("huffman ac\n");
+  print_hufftable(acu, img->htables->ac[0]->htable);
+
+
+  
   // N&B ou couleur
   const uint8_t nbcomp = img->comps->nb;
   
@@ -42,15 +77,31 @@ int main(int argc, char *argv[]) {
   int nbbloc;
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
-    uint64_t debutDC = ftell(fichier);
-    nbbloc = 1;
+    nbbloc = 4;
     blocl_t **blocs = (blocl_t**) malloc(sizeof(blocl_t*)*nbbloc);
-    int8_t *dc = decodeDC(img->htables->dc[0]->htable, fichier, debutDC, nbbloc);
+    uint8_t off = 0;
+
+    int8_t *dc = (int8_t*) malloc(sizeof(int8_t)*nbbloc);
     // Décodage de AC
-    uint64_t debutAC = ftell(fichier)+1;
+    //uint64_t debutAC = ftell(fichier)-1;
+    uint64_t debut = ftell(fichier);
     for (int i=0; i < nbbloc; i++) {
-      int8_t *ac = decodeAC(img->htables->ac[0]->htable, fichier, debutAC);
-      debutAC = ftell(fichier)+1;
+      int16_t *vraidc = decodeDC(img->htables->dc[0]->htable, fichier, debut, &off, 1);
+      dc[i] = (int8_t) vraidc[0] + ((i!=0)?dc[i-1]:0);
+      printf("[DC %d] : %x\n", i, dc[i]);
+
+      debut = ftell(fichier)-1;
+      
+      int16_t *vraiac = decodeAC(img->htables->ac[0]->htable, fichier, debut, &off);
+      int8_t *ac = copy_arr_int16_to_int8(vraiac, 63);
+
+      printf("[AC %d] ", i);
+      for (int j=0; j<63; j++) printf("%x(%d), ", vraiac[j], vraiac[j]);
+      printf("\n\n");
+      
+      free(vraiac);
+
+      debut = ftell(fichier)-1;
       blocs[i] = (blocl_t*) malloc(sizeof(blocl_t));
       blocs[i]->data[0] = dc[i];
       memcpy(blocs[i]->data+1, ac, 63*sizeof(int8_t));
@@ -60,13 +111,16 @@ int main(int argc, char *argv[]) {
     for (int i=0; i < nbbloc; i++) {
       uint8_t idqtable = 0; // TODO: à modifier selon N&B/couleur et ycc
       blocs_iq[i] = iqzz(blocs[i], img->qtables->qtables[idqtable]->qtable);
+      printf("[IQZZ %d] : ", i);
+      for (int j=0; j<64; j++) printf("%x, ", blocs_iq[i]->data[j%8][j/8]);
+      printf("\n\n");
     }
-    free_blocs((void **) blocs, nbbloc);
+    //free_blocs((void **) blocs, nbbloc);
     // IDCT
     bloct_t **blocs_idct = (bloct_t **) malloc(sizeof(bloct_t*)*nbbloc);
     for (int i=0; i < nbbloc; i++)
       blocs_idct[i] = idct(blocs_iq[i]);
-    free_blocs((void **) blocs_iq, nbbloc);
+    //free_blocs((void **) blocs_iq, nbbloc);
     // Ajout de la composante
     ycc[k] = blocs_idct;
     //free_blocs((void **) blocs_iq, nbbloc);
