@@ -1,11 +1,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <libgen.h>
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
 #include "ycc2rgb.h"
+#include "entete.h"
 
 // TODO: changer l28, 32 les indices des tables de huffman
 
@@ -37,21 +39,21 @@ int main(int argc, char *argv[]) {
   img_t *img = decode_entete(fichier);
 
   // N&B ou couleur
-  const uint8_t nbcomp = img->nb;
+  const uint8_t nbcomp = img->comps->nb;
   
   // Parcours de toutes les composantes
-  bloct_t **ycc[nbcomp];
+  bloct_t ***ycc = (bloct_t ***) malloc(sizeof(bloct_t **)*nbcomp);
   int nbbloc;
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
     uint64_t debutDC = 0;
     nbbloc = 1;
     blocl_t **blocs = (blocl_t**) malloc(sizeof(blocl_t*)*nbbloc);
-    int8_t *dc = decodeDC(img->htables->htables[0].htable, fichier, debutDC, nbbloc);
+    int8_t *dc = decodeDC(img->htables->htables[0]->htable, fichier, debutDC, nbbloc);
     // Décodage de AC
     uint64_t debutAC = ftell(fichier)+1;
     for (int i=0; i < nbbloc; i++) {
-      int8_t *ac = decodeAC(img->htables->htables[1].htable, fichier, debutAC);
+      int8_t *ac = decodeAC(img->htables->htables[1]->htable, fichier, debutAC);
       debutAC = ftell(fichier)+1;
       blocs[i] = (blocl_t*) malloc(sizeof(blocl_t));
       blocs[i]->data[0] = dc[i];
@@ -61,7 +63,7 @@ int main(int argc, char *argv[]) {
     bloct_t **blocs_iq = (bloct_t**) malloc(sizeof(bloct_t*)*nbbloc);
     for (int i=0; i < nbbloc; i++) {
       uint8_t idqtable = 1; // TODO: à modifier selon N&B/couleur et ycc
-      blocs_iq[i] = iqzz(blocs[i], img->qtables[idqtable]);
+      blocs_iq[i] = iqzz(blocs[i], img->qtables->qtables[idqtable]->qtable);
     }
     free_blocs((void **) blocs, nbbloc);
     // IDCT
@@ -84,11 +86,11 @@ int main(int argc, char *argv[]) {
       for (int i=0; i < 8; i++)            // id de ligne dans le bloc
         for (int y=0; y < img->width; y++) // id de colonne du bloc
           for (int j=0; j < 8; j++) {      // id de colonne dans le bloc
-            fprintf(outfile, "%c", ycc[0][x*img->width + y][i][j]);
+            fprintf(outfile, "%c", ycc[0][x*img->width + y]->data[i][j]);
           }
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     bloct_t *out;
-    ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
+    ycc2rgb(*ycc[0], *ycc[1], ycc[2]);
   }    
   fclose(fichier);  
   return 0;
