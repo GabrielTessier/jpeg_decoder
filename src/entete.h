@@ -67,3 +67,18 @@ struct couple_tree_depth_s {
 typedef struct couple_tree_depth_s couple_tree_depth_t;
 
 
+img_t* decode_entete(FILE *fichier);
+
+void marqueur(FILE *fichier, img_t *img);
+
+void app0(FILE *fichier);
+
+void com(FILE *fichier);
+
+void dqt(FILE *fichier, img_t *img);
+
+void sof0(FILE *fichier, img_t *img);
+
+void dht(FILE *fichier, img_t *img);
+
+void sos(FILE *fichier, img_t *img);
