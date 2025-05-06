@@ -1,5 +1,7 @@
 
+#include <stdbool.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "list.h"
 
 list_t *init_list() {
@@ -11,7 +13,7 @@ list_t *init_list() {
 
 
 void insert_list(list_t *l, void *data) {
-  if (l->debut == NULL) {
+  if (list_vide(l)) {
     l->debut = (maillon_t*) malloc(sizeof(maillon_t));
     l->debut->suiv = NULL;
     l->debut->prec = NULL;
@@ -28,7 +30,7 @@ void insert_list(list_t *l, void *data) {
 }
 
 void *extract_list(list_t *l) {
-  if (l->fin == NULL) return NULL;
+  if (list_vide(l)) return NULL;
   maillon_t *m = l->fin;
   if (m->prec != NULL) {
     m->prec->suiv = NULL;
@@ -40,4 +42,8 @@ void *extract_list(list_t *l) {
   void *data = m->data;
   free(m);
   return data;
+}
+
+bool list_vide(list_t *l) {
+  return l->debut == NULL;
 }
