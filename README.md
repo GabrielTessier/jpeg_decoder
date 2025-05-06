@@ -1,4 +1,4 @@
-# Notre décodeur JPEG à nous
+xma# Notre décodeur JPEG à nous
 
 Bienvenue sur la page d'accueil de _votre_ projet JPEG, un grand espace de liberté, sous le regard bienveillant de vos enseignants préférés.
 Le sujet sera disponible dès le lundi 5 mai à l'adresse suivante : [https://formationc.pages.ensimag.fr/projet/jpeg/jpeg/](https://formationc.pages.ensimag.fr/projet/jpeg/jpeg/).
@@ -25,14 +25,22 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 
 | Module    | Fonctionnalités                                                                                | Répartition |
 |:---------:|------------------------------------------------------------------------------------------------|-------------|
-| entete    |                                                                                                | Albin       |
+| entete    | malloc la structure de sortie                                                                  | Albin       |
 | vld       |                                                                                                | Gabriel     |
 | iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                      | Philippe    |
 | idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse | Philippe    |
 | upsampler | renseigne les composantes Y, $C_b$, $C_r$ selon le sous-échantillonage effectué                | Gabriel     |
 | ycc2rgb   | transforme les composantes Y, $C_b$, $C_r en R, G, B                                           | Gabriel     |
 
-
+| Module    | Fonctions | Entrées                                                                                                                        | Sorties                                                            |
+|:---------:|-----------|--------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| entete    |           | (FILE*) fichier JPEG                                                                                                           | (img_t*) structure contenant les différents champs du fichier JPEG |
+| vld       | decodeDC  | (huffman_tree_dc_t*) table de huffman sous forme d'arbre <br> (FILE*) fichier JPEG <br> (uint8_t) nombre de blocs DC à décoder | (uint8_t*) tableau contenant les blocs DC décodés                  |
+| vld       | decodeAC  | (huffman_tree_ac_t*) table de huffman sous forme d'arbre <br> (FILE*) fichier JPEG                                             | (uint8_t*) tableau contenant le bloc AC décodé                     |
+| iqzz      | iqzz      | (mcul_t*) MCU 1x64 quantifié et ordonné en zigzag <br> (qtable*) table de quantification                                       | (mcut_t*) MCU 8x8 déquantifié                                      |
+| idct      | idct      | (mcut_t*) MCU 8x8, domaine spectral                                                                                            | (mcut_t*) MCU 8X8, domaine spatial                                 |
+| upsampler |           |                                                                                                                                |                                                                    |
+| ycc2rgb   | ycc2rgb   | (mcut_t*) luminance <br> (mcut_t*) chrominance bleue <br> (mcut_t*) chrominance rouge                                          | (mcurgb_t*) MCU 8x8, tableau des composantes RGB                   |
 
 ```
 src/

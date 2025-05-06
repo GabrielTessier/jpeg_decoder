@@ -1,15 +1,15 @@
 #pragma once
 #include <stdint.h>
-#include "idct.h"
+#include "jpeg2ppm.h"
 
-struct mcuq_s {
+struct mcut_s {
   uint8_t data[64];
 };
-typedef struct mcuq_s mcuq_t;
+typedef struct mcut_s mcut_t;
 
 struct qtable_s {
   uint8_t data[64];
 };
 typedef struct qtable_s qtable_t;
 
-mcudct_t *iqzz(mcuq_t* bloc, qtable_t *qtable);
+mcut_t *iqzz(mcul_t* bloc, qtable_t *qtable);

@@ -1,10 +1,10 @@
 #pragma once
 #include <stdint.h>
-#include "ycc2rgb.h"
+#include "jpeg2ppm.h"
 
-struct mcudct_s {
+struct mcut_s {
   int8_t data[8][8];
 };
-typedef struct mcudct_s mcudct_t;
+typedef struct mcut_s mcut_t;
 
-mcuycc_t *idct(mcudct_t *mcu);
+mcut_t *idct(mcul_t *mcu);
