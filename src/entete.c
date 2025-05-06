@@ -84,8 +84,7 @@ void com(FILE *fichier) {
 
 
 void dqt(FILE *fichier, img_t *img) {
-    uint16_t length;
-    fread(&length, 2, 1, fichier);
+    uint16_t length = fgetc(fichier) << 8 + fgetc(fichier);
     for (uint8_t n=1; n<=(length-2)/65; n++) {
         uint8_t octet = fgetc(fichier);
         uint8_t precision = octet >> 4;
