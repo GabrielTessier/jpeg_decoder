@@ -8,7 +8,7 @@
 
 struct idqtable_s {
     uint8_t id;
-    qtable_t qtable;
+    qtable_t *qtable;
 };
 typedef struct idqtable_s idqtable_t;
 
@@ -20,7 +20,7 @@ typedef struct qtables_s qtables_t;
 
 struct idhtables_s {
     uint8_t id;
-    huffman_tree_t htable;
+    huffman_tree_t *htable;
 };
 typedef struct idhtables_s idhtables_t;
 
@@ -32,6 +32,8 @@ typedef struct htables_s htables_t;
 
 struct idcomp_s {
     uint8_t idc;
+    uint8_t ech_horiz;
+    uint8_t ech_vert;
     uint8_t idh;
     uint8_t idq;
 };
