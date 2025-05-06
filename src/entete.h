@@ -46,9 +46,9 @@ typedef struct comps_s comps_t;
 struct img_s {
     uint16_t height;
     uint16_t width;
-    qtables_t qtables;
-    htables_t htables;
-    comps_t comps;
+    qtables_t *qtables;
+    htables_t *htables;
+    comps_t *comps;
 };
 typedef struct img_s img_t;
 
