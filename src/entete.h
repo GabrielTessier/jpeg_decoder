@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include "iqzz.h"
 #include "vld.h"
 
@@ -55,6 +56,7 @@ struct img_s {
     qtables_t *qtables;
     htables_t *htables;
     comps_t *comps;
+    bool sosdone;
 };
 typedef struct img_s img_t;
 
