@@ -14,12 +14,33 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 
 # Planning prévisionnel 
 
-| Version | Nom de code   | Caractéristiques | Temps estimé |
-| :---:   | :---   	  | :--- | :--- |
-| 1 	  | Invader 	  | Décodeur d'images 8x8 en niveaux de gris | J+ 4 |
-| 2 	  | Noir et blanc | Extension à des images grises comportant plusieurs blocs | J + 6 |
-| 3 	  | Couleur 	  | Extension à des images en couleur | J+8 |
-| 4	  | Sous-ech 	  | Extension avec des images avec sous-échantionnage | J +10 |
+| Version | Nom de code   | Caractéristiques                                         | Temps estimé |
+|:-------:|:--------------|:---------------------------------------------------------|:-------------|
+| 1       | Invader       | Décodeur d'images 8x8 en niveaux de gris                 | J+ 4         |
+| 2       | Noir et blanc | Extension à des images grises comportant plusieurs blocs | J + 6        |
+| 3       | Couleur       | Extension à des images en couleur                        | J+8          |
+| 4       | Sous-ech      | Extension avec des images avec sous-échantionnage        | J +10        |
+
+# Organisation
+
+| Module    | Fonctionnalités                                                                                | Répartition |
+|:---------:|------------------------------------------------------------------------------------------------|-------------|
+| entete    |                                                                                                | Albin       |
+| vld       |                                                                                                | Gabriel     |
+| iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                      | Philippe    |
+| idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse | Philippe    |
+| upsampler | renseigne les composantes Y, $C_b$, $C_r$ selon le sous-échantillonage effectué                | Gabriel     |
+| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r en R, G, B                                           | Gabriel     |
+
+
+
+```
+src/
+├── vld.c
+|   ├── sos
+|   ├──
+
+```
 
 # Droit dépôt git
 
@@ -32,3 +53,4 @@ Si vous avez besoin de droit supplémentaire sur votre dépôt git, venez voir l
 - Problème relationnel au sein du groupe ? Contactez [Pascal](https://fr.wikipedia.org/wiki/Pascal,_le_grand_fr%C3%A8re) !
 - Besoin de prendre l'air ? Le [Mont Rachais](https://fr.wikipedia.org/wiki/Mont_Rachais) est accessible à pieds depuis le bâtiment E !
 - Un peu juste sur le projet à quelques heures de la deadline ? Le [Montrachet](https://www.vinatis.com/achat-vin-puligny-montrachet) peut faire passer l'envie à certains de vos profs de vous mettre une tôle !
+
