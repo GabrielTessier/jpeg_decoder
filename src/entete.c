@@ -30,6 +30,7 @@ void erreur(const char* text, ...) {
     va_start(args, text);
     vfprintf(stderr, text, args);
     va_end(args);
+    fprintf(stderr, "\n");
     exit(EXIT_FAILURE);
 }
 
@@ -84,7 +85,8 @@ void com(FILE *fichier) {
 
 
 void dqt(FILE *fichier, img_t *img) {
-    uint16_t length = fgetc(fichier) << 8 + fgetc(fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
+    length += fgetc(fichier);
     for (uint8_t n=1; n<=(length-2)/65; n++) {
         uint8_t octet = fgetc(fichier);
         uint8_t precision = octet >> 4;
@@ -135,8 +137,8 @@ void dht(FILE *fichier, img_t *img) {
         if (id_huff > 3) erreur("Format incorrect (DHT) : l'indice de la table de huffman doit être entre 0 et 3");
         
         uint8_t longueur_codes_brutes[16];
-        fread(&longueur_codes_brutes, 1, 16, fichier);
-        uint16_t nb_codes; 
+        fread(longueur_codes_brutes, 1, 16, fichier);
+        uint16_t nb_codes = 0;
         for (uint8_t i=0; i<16; i++) {
             nb_codes += longueur_codes_brutes[i];
         }
