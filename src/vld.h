@@ -24,7 +24,7 @@ struct huffman_tree_ac_s {
 };
 typedef struct huffman_tree_ac_s huffman_tree_ac_t;
 
-/* Décode tout les DC
+/* Décode tous les DC
  * ht : arbre de huffman
  * file : fichier
  * pos : position du début du code dans le fichier
