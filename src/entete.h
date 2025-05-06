@@ -11,6 +11,7 @@
 
 struct idqtable_s {
     uint8_t id;
+    uint8_t precision;
     qtable_t *qtable;
 };
 typedef struct idqtable_s idqtable_t;
@@ -46,9 +47,21 @@ typedef struct idcomp_s idcomp_t;
 struct comps_s {
     uint8_t nb;
     uint8_t ordre[3];
+    uint8_t precision_comp;
     idcomp_t **comps;
 };
 typedef struct comps_s comps_t;
+
+struct other_s {
+    char jfif[5];
+    uint8_t version_jfif_a;
+    uint8_t version_jfif_b;
+    uint8_t ss;
+    uint8_t se;
+    uint8_t ah;
+    uint8_t al;
+};
+typedef struct other_s other_t;
 
 struct img_s {
     uint16_t height;
@@ -57,6 +70,7 @@ struct img_s {
     htables_t *htables;
     comps_t *comps;
     bool sosdone;
+    other_t *other;
 };
 typedef struct img_s img_t;
 
