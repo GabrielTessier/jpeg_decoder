@@ -1,7 +1,6 @@
 #pragma once
 #include <stdio.h>
 #include <stdint.h>
-#include "iqzz.h"
 
 struct huffman_tree_dc_s {
   struct huffman_tree_dc_s *gauche, *droit;
@@ -29,10 +28,10 @@ typedef struct huffman_tree_ac_s huffman_tree_ac_t;
  * file : fichier
  * pos : position du début du code dans le fichier
  * size : nombre de dc à décoder */
-uint8_t *decodeDC(huffman_tree_dc_t* ht, FILE* file, uint64_t pos, uint64_t size);
+int8_t *decodeDC(huffman_tree_dc_t* ht, FILE* file, uint64_t pos, uint64_t size);
 
 /* Décode un macrobloc
  * ht : arbre de huffman
  * file : fichier
  * pos : position du début du code dans le fichier */
-uint8_t *decodeAC(huffman_tree_ac_t* ht, FILE* file, uint64_t pos);
+int8_t *decodeAC(huffman_tree_ac_t* ht, FILE* file, uint64_t pos);
