@@ -70,22 +70,24 @@ int8_t *decodeAC(huffman_tree_ac_t* ht, FILE* file, uint64_t pos) {
       // Si on a atteint une fauille
       if (symb_decode->droit == NULL && symb_decode->gauche == NULL) {
 	switch (symb_decode->symb) {
-	case RLE_EOB:
+	case (char) 0x00:
 	  return res;
-	case RLE_VIDE:
+	case (char) 0xF0:
 	  resi += 16;
 	  break;
-	case RLE_ALPHAGAMMA:
-	  resi += symb_decode->alpha;
-	  if (symb_decode->gamma + i < 8) {
-	    uint16_t indice = (c>>(8-i-symb_decode->gamma)) & ((1<<symb_decode->gamma)-1);
-	    res[resi] = get_val_from_magnitude(symb_decode->gamma, indice);
+	default:
+	  uint8_t alpha = symb_decode->symb >> 4;
+	  uint8_t gamma = symb_decode->symb & 0b00001111;
+	  resi += alpha;
+	  if (gamma + i < 8) {
+	    uint16_t indice = (c>>(8-i-gamma)) & ((1<<gamma)-1);
+	    res[resi] = get_val_from_magnitude(gamma, indice);
 	  } else {
-	    uint16_t indice = (c & (1<<(7-i)))<<(symb_decode->gamma-(8-i));
+	    uint16_t indice = (c & (1<<(7-i)))<<(gamma-(8-i));
 	    c = fgetc(file);
-	    indice += c>>(8-(symb_decode->gamma-(8-i)));
-	    i = symb_decode->gamma-(8-i);
-	    res[resi] = get_val_from_magnitude(symb_decode->gamma, indice);
+	    indice += c>>(8-(gamma-(8-i)));
+	    i = gamma-(8-i);
+	    res[resi] = get_val_from_magnitude(gamma, indice);
 	  }
 	  resi++;
 	  break;
