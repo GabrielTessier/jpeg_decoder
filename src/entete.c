@@ -89,7 +89,7 @@ void dqt(FILE *fichier, img_t *img) {
     for (uint8_t n=1; n<=(length-2)/65; n++) {
         uint8_t octet = fgetc(fichier);
         uint8_t precision = octet >> 4;
-        uint8_t id_quant = octet & 1111;
+        uint8_t id_quant = octet & 0b1111;
         if (id_quant > 3) erreur("Format incorrect (DQT) : l'indice de la table de quantification doit être entre 0 et 3");
         if (img->qtables->qtables[id_quant] == NULL) {
             img->qtables->qtables[id_quant] = malloc(sizeof(idqtable_t));
@@ -131,8 +131,8 @@ void dht(FILE *fichier, img_t *img) {
     fread(&length, 2, 1, fichier);
     while ((uint64_t) ftell(fichier) < debut+length) {
         uint8_t octet = fgetc(fichier);
-        if ((octet & 11100000) != 0) erreur("Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
-        uint8_t id_huff = octet & 1111;
+        if ((octet & 0b11100000) != 0) erreur("Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
+        uint8_t id_huff = octet & 0b1111;
         if (id_huff > 3) erreur("Format incorrect (DHT) : l'indice de la table de huffman doit être entre 0 et 3");
         
         uint8_t longueur_codes_brutes[16];
@@ -209,13 +209,13 @@ void sos(FILE *fichier, img_t *img) {
         uint8_t j = 0;
         while (img->comps->comps[j]->idc != id_comp) {j++;} // attention si id_comp pas dans comps
         img->comps->comps[j]->idhdc = id_huff >> 4;
-        img->comps->comps[j]->idhac = id_huff & 1111;
+        img->comps->comps[j]->idhac = id_huff & 0b1111;
     }
     img->other->ss = fgetc(fichier);
     img->other->se = fgetc(fichier);
     uint8_t a = fgetc(fichier);
     img->other->ah = a >> 4;
-    img->other->al = a & 1111;
+    img->other->al = a & 0b1111;
     img->sosdone = true;
 }
 
