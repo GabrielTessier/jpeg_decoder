@@ -21,20 +21,16 @@ void free_blocs(void **blocs, uint8_t nbblocs) {
 // Fonction principale appelée
 int main(int argc, char *argv[]) {
   // Vérification arguments
-  if (argc != 2) {
-    fprintf(stderr, "Usage : ./jpeg2ppm <FILEPATH>");
-    return 1;
-  }
+  if (argc != 2) 
+    erreur("Usage : %s <FILEPATH>", argv[0]);
   // Ouverture fichier
   char *fileext  = strrchr(argv[1], '.') + 1; // extension du fichier
-  if ((fileext == NULL) || !strcmp(fileext, "jpeg") || !strcmp(fileext, "jpg")) {
-    fprintf(stderr, "Erreur : mauvaise extension de fichier.");
+  if ((fileext == NULL) || (!strcmp(fileext, "jpeg") && !strcmp(fileext, "jpg"))) {
+    erreur("Erreur : mauvaise extension de fichier.");
   }
   FILE *fichier = fopen(argv[1], "r");
-  if (fichier == NULL) {
-    fprintf(stderr, "Erreur : fichier introuvable.");
-    return 1;
-  }
+  if (fichier == NULL)
+    erreur("Erreur : fichier introuvable.");
   // Parsing de l'en-tête
   img_t *img = decode_entete(fichier);
 
