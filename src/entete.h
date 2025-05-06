@@ -83,6 +83,8 @@ typedef struct couple_tree_depth_s couple_tree_depth_t;
 
 img_t* decode_entete(FILE *fichier);
 
+void erreur(const char* text, ...);
+
 void marqueur(FILE *fichier, img_t *img);
 
 void app0(FILE *fichier, img_t *img);
