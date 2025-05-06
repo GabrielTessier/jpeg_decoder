@@ -85,7 +85,7 @@ img_t* decode_entete(FILE *fichier);
 
 void marqueur(FILE *fichier, img_t *img);
 
-void app0(FILE *fichier);
+void app0(FILE *fichier, img_t *img);
 
 void com(FILE *fichier);
 

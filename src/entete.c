@@ -35,27 +35,27 @@ void erreur(const char* text, ...) {
 void marqueur(FILE *fichier, img_t *img) {
     char c[2];
     fread(&c, 1, 2, fichier);
-    if (c[0] != 0xff) erreur("Ce n'est pas un marqueur : octet n° %ld", ftell(fichier));
+    if (c[0] != (char) 0xff) erreur("Ce n'est pas un marqueur : octet n° %ld", ftell(fichier));
     switch (c[1]) {
-        case 0xc0:
+        case (char) 0xc0:
             sof0(fichier, img);
             break;
-        case 0xc4:
+        case (char) 0xc4:
             dht(fichier, img);
             break;
-        case 0xd8:
-        case 0xd9:
+        case (char) 0xd8:
+        case (char) 0xd9:
             break;
-        case 0xda:
+        case (char) 0xda:
             sos(fichier, img);
             break;
-        case 0xdb:
+        case (char) 0xdb:
             dqt(fichier, img);
             break;
-        case 0xe0:
+        case (char) 0xe0:
             app0(fichier, img);
             break;
-        case 0xfe:
+        case (char) 0xfe:
             com(fichier);
             break; 
         default:
@@ -108,8 +108,8 @@ void sof0(FILE *fichier, img_t *img) {
     uint16_t length;
     fread(&length, 2, 1, fichier);
     img->comps->precision_comp = fgetc(fichier);
-    fread(img->height, 2, 1, fichier);
-    fread(img->width, 2, 1, fichier);
+    fread(&(img->height), 2, 1, fichier);
+    fread(&(img->width), 2, 1, fichier);
     uint8_t nb_comp = fgetc(fichier);
     img->comps->nb = nb_comp;
     for (int i=0; i<=nb_comp-1; i++) {
@@ -128,9 +128,9 @@ void dht(FILE *fichier, img_t *img) {
     uint64_t debut = ftell(fichier);
     uint16_t length;
     fread(&length, 2, 1, fichier);
-    while (ftell(fichier) < debut+length) {
+    while ((uint64_t) ftell(fichier) < debut+length) {
         uint8_t octet = fgetc(fichier);
-        if (octet & 11100000 != 0) erreur("Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
+        if ((octet & 11100000) != 0) erreur("Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
         uint8_t id_huff = octet & 1111;
         if (id_huff > 3) erreur("Format incorrect (DHT) : l'indice de la table de huffman doit être entre 0 et 3");
         
@@ -144,7 +144,7 @@ void dht(FILE *fichier, img_t *img) {
         uint8_t longueur_codes_formatees[nb_codes];
         uint8_t i=0;
         for (uint8_t longueur=1; longueur<=16; longueur++) {
-            for (uint8_t nb_longueur=longueur_codes_brutes[longueur-1]; nb_longueur>=0; nb_longueur--) {
+            for (int16_t nb_longueur=longueur_codes_brutes[longueur-1]; nb_longueur>=0; nb_longueur--) {
                 longueur_codes_formatees[i] = longueur;
             }
         }
