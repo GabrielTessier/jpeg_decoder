@@ -1,6 +1,7 @@
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include "iqzz.h"
 #include "vld.h"
 
 uint16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice) {
@@ -27,18 +28,18 @@ uint8_t *decodeDC(huffman_tree_dc_t* ht, FILE* file, uint64_t pos, uint64_t size
       // Si on a atteint une fauille
       if (symb_decode->droit == NULL && symb_decode->gauche == NULL) {
 	// Si la valeur à lire est entièrement sur le char courant
-	if (symb_decode->val + i < 8) {
+	if (symb_decode->magnitude + i < 8) {
 	  // On récupère la suite de bit sous forme de int puis on incrémente i
-	  uint16_t indice = (c>>(8-i-symb_decode->val)) & ((1<<symb_decode->val)-1);
-	  res[resi] = diff + get_val_from_magnitude(symb_decode->val, indice);
+	  uint16_t indice = (c>>(8-i-symb_decode->magnitude)) & ((1<<symb_decode->magnitude)-1);
+	  res[resi] = diff + get_val_from_magnitude(symb_decode->magnitude, indice);
 	} else {
 	  // Si la valeur à lire est sur deux char
 	  // On lit les bits de poids fort puis ceux de poids faible
-	  uint16_t indice = (c & (1<<(7-i)))<<(symb_decode->val-(8-i));
+	  uint16_t indice = (c & (1<<(7-i)))<<(symb_decode->magnitude-(8-i));
 	  c = fgetc(file);
-	  indice += c>>(8-(symb_decode->val-(8-i)));
-	  i = symb_decode->val-(8-i);
-	  res[resi] = diff + get_val_from_magnitude(symb_decode->val, indice);
+	  indice += c>>(8-(symb_decode->magnitude-(8-i)));
+	  i = symb_decode->magnitude-(8-i);
+	  res[resi] = diff + get_val_from_magnitude(symb_decode->magnitude, indice);
 	}
 	diff = res[resi];
 	resi++;
@@ -55,7 +56,7 @@ uint8_t *decodeDC(huffman_tree_dc_t* ht, FILE* file, uint64_t pos, uint64_t size
 uint8_t *decodeAC(huffman_tree_ac_t* ht, FILE* file, uint64_t pos) {
 
   fseek(file, pos, SEEK_SET);
-  uint8_t *res = (uint8_t*) calloc(sizeof(uint8_t)*63);
+  uint8_t *res = (uint8_t*) calloc(63, sizeof(uint8_t));
   uint8_t resi = 0;
   
   huffman_tree_ac_t* symb_decode = ht;
