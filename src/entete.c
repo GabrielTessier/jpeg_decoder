@@ -2,30 +2,49 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
+#include "entete.h"
+#include "list.h"
 
 
-void marqueur(FILE* fichier) {
+img_t* decode_entete(FILE *fichier) {
+    img_t *img = calloc(1,sizeof(img_t));
+    img->qtables = calloc(1,sizeof(qtables_t));
+    img->qtables->qtables = calloc(4,sizeof(idqtable_t*));
+    img->htables = calloc(1,sizeof(htables_t));
+    img->htables->htables = calloc(4,sizeof(idhtable_t*));
+    img->comps = calloc(1,sizeof(comps_t));
+    img->comps->comps = calloc(3,sizeof(idcomp_t*));
+    
+    while (!img->sosdone) {
+        marqueur(fichier, img);
+    }
+    return img;
+}
+
+
+void marqueur(FILE *fichier, img_t *img) {
     char c[2];
     fread(&c, 1, 2, fichier);
     if (c[0] != 0xff) {
-        fprintf(stderr, "Format incorrect de marqueur");
+        fprintf(stderr, "Ce n'est pas un marqueur : octet n° %ld", ftell(fichier));
         exit(EXIT_FAILURE);
     }
     switch (c[1]) {
         case 0xc0:
-            sof0(fichier);
+            sof0(fichier, img);
             break;
         case 0xc4:
-            dht(fichier);
+            dht(fichier, img);
             break;
         case 0xd8:
         case 0xd9:
             break;
         case 0xda:
-            sos(fichier);
+            sos(fichier, img);
             break;
         case 0xdb:
-            dqt(fichier);
+            dqt(fichier, img);
             break;
         case 0xe0:
             app0(fichier);
@@ -34,13 +53,13 @@ void marqueur(FILE* fichier) {
             com(fichier);
             break; 
         default:
-            fprintf(stderr, "Marqueur inconnu : %s", c[1]);
+            fprintf(stderr, "Marqueur inconnu : %x", c[1]);
             exit(EXIT_FAILURE);
     } 
 }
 
 
-void app0(FILE* fichier) {
+void app0(FILE *fichier) {
     uint16_t length;
     fread(&length, 2, 1, fichier);
     char jfif[5];
@@ -55,20 +74,42 @@ void app0(FILE* fichier) {
 }
 
 
-void com(FILE* fichier) {
+void com(FILE *fichier) {
     uint16_t length;
     fread(&length, 2, 1, fichier);
     fseek(fichier, length-2, SEEK_CUR);
 }
 
 
-void dqt(FILE* fichier) {
+void dqt(FILE *fichier, img_t *img) {
     uint16_t length;
     fread(&length, 2, 1, fichier);
+    for (uint8_t n=1; n<=(length-2)/65; n++) {
+        uint8_t octet = fgetc(fichier);
+        uint8_t precision = octet >> 4;
+        if (precision != 0) {
+            fprintf(stderr, "Format incorrect (DQT) : précision doit valoir 0 pour 8 bits");
+            exit(EXIT_FAILURE);
+        }
+        uint8_t id_quant = octet & 1111;
+        uint8_t i = 0;
+        while (img->qtables->qtables[i] != NULL && img->qtables->qtables[i]->id != id_quant) {
+            i++;
+        } // attention
+        if (img->qtables->qtables[i] == NULL) {
+            img->qtables->qtables[i] = malloc(sizeof(idqtable_t));
+            img->qtables->qtables[i]->id = id_quant;
+            img->qtables->qtables[i]->qtable = malloc(sizeof(qtable_t));
+            img->qtables->nb++;
+        }
+        for (uint8_t j=0; j<64; j++) {
+            img->qtables->qtables[i]->qtable->data[j] = fgetc(fichier);
+        }
+    }
 }
 
 
-void sof0(FILE* fichier) {
+void sof0(FILE *fichier, img_t *img) {
     uint16_t length;
     fread(&length, 2, 1, fichier);
     uint8_t precision = fgetc(fichier);
@@ -78,30 +119,124 @@ void sof0(FILE* fichier) {
     }
     uint16_t height;
     fread(&height, 2, 1, fichier);
+    img->height = height;
     uint16_t width;
     fread(&width, 2, 1, fichier);
+    img->width = width;
     uint8_t nb_comp = fgetc(fichier);
-    for (int i=1; i<=nb_comp; i++) {
+    img->comps->nb = nb_comp;
+    for (int i=0; i<=nb_comp-1; i++) {
         uint8_t id_comp = fgetc(fichier);
         uint8_t sampling = fgetc(fichier);
         uint8_t id_quant = fgetc(fichier);
+        img->comps->comps[i] = malloc(sizeof(idcomp_t));
+        img->comps->comps[i]->idc = id_comp;
+        img->comps->comps[i]->hsampling = sampling >> 4;
+        img->comps->comps[i]->vsampling = sampling & 0b1111;
+        img->comps->comps[i]->idq = id_quant;
     }
 }
 
 
-void dht(FILE* fichier) {
+void dht(FILE *fichier, img_t *img) {
+    uint64_t debut = ftell(fichier);
     uint16_t length;
     fread(&length, 2, 1, fichier);
+    while (ftell(fichier) < debut+length) {
+        uint8_t octet = fgetc(fichier);
+        if (octet & 11100000 != 0) {
+            fprintf(stderr, "Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
+            exit(EXIT_FAILURE);
+        }
+        uint8_t id_huff = octet & 1111;
+        if (id_huff > 3) {
+            fprintf(stderr, "Format incorrect (DHT) : l'indice de la table de huffman doit être entre 0 et 3");
+            exit(EXIT_FAILURE);
+        }
+        uint8_t longueur_codes_brutes[16];
+        fread(&longueur_codes_brutes, 1, 16, fichier);
+        uint16_t nb_codes; 
+        for (uint8_t i=0; i<16; i++) {
+            nb_codes += longueur_codes_brutes[i];
+        }
+        if (nb_codes >= 256) {
+            fprintf(stderr, "Format incorrect (DHT) : il y a plus de 256 symboles dans la table de Huffman");
+            exit(EXIT_FAILURE);
+        }
+        uint8_t longueur_codes_formatees[nb_codes];
+        uint8_t i=0;
+        for (uint8_t longueur=1; longueur<=16; longueur++) {
+            for (uint8_t nb_longueur=longueur_codes_brutes[longueur-1]; nb_longueur>=0; nb_longueur--) {
+                longueur_codes_formatees[i] = longueur;
+            }
+        }
+        uint8_t symb[nb_codes];
+        fread(&symb, 1, nb_codes, fichier);
+        list_t* list = init_list();
+
+        img->htables->htables[id_huff] = malloc(sizeof(idhtable_t));
+        img->htables->htables[id_huff]->id = id_huff;
+        img->htables->nb++;
+        img->htables->htables[id_huff]->htable = calloc(1,sizeof(huffman_tree_t));
+        
+        couple_tree_depth_t* couple = malloc(sizeof(couple_tree_depth_t));
+        couple->tree = img->htables->htables[id_huff]->htable;
+        couple->depth = 0;
+        insert_list(list, couple);
+        huffman_tree_t* tree;
+        uint8_t depth;
+        uint8_t num = 0;
+        while (num < nb_codes && !list_vide(list)) {
+            couple_tree_depth_t* couple = extract_list(list);
+            tree = couple->tree;
+            depth = couple->depth;
+            free(couple);
+            if (depth == longueur_codes_formatees[num]) {
+                tree->symb = symb[num];
+                num++;
+            }
+            else {
+                tree->gauche = calloc(1,sizeof(huffman_tree_t));
+                tree->droit = calloc(1,sizeof(huffman_tree_t));
+                couple_tree_depth_t* couple1 = malloc(sizeof(couple_tree_depth_t));
+                couple_tree_depth_t* couple2 = malloc(sizeof(couple_tree_depth_t));
+                couple1->tree = tree->gauche;
+                couple2->tree = tree->droit;
+                couple1->depth = depth + 1;
+                couple2->depth = depth + 1;
+                insert_list(list, couple1);
+                insert_list(list, couple2);
+            }
+        }
+        if (list_vide(list)) {
+            fprintf(stderr, "Format incorrect (DHT) : bizarre");
+            exit(EXIT_FAILURE);
+        }
+        while (!list_vide(list)) {
+            couple_tree_depth_t* couple = extract_list(list);
+            free(couple);
+        }
+        free(list);
+    }
 }
 
 
-void sos(FILE* fichier) {
+void sos(FILE *fichier, img_t *img) {
     uint16_t length;
     fread(&length, 2, 1, fichier);
     uint8_t nb_comp = fgetc(fichier);
-    for (int i=1; i<=nb_comp; i++) {
+    if (nb_comp != img->comps->nb) {
+        fprintf(stderr, "Format incorrect (SOS) : le nombre de composantes est différent de celui défini dans SOF0)");
+        exit(EXIT_FAILURE);
+    }
+    for (uint8_t i=0; i<=nb_comp-1; i++) {
         uint8_t id_comp = fgetc(fichier);
         uint8_t id_huff = fgetc(fichier);
+        img->comps->ordre[i] = id_comp;
+        uint8_t j = 0;
+        while (img->comps->comps[j]->idc != id_comp) {j++;} // attention si id_comp pas dans comps
+        img->comps->comps[j]->idhdc = id_huff >> 4;
+        img->comps->comps[j]->idhac = id_huff & 1111;
     }
     uint8_t ss = fgetc(fichier);
     if (ss != 0) {
@@ -118,6 +253,7 @@ void sos(FILE* fichier) {
         fprintf(stderr, "Format incorrect (SOS) : Ah et Al doivent valoir 0)");
         exit(EXIT_FAILURE);
     }
+    img->sosdone = true;
 }
 
 

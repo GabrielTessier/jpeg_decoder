@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include "iqzz.h"
 #include "vld.h"
 
@@ -16,19 +17,19 @@ typedef struct idqtable_s idqtable_t;
 
 struct qtables_s {
     uint8_t nb;
-    idqtable_t *qtables;
+    idqtable_t **qtables;
 };
 typedef struct qtables_s qtables_t;
 
-struct idhtables_s {
+struct idhtable_s {
     uint8_t id;
     huffman_tree_t *htable;
 };
-typedef struct idhtables_s idhtables_t;
+typedef struct idhtable_s idhtable_t;
 
 struct htables_s {
     uint8_t nb;
-    idhtables_t *htables;
+    idhtable_t **htables;
 };
 typedef struct htables_s htables_t;
 
@@ -36,14 +37,16 @@ struct idcomp_s {
     uint8_t idc;
     uint8_t hsampling;
     uint8_t vsampling;
-    uint8_t idh;
+    uint8_t idhdc;
+    uint8_t idhac;
     uint8_t idq;
 };
 typedef struct idcomp_s idcomp_t;
 
 struct comps_s {
     uint8_t nb;
-    idcomp_t *comps;
+    uint8_t ordre[3];
+    idcomp_t **comps;
 };
 typedef struct comps_s comps_t;
 
@@ -53,6 +56,29 @@ struct img_s {
     qtables_t *qtables;
     htables_t *htables;
     comps_t *comps;
+    bool sosdone;
 };
 typedef struct img_s img_t;
 
+struct couple_tree_depth_s {
+    huffman_tree_t *tree;
+    uint8_t depth;
+};
+typedef struct couple_tree_depth_s couple_tree_depth_t;
+
+
+img_t* decode_entete(FILE *fichier);
+
+void marqueur(FILE *fichier, img_t *img);
+
+void app0(FILE *fichier);
+
+void com(FILE *fichier);
+
+void dqt(FILE *fichier, img_t *img);
+
+void sof0(FILE *fichier, img_t *img);
+
+void dht(FILE *fichier, img_t *img);
+
+void sos(FILE *fichier, img_t *img);
