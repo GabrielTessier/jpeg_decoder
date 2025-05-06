@@ -13,7 +13,8 @@ img_t* decode_entete(FILE *fichier) {
     img->qtables = calloc(1,sizeof(qtables_t));
     img->qtables->qtables = calloc(4,sizeof(idqtable_t*));
     img->htables = calloc(1,sizeof(htables_t));
-    img->htables->htables = calloc(4,sizeof(idhtable_t*));
+    img->htables->dc = calloc(4,sizeof(idhtable_t*));
+    img->htables->ac = calloc(4,sizeof(idhtable_t*));
     img->comps = calloc(1,sizeof(comps_t));
     img->comps->comps = calloc(3,sizeof(idcomp_t*));
     img->other = calloc(1,sizeof(other_t));
@@ -68,8 +69,9 @@ void marqueur(FILE *fichier, img_t *img) {
 
 
 void app0(FILE *fichier, img_t *img) {
-    uint16_t length;
-    fread(&length, 2, 1, fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
+    length += fgetc(fichier);
+    
     fread(img->other->jfif, 1, 5, fichier);
     img->other->version_jfif_a = fgetc(fichier);
     img->other->version_jfif_b = fgetc(fichier);
@@ -78,8 +80,9 @@ void app0(FILE *fichier, img_t *img) {
 
 
 void com(FILE *fichier) {
-    uint16_t length;
-    fread(&length, 2, 1, fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
+    length += fgetc(fichier);
+
     fseek(fichier, length-2, SEEK_CUR);
 }
 
@@ -107,11 +110,14 @@ void dqt(FILE *fichier, img_t *img) {
 
 
 void sof0(FILE *fichier, img_t *img) {
-    uint16_t length;
-    fread(&length, 2, 1, fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
+    length += fgetc(fichier);
+
     img->comps->precision_comp = fgetc(fichier);
-    fread(&(img->height), 2, 1, fichier);
-    fread(&(img->width), 2, 1, fichier);
+    //fread(&(img->height), 2, 1, fichier);
+    //fread(&(img->width), 2, 1, fichier);
+    img->height = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
+    img->width = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     uint8_t nb_comp = fgetc(fichier);
     img->comps->nb = nb_comp;
     for (int i=0; i<=nb_comp-1; i++) {
@@ -128,11 +134,13 @@ void sof0(FILE *fichier, img_t *img) {
 
 void dht(FILE *fichier, img_t *img) {
     uint64_t debut = ftell(fichier);
-    uint16_t length;
-    fread(&length, 2, 1, fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
+    length += fgetc(fichier);
+
     while ((uint64_t) ftell(fichier) < debut+length) {
         uint8_t octet = fgetc(fichier);
         if ((octet & 0b11100000) != 0) erreur("Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
+	bool is_dc = (octet & 0b00010000) == 0;
         uint8_t id_huff = octet & 0b1111;
         if (id_huff > 3) erreur("Format incorrect (DHT) : l'indice de la table de huffman doit être entre 0 et 3");
         
@@ -146,21 +154,25 @@ void dht(FILE *fichier, img_t *img) {
         uint8_t longueur_codes_formatees[nb_codes];
         uint8_t i=0;
         for (uint8_t longueur=1; longueur<=16; longueur++) {
-            for (int16_t nb_longueur=longueur_codes_brutes[longueur-1]; nb_longueur>=0; nb_longueur--) {
+            for (uint16_t nb_longueur=0; nb_longueur<longueur_codes_brutes[longueur-1]; nb_longueur++) {
                 longueur_codes_formatees[i] = longueur;
+		i++;
             }
         }
         uint8_t symb[nb_codes];
         fread(&symb, 1, nb_codes, fichier);
 
-        img->htables->htables[id_huff] = malloc(sizeof(idhtable_t));
-        img->htables->htables[id_huff]->id = id_huff;
-        img->htables->nb++;
-        img->htables->htables[id_huff]->htable = calloc(1,sizeof(huffman_tree_t));
+	idhtable_t **htables;
+	if (is_dc) htables = img->htables->dc;
+	else htables = img->htables->ac;
+
+        htables[id_huff] = malloc(sizeof(idhtable_t));
+        htables[id_huff]->id = id_huff;
+        htables[id_huff]->htable = calloc(1,sizeof(huffman_tree_t));
         
         list_t *list = init_list();
         couple_tree_depth_t* couple = malloc(sizeof(couple_tree_depth_t));
-        couple->tree = img->htables->htables[id_huff]->htable;
+        couple->tree = htables[id_huff]->htable;
         couple->depth = 0;
         insert_list(list, couple);
         huffman_tree_t *tree;
@@ -199,8 +211,9 @@ void dht(FILE *fichier, img_t *img) {
 
 
 void sos(FILE *fichier, img_t *img) {
-    uint16_t length;
-    fread(&length, 2, 1, fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
+    length += fgetc(fichier);
+
     uint8_t nb_comp = fgetc(fichier);
     if (nb_comp != img->comps->nb) erreur("Format incorrect (SOS) : le nombre de composantes est différent de celui défini dans SOF0)");
     for (uint8_t i=0; i<=nb_comp-1; i++) {

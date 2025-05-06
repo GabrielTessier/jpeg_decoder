@@ -25,7 +25,7 @@ bloct_t ***upsampler(bloct_t **cb, bloct_t **cr, uint64_t nbBlockCbH, uint64_t n
 	  uint64_t px = i*8+k;
 	  uint64_t py = j*8+l;
 	  uint64_t dpx = px*facteurCbH;
-	  uint64_t dpy = px*facteurCbV;
+	  uint64_t dpy = py*facteurCbV;
 	  for (uint8_t offX=0; offX<facteurCbH; offX++)
 	    for (uint8_t offY=0; offY<facteurCbV; offY++)
 	      res[0][((dpy+offY)/8)*nbBlockCbH*facteurCbH+((dpx+offX)/8)]->data[(dpx+offX)%8][(dpy+offY)%8] = cb[j*nbBlockCbH+i]->data[k][l];
@@ -41,7 +41,7 @@ bloct_t ***upsampler(bloct_t **cb, bloct_t **cr, uint64_t nbBlockCbH, uint64_t n
 	  uint64_t px = i*8+k;
 	  uint64_t py = j*8+l;
 	  uint64_t dpx = px*facteurCrH;
-	  uint64_t dpy = px*facteurCrV;
+	  uint64_t dpy = py*facteurCrV;
 	  for (uint8_t offX=0; offX<facteurCrH; offX++)
 	    for (uint8_t offY=0; offY<facteurCrV; offY++)
 	      res[1][((dpy+offY)/8)*nbBlockCrH*facteurCrH+((dpx+offX)/8)]->data[(dpx+offX)%8][(dpy+offY)%8] = cr[j*nbBlockCrH+i]->data[k][l];

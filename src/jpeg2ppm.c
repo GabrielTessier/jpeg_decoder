@@ -42,14 +42,14 @@ int main(int argc, char *argv[]) {
   int nbbloc;
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
-    uint64_t debutDC = 0;
+    uint64_t debutDC = ftell(fichier);
     nbbloc = 1;
     blocl_t **blocs = (blocl_t**) malloc(sizeof(blocl_t*)*nbbloc);
-    int8_t *dc = decodeDC(img->htables->htables[0]->htable, fichier, debutDC, nbbloc);
+    int8_t *dc = decodeDC(img->htables->dc[0]->htable, fichier, debutDC, nbbloc);
     // Décodage de AC
     uint64_t debutAC = ftell(fichier)+1;
     for (int i=0; i < nbbloc; i++) {
-      int8_t *ac = decodeAC(img->htables->htables[1]->htable, fichier, debutAC);
+      int8_t *ac = decodeAC(img->htables->ac[0]->htable, fichier, debutAC);
       debutAC = ftell(fichier)+1;
       blocs[i] = (blocl_t*) malloc(sizeof(blocl_t));
       blocs[i]->data[0] = dc[i];
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     // Déquantification et zigzag
     bloct_t **blocs_iq = (bloct_t**) malloc(sizeof(bloct_t*)*nbbloc);
     for (int i=0; i < nbbloc; i++) {
-      uint8_t idqtable = 1; // TODO: à modifier selon N&B/couleur et ycc
+      uint8_t idqtable = 0; // TODO: à modifier selon N&B/couleur et ycc
       blocs_iq[i] = iqzz(blocs[i], img->qtables->qtables[idqtable]->qtable);
     }
     free_blocs((void **) blocs, nbbloc);
@@ -69,24 +69,39 @@ int main(int argc, char *argv[]) {
     free_blocs((void **) blocs_iq, nbbloc);
     // Ajout de la composante
     ycc[k] = blocs_idct;
-    free_blocs((void **) blocs_iq, nbbloc);
+    //free_blocs((void **) blocs_iq, nbbloc);
   }
   char *filename = basename(argv[1]); // nom du fichier
   if (nbcomp == 1) {
-    FILE *outfile = fopen(strcat(filename, ".pgm"), "w+");
+    char *fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
+    strcpy(fullfilename, filename);
+    strcat(fullfilename, ".pgm");
+    FILE *outfile = fopen(fullfilename, "w+");
     fprintf(outfile, "P5\n");   // Magic number
     fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
-    fprintf(outfile, "255"); // nombre de valeurs d'une composante de couleur
+    fprintf(outfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
-    for (int x=0; x < img->height; x++)    // id de ligne du bloc
-      for (int i=0; i < 8; i++)            // id de ligne dans le bloc
-        for (int y=0; y < img->width; y++) // id de colonne du bloc
-          for (int j=0; j < 8; j++) {      // id de colonne dans le bloc
-            fprintf(outfile, "%c", ycc[0][x*img->width + y]->data[i][j]);
-          }
+    //for (int x=0; x < img->height; x++)    // id de ligne du bloc
+    //  for (int i=0; i < 8; i++)            // id de ligne dans le bloc
+    //    for (int y=0; y < img->width; y++) // id de colonne du bloc
+    //      for (int j=0; j < 8; j++) {      // id de colonne dans le bloc
+    //        fprintf(outfile, "%c", ycc[0][x*img->width + y]->data[i][j]);
+    //      }
+    printf("%d, %d\n", img->width, img->height);
+    for (int y=0; y<img->height; y++) {
+      for (int x=0; x<img->width; x++) {
+	// On print le pixel de coordonée (x,y)
+	int bx = x/8;  // bx-ieme bloc horizontalement
+	int by = y/8;  // by-ieme bloc verticalement
+	int px = x%8;
+	int py = y%8;  // le pixel est à la coordonée (px,py) du blob (bx,by)
+	fprintf(outfile, "%c", ycc[0][by*img->width/8 + bx]->data[px][py]);
+      }
+    }
+
+    fclose(outfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
-    bloct_t *out;
-    ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
+    //bloc_rgb_t *out = ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
   }    
   fclose(fichier);  
   return 0;

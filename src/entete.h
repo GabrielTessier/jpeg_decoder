@@ -29,8 +29,8 @@ struct idhtable_s {
 typedef struct idhtable_s idhtable_t;
 
 struct htables_s {
-    uint8_t nb;
-    idhtable_t **htables;
+    idhtable_t **dc;
+    idhtable_t **ac;
 };
 typedef struct htables_s htables_t;
 
