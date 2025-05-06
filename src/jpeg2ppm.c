@@ -6,6 +6,14 @@
 
 // TODO: changer l28, 32 les indices des tables de huffman
 
+// Fonction pour free les allocations de tableaux de blocs
+void free_blocs(void **blocs, uint8_t nbblocs) {
+  for (int i=0; i < nbblocs; i++)
+    free(blocs[i]);
+  free(blocs);
+}
+
+// Fonction principale appelée
 int main(int argc, char *argv[]) {
   // Vérification arguments
   if (argc != 2) {
@@ -28,24 +36,31 @@ int main(int argc, char *argv[]) {
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
     uint64_t debutDC = 0;
-    int nbmcu = 1;
-    mcul_t **mcus = (mcul_t**) malloc(sizeof(mcul_t*)*nbmcu);
-    int8_t *dc = decodeDC(img->htables->htables[0].htable, fichier, debutDC, nbmcu);
+    int nbbloc = 1;
+    blocl_t **blocs = (blocl_t**) malloc(sizeof(blocl_t*)*nbbloc);
+    int8_t *dc = decodeDC(img->htables->htables[0].htable, fichier, debutDC, nbbloc);
     // Décodage de AC
     uint64_t debutAC = ftell(fichier)+1;
-    for (int i=0; i < nbmcu; i++) {
+    for (int i=0; i < nbbloc; i++) {
       int8_t *ac = decodeAC(img->htables->htables[1].htable, fichier, debutAC);
       debutAC = ftell(fichier)+1;
-      mcus[i] = (mcul_t*) malloc(sizeof(mcul_t));
-      mcus[i]->data[0] = dc[i];
-      memcpy(mcus[i]->data+1, ac, 63*sizeof(int8_t));
+      blocs[i] = (blocl_t*) malloc(sizeof(blocl_t));
+      blocs[i]->data[0] = dc[i];
+      memcpy(blocs[i]->data+1, ac, 63*sizeof(int8_t));
     }
     // Déquantification et zigzag
-    mcut_t **mcusdq = (mcut_t*) malloc(sizeof(mcut_t*)*nbmcu);
-    for (int i=0; i < nbmcu; i++) {
+    bloct_t **blocs_iq = (bloct_t**) malloc(sizeof(bloct_t*)*nbbloc);
+    for (int i=0; i < nbbloc; i++) {
       uint8_t idqtable = 1; // TODO: à modifier selon N&B/couleur et ycc
-      mcusdq[i] = iqzz(mcus[i], img->qtables[idqtable]);
+      blocs_iq[i] = iqzz(blocs[i], img->qtables[idqtable]);
     }
+    free_blocs((void **) blocs, nbbloc);
+    // IDCT
+    bloct_t **blocs_idct = (bloct_t **) malloc(sizeof(bloc_t*)*nbbloc);
+    for (int i=0; i < nbbloc; i++) {
+      
+ 
+    
     
   }  
   fclose(fichier);  

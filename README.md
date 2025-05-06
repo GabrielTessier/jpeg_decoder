@@ -30,7 +30,7 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                      | Philippe    |
 | idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse | Philippe    |
 | upsampler | renseigne les composantes Y, $C_b$, $C_r$ selon le sous-échantillonage effectué                | Gabriel     |
-| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r en R, G, B                                           | Gabriel     |
+| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                           | Gabriel     |
 
 | Module    | Fonctions | Entrées                                                                                                                        | Sorties                                                            |
 |:---------:|-----------|--------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|

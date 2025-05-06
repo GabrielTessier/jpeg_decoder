@@ -8,8 +8,8 @@
 
 float func_C(int khi) { return (khi == 0) ? 1 / sqrt(2) : 1; }
 
-mcuycc_t *idct(mcudct_t *freq) {
-  mcuycc_t *res = (mcuycc_t*) malloc(sizeof(mcuycc_t));
+mcut_t *idct(mcut_t *freq) {
+  bloct_t *res = (mcuycc_t*) malloc(sizeof(mcuycc_t));
   for (int x=0; x < 8; x++)
     for (int y=0; y < 8; y++) {
       float sum = 0; // double somme
