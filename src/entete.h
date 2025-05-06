@@ -32,8 +32,8 @@ typedef struct htables_s htables_t;
 
 struct idcomp_s {
     uint8_t idc;
-    uint8_t ech_horiz;
-    uint8_t ech_vert;
+    uint8_t hsampling;
+    uint8_t vsampling;
     uint8_t idh;
     uint8_t idq;
 };
