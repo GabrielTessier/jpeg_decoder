@@ -1,9 +1,10 @@
+#pragma once
 #include <stdint.h>
 #include "entete.h"
 #include "iqzz.h"
 
-struct mcul_s {
+struct blocl_s {
   int8_t data[64];
 };
 
-typedef struct mcul_s mcul_t;
+typedef struct blocl_s blocl_t;
