@@ -70,9 +70,9 @@ int8_t *decodeAC(huffman_tree_t* ht, FILE* file, uint64_t pos) {
       // Si on a atteint une fauille
       if (symb_decode->droit == NULL && symb_decode->gauche == NULL) {
 	switch (symb_decode->symb) {
-	case (char) 0x00:
+	case (uint8_t) 0x00:
 	  return res;
-	case (char) 0xF0:
+	case (uint8_t) 0xf0:
 	  resi += 16;
 	  break;
 	default:

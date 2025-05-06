@@ -1,15 +1,17 @@
 #include <math.h>
 #include <stdlib.h>
+#include "jpeg2ppm.h"
 #include "idct.h"
-#include "ycc2rgb.h"
+
+#define M_PI       3.14159265358979323846
 
 // In:  mcudct_t*
 // Out: ycbcr
 
 float func_C(int khi) { return (khi == 0) ? 1 / sqrt(2) : 1; }
 
-mcut_t *idct(mcut_t *freq) {
-  bloct_t *res = (mcuycc_t*) malloc(sizeof(mcuycc_t));
+bloct_t *idct(bloct_t *freq) {
+  bloct_t *res = (bloct_t*) malloc(sizeof(bloct_t));
   for (int x=0; x < 8; x++)
     for (int y=0; y < 8; y++) {
       float sum = 0; // double somme

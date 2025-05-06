@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
           }
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     bloct_t *out;
-    ycc2rgb(*ycc[0], *ycc[1], ycc[2]);
+    ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
   }    
   fclose(fichier);  
   return 0;
