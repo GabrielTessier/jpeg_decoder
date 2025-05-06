@@ -16,6 +16,7 @@ img_t* decode_entete(FILE *fichier) {
     img->htables->htables = calloc(4,sizeof(idhtable_t*));
     img->comps = calloc(1,sizeof(comps_t));
     img->comps->comps = calloc(3,sizeof(idcomp_t*));
+    img->other = calloc(1,sizeof(other_t));
     
     while (!img->sosdone) {
         marqueur(fichier, img);
