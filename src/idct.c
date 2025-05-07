@@ -48,8 +48,7 @@ float ****calc_coef() {
   return stockage_coef;
 }
 
-bloctu8_t *idct(bloct16_t *freq) {
-  float ****stockage_coef = calc_coef();
+bloctu8_t *idct(bloct16_t *freq, float ****stockage_coef) {
   bloctu8_t *res = (bloctu8_t*) malloc(sizeof(bloctu8_t));
   for (int x=0; x < 8; x++)
     for (int y=0; y < 8; y++) {

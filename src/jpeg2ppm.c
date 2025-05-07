@@ -102,24 +102,23 @@ void print_timer(char* text) {
   }
 }
 
-blocl16_t *decode_bloc_acdc(FILE *fichier, img_t *img, int16_t *dc_prec, uint64_t *debut, uint8_t *off) {
-  blocl16_t *bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
-  int16_t dc=0;
-  
-  int16_t *sousdc = decodeDC(img->htables->dc[0], fichier, *debut, off, 1);
-  dc = sousdc[0];
+blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, int16_t *dc_prec, uint64_t *debut, uint8_t *off) {
+  int16_t *sousdc = decodeDC(hdc, fichier, *debut, off, 1);
+  int16_t dc = sousdc[0];
   dc += *dc_prec; // calcul du coef à partir de la différence
   *dc_prec = dc;
 
   *debut = ftell(fichier)-1; // début de AC
-  int16_t *ac = decodeAC(img->htables->ac[0], fichier, *debut, off);
+  int16_t *ac = decodeAC(hac, fichier, *debut, off);
 
   *debut = ftell(fichier)-1;
   // écriture des DC, AC
-  bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
+  blocl16_t * bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
   bloc->data[0] = dc;
-  memcpy(bloc->data+1, ac, 63*sizeof(int16_t));
-  
+  //memcpy(bloc->data+1, ac, 63*sizeof(int16_t));
+  for (int i=0; i<63; i++) bloc->data[i+1] = ac[i];
+  free(sousdc);
+  free(ac);
   return bloc;
 }
 
@@ -184,25 +183,41 @@ int main(int argc, char *argv[]) {
   int nbblocX = ceil((float)img->width / 8);
   int nbbloc = ceil((float)img->height / 8) * nbblocX;
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbbloc);
-  
+
+  float ****stockage_coef = calc_coef();
 
   uint8_t off = 0;
   uint64_t debut = ftell(fichier);
-  int16_t dc_prec = 0;
+  int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
   for (int i=0; i<nbbloc; i++) {
     ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbcomp);
     for (int k=0; k<nbcomp; k++) {
-      blocl16_t *bloc = decode_bloc_acdc(fichier, img, &dc_prec, &debut, &off);
-      blocl16_t *bloc_iq = (blocl16_t*) malloc(sizeof(blocl16_t));
-      uint8_t idqtable = 0; // TODO: à modifier selon N&B/couleur et ycc
-      bloc_iq = iquant(bloc, img->qtables[idqtable]->qtable);
-      bloct16_t *bloc_zz = (bloct16_t*) malloc(sizeof(bloct16_t));
-      bloc_zz = izz(bloc_iq);
-      bloctu8_t *bloc_idct = (bloctu8_t*) malloc(sizeof(bloctu8_t));
-      bloc_idct = idct(bloc_zz);
+      huffman_tree_t *hdc = NULL;
+      huffman_tree_t *hac = NULL;
+      qtable_prec_t *qtable = NULL;
+
+      hdc = img->htables->dc[img->comps->comps[k]->idhdc];
+      hac = img->htables->ac[img->comps->comps[k]->idhac];
+      qtable = img->qtables[img->comps->comps[k]->idq];
+      
+      if (hdc == NULL) erreur("Pas de table de huffman pour la composante %d\n", k);
+      if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", k);
+ 
+      
+      blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+k, &debut, &off);
+      blocl16_t *bloc_iq = iquant(bloc, qtable->qtable);
+      bloct16_t *bloc_zz = izz(bloc_iq);
+      bloctu8_t *bloc_idct = idct(bloc_zz, stockage_coef);
       ycc[i][k] = bloc_idct;
+
+      free(bloc);
+      free(bloc_iq);
+      free(bloc_zz);
     }
   }
+  free(dc_prec);
+
+  fclose(fichier);
   
   char *filename = filepath; // nom du fichier
   *(strrchr(filename, '.')) = 0;
@@ -228,7 +243,28 @@ int main(int argc, char *argv[]) {
     }
     fclose(outfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
-    //bloc_rgb_t *out = ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
+    char *fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
+    strcpy(fullfilename, filename);
+    strcat(fullfilename, ".ppm");
+    FILE *outfile = fopen(fullfilename, "w+");
+    fprintf(outfile, "P6\n");   // Magic number
+    fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
+    fprintf(outfile, "255\n"); // nombre de valeurs d'une composante de couleur
+    // Impression des pixels
+    print_v("width: %d, height: %d\n", img->width, img->height);
+    for (int y=0; y<img->height; y++) {
+      for (int x=0; x<img->width; x++) {
+        // On print le pixel de coordonnée (x,y)
+        int bx = x/8;  // bx-ieme bloc horizontalement
+        int by = y/8;  // by-ieme bloc verticalement
+        int px = x%8;
+        int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
+	rgb_t *rgb = ycc2rgb_pixel(ycc[by*nbblocX + bx][0]->data[px][py], ycc[by*nbblocX + bx][1]->data[px][py], ycc[by*nbblocX + bx][2]->data[px][py]);
+        fprintf(outfile, "%c%c%c", rgb->r, rgb->g, rgb->b);
+	free(rgb);
+      }
+    }
+    fclose(outfile);
   }
   print_timer("Affichage pixel");
   if (print_time) {
@@ -236,6 +272,5 @@ int main(int argc, char *argv[]) {
     gettimeofday(&t, NULL);
     fprintf(stdout, "temps total : %f s\n", (float) (cast_time(t)-abs_timer)/1000000);
   }
-  fclose(fichier);
   return 0;
 }

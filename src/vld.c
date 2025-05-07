@@ -141,11 +141,11 @@ int16_t *decodeAC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off) {
 	  break;
 	}
 	symb_decode = ht;
-	if (resi == 63) break;
+	if (resi >= 63) break;
       }
       i++;
     }
-    if (resi == 63) break;
+    if (resi >= 63) break;
     //c = fgetc(file);
     c = my_getc(file, c);
     i = 0;
