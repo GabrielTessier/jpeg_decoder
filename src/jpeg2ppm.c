@@ -67,7 +67,11 @@ int main(int argc, char *argv[]) {
   printf("huffman ac\n");
   print_hufftable(acu, img->htables->ac[0]->htable);
 
-
+  printf("qtable : ");
+  for (int i=0; i<64; i++) {
+    printf("%d, ", img->qtables->qtables[0]->qtable->data[i]);
+  }
+  printf("\n");
   
   // N&B ou couleur
   const uint8_t nbcomp = img->comps->nb;
@@ -101,7 +105,7 @@ int main(int argc, char *argv[]) {
       debut = ftell(fichier)-1;
       blocs[i] = (blocl16_t*) malloc(sizeof(blocl16_t));
       blocs[i]->data[0] = dc[i];
-      memcpy(blocs[i]->data+1, ac, 63*sizeof(int8_t));
+      memcpy(blocs[i]->data+1, ac, 63*sizeof(int16_t));
     }
     // Déquantification
     blocl16_t **blocs_iq = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);

@@ -31,7 +31,7 @@
   }*/
 
 blocl16_t *iquant(blocl16_t *entree, qtable_t *qtable) {
-  blocl16_t *res = (blocl16_t*) calloc(1, sizeof(blocl16_t));
+  blocl16_t *res = (blocl16_t*) malloc(sizeof(blocl16_t));
   for (int i=0; i<64; i++) {
     res->data[i] = entree->data[i] * qtable->data[i];
   }
