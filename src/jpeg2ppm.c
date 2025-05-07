@@ -1,3 +1,4 @@
+#include <bits/types/struct_timeval.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,7 +6,7 @@
 #include <libgen.h>
 #include <stdarg.h>
 #include <math.h>
-#include <time.h>
+#include <sys/time.h>
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
@@ -35,8 +36,8 @@ int8_t* copy_arr_int16_to_int8(int16_t *tab, int nb) {
 // options d'exécution (-v)
 static int verbose = 0;
 static int print_time = 0;
-static time_t timer;
-static time_t abs_timer;
+static uint64_t timer;
+static uint64_t abs_timer;
 
 // Retourne la liste des options dans argv
 char *get_options(const int argc, const char **argv, char **parameters) {
@@ -64,89 +65,63 @@ void print_v(const char* format, ...) {
 }
 
 void print_hufftable(char* acu, huffman_tree_t* tree) {
-  if (tree->droit == NULL && tree->gauche == NULL) {
-    print_v("path : %s symbol : %x\n", acu, tree->symb);
-    return;
+  if (verbose) {
+    if (tree->droit == NULL && tree->gauche == NULL) {
+      print_v("path : %s symbol : %x\n", acu, tree->symb);
+      return;
+    }
+    int i = strlen(acu);
+    acu[i] = '0';
+    print_hufftable(acu, tree->gauche);
+    acu[i] = '1';
+    print_hufftable(acu, tree->droit);
+    acu[i] = 0;
   }
-  int i = strlen(acu);
-  acu[i] = '0';
-  print_hufftable(acu, tree->gauche);
-  acu[i] = '1';
-  print_hufftable(acu, tree->droit);
-  acu[i] = 0;
 }
 
+uint64_t cast_time(struct timeval time) {
+  return time.tv_sec*1000000 + time.tv_usec;
+}
 
 void start_timer() {
   if (print_time) {
-    timer = time(NULL);
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    timer = cast_time(t);
     abs_timer = timer;
   }
 }
 
-void print_timer() {
+void print_timer(char* text) {
   if (print_time) {
-    fprintf(stdout, "%ld\n", time(NULL) - timer);
-    timer = time(NULL);
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    uint64_t tt = cast_time(t);
+    fprintf(stdout, "%s : %f s\n", text, (float) (tt-timer)/1000000);
+    timer = tt;
   }
 }
 
-blocl16_t **decode_acdc(int nbbloc, FILE *fichier, img_t *img) {
-  blocl16_t **blocs = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
-  uint8_t off = 0; // offset pour le décodage de AC, DC
-  int16_t dc=0, dc_prec;
-  uint64_t debut = ftell(fichier);
-  for (int i=0; i < nbbloc; i++) {
-    int16_t *sousdc = decodeDC(img->htables->dc[0], fichier, debut, &off, 1);
-    dc_prec = dc;
-    dc = sousdc[0] + ((i!=0)?dc_prec:0); // calcul du coef à partir de la différence
-    // Affichage de DC
-    print_v("[DC %d] : %x\n", i, dc);
+blocl16_t *decode_bloc_acdc(FILE *fichier, img_t *img, int16_t *dc_prec, uint64_t *debut, uint8_t *off) {
+  blocl16_t *bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
+  int16_t dc=0;
+  
+  int16_t *sousdc = decodeDC(img->htables->dc[0], fichier, *debut, off, 1);
+  dc = sousdc[0];
+  dc += *dc_prec; // calcul du coef à partir de la différence
+  *dc_prec = dc;
 
-    debut = ftell(fichier)-1; // début de AC
-    int16_t *ac = decodeAC(img->htables->ac[0], fichier, debut, &off);
-    // Affichage de AC
-    print_v("[AC %d] ", i);
-    for (int j=0; j<63; j++) print_v("%x(%d), ", ac[j], ac[j]);
-    print_v("\n\n");
+  *debut = ftell(fichier)-1; // début de AC
+  int16_t *ac = decodeAC(img->htables->ac[0], fichier, *debut, off);
 
-    debut = ftell(fichier)-1;
-    // écriture des DC, AC
-    blocs[i] = (blocl16_t*) malloc(sizeof(blocl16_t));
-    blocs[i]->data[0] = dc;
-    memcpy(blocs[i]->data+1, ac, 63*sizeof(int16_t));
-  }
-  return blocs;
+  *debut = ftell(fichier)-1;
+  // écriture des DC, AC
+  bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
+  bloc->data[0] = dc;
+  memcpy(bloc->data+1, ac, 63*sizeof(int16_t));
+  
+  return bloc;
 }
-
-/* blocl16_t **decode_acdc(int nbbloc, FILE *fichier, img_t *img) { */
-/*   blocl16_t **blocs = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc); */
-/*   uint8_t off = 0; // offset pour le décodage de AC, DC */
-/*   int16_t *dc = (int16_t*) malloc(sizeof(int16_t)*nbbloc); */
-/*   // Décodage de AC et DC */
-/*   uint64_t debut = ftell(fichier); */
-/*   for (int i=0; i < nbbloc; i++) { */
-/*     int16_t *sousdc = decodeDC(img->htables->dc[0]->htable, fichier, debut, &off, 1); */
-/*     dc[i] = sousdc[0] + ((i!=0)?dc[i-1]:0); // calcul du coef à partir de la différence */
-/*     printf("[DC %d] : %x\n", i, dc[i]); */
-
-/*     debut = ftell(fichier)-1; // début de AC */
-      
-/*     int16_t *ac = decodeAC(img->htables->ac[0]->htable, fichier, debut, &off); */
-
-/*     printf("[AC %d] ", i); */
-/*     for (int j=0; j<63; j++) printf("%x(%d), ", ac[j], ac[j]); */
-/*     printf("\n\n"); */
-
-/*     debut = ftell(fichier)-1; */
-/*     // écriture des DC, AC */
-/*     blocs[i] = (blocl16_t*) malloc(sizeof(blocl16_t)); */
-/*     blocs[i]->data[0] = dc[i]; */
-/*     memcpy(blocs[i]->data+1, ac, 63*sizeof(int16_t)); */
-/*   } */
-/*   return blocs; */
-/* } */
-
 
 // Fonction principale
 
@@ -154,9 +129,10 @@ int main(int argc, char *argv[]) {
   // Vérification arguments
   if (argc < 2) 
     erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
-  char *filepath = argv[1];
   char **parameters = (char**) malloc(sizeof(char*)*5);
   char *options = get_options(argc, (const char**)argv, parameters);
+
+  char *filepath = parameters[0];
 
   for (size_t i=0; i < strlen(options); i++) {
     switch (options[i]) {
@@ -178,13 +154,13 @@ int main(int argc, char *argv[]) {
   if ((fileext == NULL) || (!strcmp(fileext, "jpeg") && !strcmp(fileext, "jpg"))) {
     erreur("Erreur : mauvaise extension de fichier.");
   }
-  FILE *fichier = fopen(argv[1], "r");
+  FILE *fichier = fopen(filepath, "r");
   if (fichier == NULL)
     erreur("Erreur : fichier introuvable.");
   // Parsing de l'en-tête
   start_timer();
   img_t *img = decode_entete(fichier);
-  print_timer();
+  print_timer("Décodage entête");
 
   // Affichage tables de Huffman
   char* acu = (char*) calloc(20, sizeof(char));
@@ -205,41 +181,30 @@ int main(int argc, char *argv[]) {
   const uint8_t nbcomp = img->comps->nb;
   
   // Parcours de toutes les composantes
-  bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
   int nbblocX = ceil((float)img->width / 8);
   int nbbloc = ceil((float)img->height / 8) * nbblocX;
+  bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbbloc);
   
-  for (int k=0; k < nbcomp; k++) {
-    blocl16_t **blocs = decode_acdc(nbbloc, fichier, img);
-    // Déquantification
-    blocl16_t **blocs_iq = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
-    for (int i=0; i < nbbloc; i++) {
+
+  uint8_t off = 0;
+  uint64_t debut = ftell(fichier);
+  int16_t dc_prec = 0;
+  for (int i=0; i<nbbloc; i++) {
+    ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbcomp);
+    for (int k=0; k<nbcomp; k++) {
+      blocl16_t *bloc = decode_bloc_acdc(fichier, img, &dc_prec, &debut, &off);
+      blocl16_t *bloc_iq = (blocl16_t*) malloc(sizeof(blocl16_t));
       uint8_t idqtable = 0; // TODO: à modifier selon N&B/couleur et ycc
-      blocs_iq[i] = iquant(blocs[i], img->qtables[idqtable]->qtable);
-      print_v("[IQUANT %d] : ", i);
-      for (int j=0; j<64; j++) printf("%x, ", blocs_iq[i]->data[j]);
-      print_v("\n\n");
+      bloc_iq = iquant(bloc, img->qtables[idqtable]->qtable);
+      bloct16_t *bloc_zz = (bloct16_t*) malloc(sizeof(bloct16_t));
+      bloc_zz = izz(bloc_iq);
+      bloctu8_t *bloc_idct = (bloctu8_t*) malloc(sizeof(bloctu8_t));
+      bloc_idct = idct(bloc_zz);
+      ycc[i][k] = bloc_idct;
     }
-    // Zigzag
-    bloct16_t **blocs_zz = (bloct16_t**) malloc(sizeof(bloct16_t*)*nbbloc);
-    for (int i=0; i < nbbloc; i++) {
-      blocs_zz[i] = izz(blocs_iq[i]);
-      print_v("[IZZ %d] : ", i);
-      for (int j=0; j<64; j++) printf("%x, ", blocs_zz[i]->data[j%8][j/8]);
-      print_v("\n\n");
-    }
-    //free_blocs((void **) blocs, nbbloc);
-    // IDCT
-    bloctu8_t **blocs_idct = (bloctu8_t **) malloc(sizeof(bloctu8_t*)*nbbloc);
-    for (int i=0; i < nbbloc; i++)
-      blocs_idct[i] = idct(blocs_zz[i]);
-    //free_blocs((void **) blocs_iq, nbbloc);
-    // Ajout de la composante
-    ycc[k] = blocs_idct;
-    //free_blocs((void **) blocs_iq, nbbloc);
   }
   
-  char *filename = argv[1]; // nom du fichier
+  char *filename = filepath; // nom du fichier
   *(strrchr(filename, '.')) = 0;
   if (nbcomp == 1) {
     char *fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
@@ -250,12 +215,6 @@ int main(int argc, char *argv[]) {
     fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
     fprintf(outfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
-    //for (int x=0; x < img->height; x++)    // id de ligne du bloc
-    //  for (int i=0; i < 8; i++)            // id de ligne dans le bloc
-    //    for (int y=0; y < img->width; y++) // id de colonne du bloc
-    //      for (int j=0; j < 8; j++) {      // id de colonne dans le bloc
-    //        fprintf(outfile, "%c", ycc[0][x*img->width + y]->data[i][j]);
-    //      }
     print_v("width: %d, height: %d\n", img->width, img->height);
     for (int y=0; y<img->height; y++) {
       for (int x=0; x<img->width; x++) {
@@ -264,16 +223,19 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-        fprintf(outfile, "%c", ycc[0][by*nbblocX + bx]->data[px][py]);
+        fprintf(outfile, "%c", ycc[by*nbblocX + bx][0]->data[px][py]);
       }
     }
     fclose(outfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     //bloc_rgb_t *out = ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
   }
+  print_timer("Affichage pixel");
   if (print_time) {
-    fprintf(stdout, "temps total : %ld\n", time(NULL) - abs_timer);
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    fprintf(stdout, "temps total : %f s\n", (float) (cast_time(t)-abs_timer)/1000000);
   }
-  fclose(fichier);  
+  fclose(fichier);
   return 0;
 }

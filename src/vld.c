@@ -51,8 +51,6 @@ int16_t *decodeDC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off, ui
 	  exit(EXIT_FAILURE);
 	}
 	code_que_un = true;
-
-	printf("SYNB : %x\n", symb_decode->symb);
 	// Si la valeur à lire est entièrement sur le char courant
 	if (symb_decode->symb + i < 8) {
 	  // On récupère la suite de bit sous forme de int puis on incrémente i
@@ -89,7 +87,6 @@ int16_t *decodeDC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off, ui
     c = my_getc(file, c);
     i = 0;
   }
-  printf("%x, %d\n", c, i);
   *off = i+1;
   return res;
 }
@@ -102,7 +99,6 @@ int16_t *decodeAC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off) {
   huffman_tree_t* symb_decode = ht;
   int i = *off;
   char c = fgetc(file);
-  printf("%x, %d\n", c, i);
   while (true) {
     while (i<8) {
       // on regarde si le bit courant est 0 ou 1
@@ -110,8 +106,6 @@ int16_t *decodeAC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off) {
       else symb_decode = symb_decode->gauche;
       // Si on a atteint une fauille
       if (symb_decode->droit == NULL && symb_decode->gauche == NULL) {
-	
-	printf("SYNB : %x\n", symb_decode->symb);
 	switch (symb_decode->symb) {
 	case (uint8_t) 0x00:
 	  resi = 63;
