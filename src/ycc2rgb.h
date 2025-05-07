@@ -13,4 +13,4 @@ struct bloc_rgb_s {
 };
 typedef struct bloc_rgb_s bloc_rgb_t;
 
-bloc_rgb_t *ycc2rgb(bloct_t y[64], bloct_t cb[64], bloct_t cr[64]);
+bloc_rgb_t *ycc2rgb(bloctu8_t y[64], bloctu8_t cb[64], bloctu8_t cr[64]);

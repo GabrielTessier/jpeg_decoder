@@ -73,53 +73,58 @@ int main(int argc, char *argv[]) {
   const uint8_t nbcomp = img->comps->nb;
   
   // Parcours de toutes les composantes
-  bloct_t ***ycc = (bloct_t ***) malloc(sizeof(bloct_t **)*nbcomp);
+  bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
   int nbbloc;
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
-    nbbloc = 4;
-    blocl_t **blocs = (blocl_t**) malloc(sizeof(blocl_t*)*nbbloc);
+    nbbloc = 1;
+    blocl16_t **blocs = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
     uint8_t off = 0;
 
-    int8_t *dc = (int8_t*) malloc(sizeof(int8_t)*nbbloc);
+    int16_t *dc = (int16_t*) malloc(sizeof(int16_t)*nbbloc);
     // Décodage de AC
     //uint64_t debutAC = ftell(fichier)-1;
     uint64_t debut = ftell(fichier);
     for (int i=0; i < nbbloc; i++) {
-      int16_t *vraidc = decodeDC(img->htables->dc[0]->htable, fichier, debut, &off, 1);
-      dc[i] = (int8_t) vraidc[0] + ((i!=0)?dc[i-1]:0);
+      int16_t *sousdc = decodeDC(img->htables->dc[0]->htable, fichier, debut, &off, 1);
+      dc[i] = sousdc[0] + ((i!=0)?dc[i-1]:0);
       printf("[DC %d] : %x\n", i, dc[i]);
 
       debut = ftell(fichier)-1;
       
-      int16_t *vraiac = decodeAC(img->htables->ac[0]->htable, fichier, debut, &off);
-      int8_t *ac = copy_arr_int16_to_int8(vraiac, 63);
+      int16_t *ac = decodeAC(img->htables->ac[0]->htable, fichier, debut, &off);
 
       printf("[AC %d] ", i);
-      for (int j=0; j<63; j++) printf("%x(%d), ", vraiac[j], vraiac[j]);
+      for (int j=0; j<63; j++) printf("%x(%d), ", ac[j], ac[j]);
       printf("\n\n");
-      
-      free(vraiac);
 
       debut = ftell(fichier)-1;
-      blocs[i] = (blocl_t*) malloc(sizeof(blocl_t));
+      blocs[i] = (blocl16_t*) malloc(sizeof(blocl16_t));
       blocs[i]->data[0] = dc[i];
       memcpy(blocs[i]->data+1, ac, 63*sizeof(int8_t));
     }
-    // Déquantification et zigzag
-    bloct_t **blocs_iq = (bloct_t**) malloc(sizeof(bloct_t*)*nbbloc);
+    // Déquantification
+    blocl16_t **blocs_iq = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
     for (int i=0; i < nbbloc; i++) {
       uint8_t idqtable = 0; // TODO: à modifier selon N&B/couleur et ycc
-      blocs_iq[i] = iqzz(blocs[i], img->qtables->qtables[idqtable]->qtable);
-      printf("[IQZZ %d] : ", i);
-      for (int j=0; j<64; j++) printf("%x, ", blocs_iq[i]->data[j%8][j/8]);
+      blocs_iq[i] = iquant(blocs[i], img->qtables->qtables[idqtable]->qtable);
+      printf("[IQUANT %d] : ", i);
+      for (int j=0; j<64; j++) printf("%x, ", blocs_iq[i]->data[j]);
+      printf("\n\n");
+    }
+    // Zigzag
+    bloct16_t **blocs_zz = (bloct16_t**) malloc(sizeof(bloct16_t*)*nbbloc);
+    for (int i=0; i < nbbloc; i++) {
+      blocs_zz[i] = izz(blocs_iq[i]);
+      printf("[IZZ %d] : ", i);
+      for (int j=0; j<64; j++) printf("%x, ", blocs_zz[i]->data[j%8][j/8]);
       printf("\n\n");
     }
     //free_blocs((void **) blocs, nbbloc);
     // IDCT
-    bloct_t **blocs_idct = (bloct_t **) malloc(sizeof(bloct_t*)*nbbloc);
+    bloctu8_t **blocs_idct = (bloctu8_t **) malloc(sizeof(bloctu8_t*)*nbbloc);
     for (int i=0; i < nbbloc; i++)
-      blocs_idct[i] = idct(blocs_iq[i]);
+      blocs_idct[i] = idct(blocs_zz[i]);
     //free_blocs((void **) blocs_iq, nbbloc);
     // Ajout de la composante
     ycc[k] = blocs_idct;

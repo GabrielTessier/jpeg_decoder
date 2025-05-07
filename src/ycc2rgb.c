@@ -3,7 +3,7 @@
 #include "ycc2rgb.h"
 #include "jpeg2ppm.h"
 
-bloc_rgb_t *ycc2rgb(bloct_t y[64], bloct_t cb[64], bloct_t cr[64]) {
+bloc_rgb_t *ycc2rgb(bloctu8_t y[64], bloctu8_t cb[64], bloctu8_t cr[64]) {
   bloc_rgb_t *rgb = (bloc_rgb_t*) malloc(sizeof(bloc_rgb_t));
   for (int i=0; i<8; i++) 
     for (int j=0; j<8; j++) {

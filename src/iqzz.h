@@ -8,4 +8,6 @@ struct qtable_s {
 };
 typedef struct qtable_s qtable_t;
 
-bloct_t *iqzz(blocl_t* bloc, qtable_t *qtable);
+//bloct_t *iqzz(blocl_t* bloc, qtable_t *qtable);
+blocl16_t *iquant(blocl16_t *entree, qtable_t *qtable);
+bloct16_t *izz(blocl16_t *entree);

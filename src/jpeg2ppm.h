@@ -2,15 +2,33 @@
 
 #include <stdint.h>
 
-struct blocl_s {
+struct blocl8_s {
   int8_t data[64];
 };
+typedef struct blocl8_s blocl8_t;
 
-typedef struct blocl_s blocl_t;
-
-struct bloct_s {
+struct bloct8_s {
   int8_t data[8][8];
 };
+typedef struct bloct8_s bloct8_t;
 
-typedef struct bloct_s bloct_t;
+struct bloclu8_s {
+  uint8_t data[64];
+};
+typedef struct bloclu8_s bloclu8_t;
 
+struct bloctu8_s {
+  uint8_t data[8][8];
+};
+typedef struct bloctu8_s bloctu8_t;
+
+
+struct blocl16_s {
+  int16_t data[64];
+};
+typedef struct blocl16_s blocl16_t;
+
+struct bloct16_s {
+  int16_t data[8][8];
+};
+typedef struct bloct16_s bloct16_t;

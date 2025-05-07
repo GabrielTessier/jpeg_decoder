@@ -3,4 +3,4 @@
 #include <stdint.h>
 #include "jpeg2ppm.h"
 
-bloct_t *idct(bloct_t *mcu);
+bloctu8_t *idct(bloct16_t *mcu);

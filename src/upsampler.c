@@ -3,15 +3,15 @@
 #include "entete.h"
 #include "upsampler.h"
 
-bloct_t ***upsampler(bloct_t **cb, bloct_t **cr, uint64_t nbBlockCbH, uint64_t nbBlockCbV, uint64_t nbBlockCrH, uint64_t nbBlockCrV, idcomp_t* yfact, idcomp_t* cbfact, idcomp_t* crfact) {
-  bloct_t ***res = (bloct_t***) malloc(sizeof(bloct_t**)*2);
+bloctu8_t ***upsampler(bloctu8_t **cb, bloctu8_t **cr, uint64_t nbBlockCbH, uint64_t nbBlockCbV, uint64_t nbBlockCrH, uint64_t nbBlockCrV, idcomp_t* yfact, idcomp_t* cbfact, idcomp_t* crfact) {
+  bloctu8_t ***res = (bloctu8_t***) malloc(sizeof(bloctu8_t**)*2);
   uint8_t nbBlockInMCU = yfact->hsampling * yfact->vsampling;
   uint8_t nbBlockInMCUcb = cbfact->hsampling * cbfact->vsampling;
   uint8_t nbBlockInMCUcr = crfact->hsampling * crfact->vsampling;
   uint8_t facteurcb = nbBlockInMCU/nbBlockInMCUcb;
   uint8_t facteurcr = nbBlockInMCU/nbBlockInMCUcr;
-  res[0] = (bloct_t**) malloc(sizeof(bloct_t*)*facteurcb);
-  res[1] = (bloct_t**) malloc(sizeof(bloct_t*)*facteurcr);
+  res[0] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*facteurcb);
+  res[1] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*facteurcr);
   
   uint8_t facteurCbH = yfact->hsampling / cbfact->hsampling;
   uint8_t facteurCbV = yfact->vsampling / cbfact->vsampling;
