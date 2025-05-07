@@ -59,6 +59,6 @@ bloct16_t *izz(blocl16_t *entree) {
       else                 // parcours normal
         i-=1, j+=1;
     }
-   }
+  }
   return res;
 }

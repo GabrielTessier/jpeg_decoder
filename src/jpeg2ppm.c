@@ -80,7 +80,6 @@ int main(int argc, char *argv[]) {
   int nbbloc = img->height * img->width / 64;
   
   for (int k=0; k < nbcomp; k++) {
-    // Décodage de DC
     blocl16_t **blocs = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
     uint8_t off = 0;
 
