@@ -22,7 +22,6 @@ struct bloctu8_s {
 };
 typedef struct bloctu8_s bloctu8_t;
 
-
 struct blocl16_s {
   int16_t data[64];
 };

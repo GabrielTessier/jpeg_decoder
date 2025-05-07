@@ -12,8 +12,14 @@
 #include "vld.h"
 #include "ycc2rgb.h"
 #include "entete.h"
+#include "options.h"
 
-// TODO: changer l28, 32 les indices des tables de huffman
+int verbose;
+int print_time;
+char *filepath;
+char *outfile;
+uint64_t timer;
+uint64_t abs_timer;
 
 // Free les allocations de tableaux de blocs
 void free_blocs(void **blocs, uint8_t nbblocs) {
@@ -30,28 +36,6 @@ int8_t* copy_arr_int16_to_int8(int16_t *tab, int nb) {
     else res[i] = (int8_t) tab[i];
   }
   return res;
-}
-
-// options d'exécution (-v)
-static int verbose = 0;
-static int print_time = 0;
-static uint64_t timer;
-static uint64_t abs_timer;
-
-// Retourne la liste des options dans argv
-char *get_options(const int argc, const char **argv, char **parameters) {
-  char *options = (char*) malloc(sizeof(char)*80);
-  int idopt = 0; // position dans options
-  int idpar = 0; // position dans parameters
-  for (int i=0; i < argc; i++) {
-    if (*(argv[i]) == '-')
-      while (*(++argv[i]))
-        options[idopt++] = *(argv[i]);
-    else
-      parameters[idpar] = (char *) argv[i];
-    }
-  options[idopt] = 0;
-  return options;
 }
 
 void print_v(const char* format, ...) {
@@ -127,25 +111,27 @@ int main(int argc, char *argv[]) {
   // Vérification arguments
   if (argc < 2) 
     erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
-  char **parameters = (char**) malloc(sizeof(char*)*5);
-  char *options = get_options(argc, (const char**)argv, parameters);
+  /*char **parameters = (char**) malloc(sizeof(char*)*5);
+    char *options = get_options(argc, (const char**)argv, parameters);
 
-  char *filepath = parameters[0];
+    char *filepath = parameters[0];
 
-  for (size_t i=0; i < strlen(options); i++) {
+    for (size_t i=0; i < strlen(options); i++) {
     switch (options[i]) {
     case 'v':
-      verbose = 1;
-      break;
+    verbose = 1;
+    break;
     case 't':
-      print_time = 1;
-      break;
+    print_time = 1;
+    break;
     default:
-      fprintf(stderr, "Erreur : option '%c' inconnue", options[i]);
-      erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
-      break;
+    fprintf(stderr, "Erreur : option '%c' inconnue\n", options[i]);
+    erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
+    break;
     }
-  }
+    }*/
+  set_option(argc, argv);
+  if (outfile != NULL) printf("outfile : %s\n", outfile);
     
   // Ouverture fichier
   char *fileext  = strrchr(filepath, '.') + 1; // extension du fichier
