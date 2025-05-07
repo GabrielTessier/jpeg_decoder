@@ -36,6 +36,7 @@ int8_t* copy_arr_int16_to_int8(int16_t *tab, int nb) {
 static int verbose = 0;
 static int print_time = 0;
 static time_t timer;
+static time_t abs_timer;
 
 // Retourne la liste des options dans argv
 char *get_options(const int argc, const char **argv, char **parameters) {
@@ -77,8 +78,10 @@ void print_hufftable(char* acu, huffman_tree_t* tree) {
 
 
 void start_timer() {
-  if (print_time)
+  if (print_time) {
     timer = time(NULL);
+    abs_timer = timer;
+  }
 }
 
 void print_timer() {
@@ -150,33 +153,26 @@ blocl16_t **decode_acdc(int nbbloc, FILE *fichier, img_t *img) {
 int main(int argc, char *argv[]) {
   // Vérification arguments
   if (argc < 2) 
-    erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose", argv[0]);
+    erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
   char *filepath = argv[1];
-  if (argc == 3) {
-    char **parameters = (char**) malloc(sizeof(char*)*5);
-    char *options = get_options(argc, (const char**)argv, parameters);
+  char **parameters = (char**) malloc(sizeof(char*)*5);
+  char *options = get_options(argc, (const char**)argv, parameters);
 
-    for (int i=0; i < strlen(options); i++) {
-      switch (options[i]) {
-      case 'v':
-        verbose = 1;
-        break;
-      case 't':
-        print_time = 1;
-      default:
-        break;
-      }
+  for (size_t i=0; i < strlen(options); i++) {
+    switch (options[i]) {
+    case 'v':
+      verbose = 1;
+      break;
+    case 't':
+      print_time = 1;
+      break;
+    default:
+      fprintf(stderr, "Erreur : option '%c' inconnue", options[i]);
+      erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
+      break;
     }
-    
-    const char *verbopt = "-v";
-    if (strcmp(argv[1], verbopt)) {
-      verbose = 1;
-      filepath = argv[2];
-    } else if (strcmp(argv[2], verbopt)) {
-      verbose = 1;
-    } else
-      erreur("Erreur : mauvais argument"); 
   }
+    
   // Ouverture fichier
   char *fileext  = strrchr(filepath, '.') + 1; // extension du fichier
   if ((fileext == NULL) || (!strcmp(fileext, "jpeg") && !strcmp(fileext, "jpg"))) {
@@ -274,7 +270,10 @@ int main(int argc, char *argv[]) {
     fclose(outfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     //bloc_rgb_t *out = ycc2rgb(*ycc[0], *ycc[1], *ycc[2]);
-  }    
+  }
+  if (print_time) {
+    fprintf(stdout, "temps total : %ld\n", time(NULL) - abs_timer);
+  }
   fclose(fichier);  
   return 0;
 }
