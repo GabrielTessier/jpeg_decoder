@@ -1,4 +1,3 @@
-
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -78,23 +77,22 @@ int main(int argc, char *argv[]) {
   
   // Parcours de toutes les composantes
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
-  int nbbloc;
+  int nbbloc = img->height * img->width / 64;
+  
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
-    nbbloc = 1;
     blocl16_t **blocs = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
     uint8_t off = 0;
 
     int16_t *dc = (int16_t*) malloc(sizeof(int16_t)*nbbloc);
     // Décodage de AC
-    //uint64_t debutAC = ftell(fichier)-1;
     uint64_t debut = ftell(fichier);
     for (int i=0; i < nbbloc; i++) {
       int16_t *sousdc = decodeDC(img->htables->dc[0]->htable, fichier, debut, &off, 1);
-      dc[i] = sousdc[0] + ((i!=0)?dc[i-1]:0);
+      dc[i] = sousdc[0] + ((i!=0)?dc[i-1]:0); // calcul du coef à partir de la différence
       printf("[DC %d] : %x\n", i, dc[i]);
 
-      debut = ftell(fichier)-1;
+      debut = ftell(fichier)-1; // début de AC
       
       int16_t *ac = decodeAC(img->htables->ac[0]->htable, fichier, debut, &off);
 
@@ -103,6 +101,7 @@ int main(int argc, char *argv[]) {
       printf("\n\n");
 
       debut = ftell(fichier)-1;
+      // écriture des DC, AC
       blocs[i] = (blocl16_t*) malloc(sizeof(blocl16_t));
       blocs[i]->data[0] = dc[i];
       memcpy(blocs[i]->data+1, ac, 63*sizeof(int16_t));
@@ -134,7 +133,9 @@ int main(int argc, char *argv[]) {
     ycc[k] = blocs_idct;
     //free_blocs((void **) blocs_iq, nbbloc);
   }
-  char *filename = basename(argv[1]); // nom du fichier
+  
+  char *filename = argv[1]; // nom du fichier
+  *(strrchr(filename, '.')) = 0;
   if (nbcomp == 1) {
     char *fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
     strcpy(fullfilename, filename);
@@ -153,12 +154,12 @@ int main(int argc, char *argv[]) {
     printf("%d, %d\n", img->width, img->height);
     for (int y=0; y<img->height; y++) {
       for (int x=0; x<img->width; x++) {
-	// On print le pixel de coordonée (x,y)
-	int bx = x/8;  // bx-ieme bloc horizontalement
-	int by = y/8;  // by-ieme bloc verticalement
-	int px = x%8;
-	int py = y%8;  // le pixel est à la coordonée (px,py) du blob (bx,by)
-	fprintf(outfile, "%c", ycc[0][by*img->width/8 + bx]->data[px][py]);
+        // On print le pixel de coordonée (x,y)
+        int bx = x/8;  // bx-ieme bloc horizontalement
+        int by = y/8;  // by-ieme bloc verticalement
+        int px = x%8;
+        int py = y%8;  // le pixel est à la coordonée (px,py) du blob (bx,by)
+        fprintf(outfile, "%c", ycc[0][by*img->width/8 + bx]->data[px][py]);
       }
     }
 
