@@ -10,11 +10,10 @@
 
 img_t* decode_entete(FILE *fichier) {
     img_t *img = calloc(1,sizeof(img_t));
-    img->qtables = calloc(1,sizeof(qtables_t));
-    img->qtables->qtables = calloc(4,sizeof(idqtable_t*));
+    img->qtables = calloc(4,sizeof(qtable_prec_t*));
     img->htables = calloc(1,sizeof(htables_t));
-    img->htables->dc = calloc(4,sizeof(idhtable_t*));
-    img->htables->ac = calloc(4,sizeof(idhtable_t*));
+    img->htables->dc = calloc(4,sizeof(huffman_tree_t*));
+    img->htables->ac = calloc(4,sizeof(huffman_tree_t*));
     img->comps = calloc(1,sizeof(comps_t));
     img->comps->comps = calloc(3,sizeof(idcomp_t*));
     img->other = calloc(1,sizeof(other_t));
@@ -34,6 +33,7 @@ void erreur(const char* text, ...) {
     fprintf(stderr, "\n");
     exit(EXIT_FAILURE);
 }
+
 
 void marqueur(FILE *fichier, img_t *img) {
     char c[2];
@@ -69,9 +69,8 @@ void marqueur(FILE *fichier, img_t *img) {
 
 
 void app0(FILE *fichier, img_t *img) {
-    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
-    length += fgetc(fichier);
-    
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
+    if (length != 16) erreur("Longueur section APP0 incorrect");
     fread(img->other->jfif, 1, 5, fichier);
     img->other->version_jfif_a = fgetc(fichier);
     img->other->version_jfif_b = fgetc(fichier);
@@ -80,45 +79,39 @@ void app0(FILE *fichier, img_t *img) {
 
 
 void com(FILE *fichier) {
-    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
-    length += fgetc(fichier);
-
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     fseek(fichier, length-2, SEEK_CUR);
 }
 
 
 void dqt(FILE *fichier, img_t *img) {
-    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
-    length += fgetc(fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
+    if ((length-2) % 65 != 0) erreur("Longueur section DQT incorrect");
     for (uint8_t n=1; n<=(length-2)/65; n++) {
         uint8_t octet = fgetc(fichier);
         uint8_t precision = octet >> 4;
+        if (precision != 0) erreur("Format incorrect (DQT) : la précision de la table de quantification doit être de 8 bits pour le baseline");
         uint8_t id_quant = octet & 0b1111;
         if (id_quant > 3) erreur("Format incorrect (DQT) : l'indice de la table de quantification doit être entre 0 et 3");
-        if (img->qtables->qtables[id_quant] == NULL) {
-            img->qtables->qtables[id_quant] = malloc(sizeof(idqtable_t));
-            img->qtables->qtables[id_quant]->id = id_quant; 
-            img->qtables->qtables[id_quant]->qtable = malloc(sizeof(qtable_t));
-            img->qtables->nb++;
+        if (img->qtables[id_quant] == NULL) {
+            img->qtables[id_quant] = malloc(sizeof(qtable_prec_t));
+            img->qtables[id_quant]->qtable = malloc(sizeof(qtable_t));
         }
-        img->qtables->qtables[id_quant]->precision = precision;
+        img->qtables[id_quant]->precision = precision;
         for (uint8_t i=0; i<64; i++) {
-            img->qtables->qtables[id_quant]->qtable->data[i] = fgetc(fichier);
+            img->qtables[id_quant]->qtable->data[i] = fgetc(fichier);
         }
     }
 }
 
 
 void sof0(FILE *fichier, img_t *img) {
-    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
-    length += fgetc(fichier);
-
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     img->comps->precision_comp = fgetc(fichier);
-    //fread(&(img->height), 2, 1, fichier);
-    //fread(&(img->width), 2, 1, fichier);
     img->height = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     img->width = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     uint8_t nb_comp = fgetc(fichier);
+    if (length != 8+3*nb_comp) erreur("Longueur section SOF0 incorrect");
     img->comps->nb = nb_comp;
     for (int i=0; i<=nb_comp-1; i++) {
         uint8_t id_comp = fgetc(fichier);
@@ -132,15 +125,55 @@ void sof0(FILE *fichier, img_t *img) {
     }
 }
 
+
+void remplir_huff(huffman_tree_t *htable, uint16_t nb_symb, uint8_t lengths[nb_symb], uint8_t symb[nb_symb]) {
+    list_t *list = init_list();
+    couple_tree_depth_t* couple = malloc(sizeof(couple_tree_depth_t));
+    couple->tree = htable;
+    couple->depth = 0;
+    insert_list(list, couple);
+    huffman_tree_t *tree;
+    uint8_t depth;
+    uint8_t num = 0;
+    while (num < nb_symb && !list_vide(list)) {
+        couple_tree_depth_t *couple = extract_list(list);
+        tree = couple->tree;
+        depth = couple->depth;
+        free(couple);
+        if (depth == lengths[num]) {
+            tree->symb = symb[num];
+            num++;
+        }
+        else {
+            tree->gauche = calloc(1,sizeof(huffman_tree_t));
+            tree->droit = calloc(1,sizeof(huffman_tree_t));
+            couple_tree_depth_t *couple1 = malloc(sizeof(couple_tree_depth_t));
+            couple_tree_depth_t *couple2 = malloc(sizeof(couple_tree_depth_t));
+            couple1->tree = tree->gauche;
+            couple2->tree = tree->droit;
+            couple1->depth = depth + 1;
+            couple2->depth = depth + 1;
+            insert_list(list, couple1);
+            insert_list(list, couple2);
+        }
+    }
+    if (list_vide(list)) erreur("Format incorrect (DHT) : code huffman incorrect");
+    while (!list_vide(list)) {
+        couple_tree_depth_t *couple = extract_list(list);
+        free(couple);
+    }
+    free(list);
+}
+
+
 void dht(FILE *fichier, img_t *img) {
     uint64_t debut = ftell(fichier);
-    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
-    length += fgetc(fichier);
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
 
     while ((uint64_t) ftell(fichier) < debut+length) {
         uint8_t octet = fgetc(fichier);
         if ((octet & 0b11100000) != 0) erreur("Format incorrect (DHT) : les 3 premiers bits de la section doivent valoir 0");
-	bool is_dc = (octet & 0b00010000) == 0;
+	    bool is_dc = (octet & 0b00010000) == 0;
         uint8_t id_huff = octet & 0b1111;
         if (id_huff > 3) erreur("Format incorrect (DHT) : l'indice de la table de huffman doit être entre 0 et 3");
         
@@ -156,66 +189,29 @@ void dht(FILE *fichier, img_t *img) {
         for (uint8_t longueur=1; longueur<=16; longueur++) {
             for (uint16_t nb_longueur=0; nb_longueur<longueur_codes_brutes[longueur-1]; nb_longueur++) {
                 longueur_codes_formatees[i] = longueur;
-		i++;
+		        i++;
             }
         }
         uint8_t symb[nb_codes];
-	fread(&symb, 1, nb_codes, fichier);
+        fread(&symb, 1, nb_codes, fichier);
 
-	idhtable_t **htables;
-	if (is_dc) htables = img->htables->dc;
-	else htables = img->htables->ac;
+        huffman_tree_t **htables;
+        if (is_dc) htables = img->htables->dc;
+        else htables = img->htables->ac;
+        if (htables[id_huff] != NULL) erreur("Format incorrect (DHT) : plusieurs table de Huffman ont le même indice");
+        htables[id_huff] = calloc(1,sizeof(huffman_tree_t));
 
-        htables[id_huff] = malloc(sizeof(idhtable_t));
-        htables[id_huff]->id = id_huff;
-        htables[id_huff]->htable = calloc(1,sizeof(huffman_tree_t));
-        
-        list_t *list = init_list();
-        couple_tree_depth_t* couple = malloc(sizeof(couple_tree_depth_t));
-        couple->tree = htables[id_huff]->htable;
-        couple->depth = 0;
-        insert_list(list, couple);
-        huffman_tree_t *tree;
-        uint8_t depth;
-        uint8_t num = 0;
-        while (num < nb_codes && !list_vide(list)) {
-            couple_tree_depth_t *couple = extract_list(list);
-            tree = couple->tree;
-            depth = couple->depth;
-            free(couple);
-            if (depth == longueur_codes_formatees[num]) {
-                tree->symb = symb[num];
-                num++;
-            }
-            else {
-                tree->gauche = calloc(1,sizeof(huffman_tree_t));
-                tree->droit = calloc(1,sizeof(huffman_tree_t));
-                couple_tree_depth_t *couple1 = malloc(sizeof(couple_tree_depth_t));
-                couple_tree_depth_t *couple2 = malloc(sizeof(couple_tree_depth_t));
-                couple1->tree = tree->gauche;
-                couple2->tree = tree->droit;
-                couple1->depth = depth + 1;
-                couple2->depth = depth + 1;
-                insert_list(list, couple1);
-                insert_list(list, couple2);
-            }
-        }
-        if (list_vide(list)) erreur("Format incorrect (DHT) : code huffman incorrect");
-        while (!list_vide(list)) {
-            couple_tree_depth_t *couple = extract_list(list);
-            free(couple);
-        }
-        free(list);
+        remplir_huff(htables[id_huff], nb_codes, longueur_codes_formatees, symb);
     }
+    if ((uint64_t) ftell(fichier) != debut+length) erreur("Longueur section DHT incorrect");
 }
 
 
 void sos(FILE *fichier, img_t *img) {
-    uint16_t length = ((uint16_t)fgetc(fichier) << 8);
-    length += fgetc(fichier);
-
+    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     uint8_t nb_comp = fgetc(fichier);
     if (nb_comp != img->comps->nb) erreur("Format incorrect (SOS) : le nombre de composantes est différent de celui défini dans SOF0)");
+    if (length != 6+2*nb_comp) erreur("Longueur section SOS incorrect");
     for (uint8_t i=0; i<=nb_comp-1; i++) {
         uint8_t id_comp = fgetc(fichier);
         uint8_t id_huff = fgetc(fichier);
@@ -232,5 +228,3 @@ void sos(FILE *fichier, img_t *img) {
     img->other->al = a & 0b1111;
     img->sosdone = true;
 }
-
-

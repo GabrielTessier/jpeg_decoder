@@ -9,28 +9,15 @@
 #include "vld.h"
 
 
-struct idqtable_s {
-    uint8_t id;
+struct qtable_prec_s {
     uint8_t precision;
     qtable_t *qtable;
 };
-typedef struct idqtable_s idqtable_t;
-
-struct qtables_s {
-    uint8_t nb;
-    idqtable_t **qtables;
-};
-typedef struct qtables_s qtables_t;
-
-struct idhtable_s {
-    uint8_t id;
-    huffman_tree_t *htable;
-};
-typedef struct idhtable_s idhtable_t;
+typedef struct qtable_prec_s qtable_prec_t;
 
 struct htables_s {
-    idhtable_t **dc;
-    idhtable_t **ac;
+    huffman_tree_t **dc;
+    huffman_tree_t **ac;
 };
 typedef struct htables_s htables_t;
 
@@ -66,7 +53,7 @@ typedef struct other_s other_t;
 struct img_s {
     uint16_t height;
     uint16_t width;
-    qtables_t *qtables;
+    qtable_prec_t **qtables;
     htables_t *htables;
     comps_t *comps;
     bool sosdone;
