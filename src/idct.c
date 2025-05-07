@@ -21,8 +21,13 @@ bloctu8_t *idct(bloct16_t *freq) {
             cos((2*x+1)*lambda*M_PI / 16) *
             cos((2*y+1)*mu*M_PI / 16) *
             freq->data[lambda][mu];
-	}
-      res->data[x][y] = (uint8_t) (0.25 * sum + 128); // calcul de S(x,y) + offset
+        }
+      //res->data[x][y] = (uint8_t) (0.25 * sum + 128); // calcul de S(x,y) + offset
+      sum *= 0.25;
+      sum += 128;
+      if (sum < 0) sum = 0;
+      if (sum > 255) sum = 0;
+      res->data[x][y] = sum;
     }
   return res;
 }
