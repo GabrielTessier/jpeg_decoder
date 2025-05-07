@@ -26,7 +26,7 @@ bloctu8_t *idct(bloct16_t *freq) {
       sum *= 0.25;
       sum += 128;
       if (sum < 0) sum = 0;
-      if (sum > 255) sum = 0;
+      if (sum > 255) sum = 255;
       res->data[x][y] = sum;
     }
   return res;
