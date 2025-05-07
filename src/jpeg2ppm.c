@@ -111,27 +111,8 @@ int main(int argc, char *argv[]) {
   // Vérification arguments
   if (argc < 2) 
     erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
-  /*char **parameters = (char**) malloc(sizeof(char*)*5);
-    char *options = get_options(argc, (const char**)argv, parameters);
-
-    char *filepath = parameters[0];
-
-    for (size_t i=0; i < strlen(options); i++) {
-    switch (options[i]) {
-    case 'v':
-    verbose = 1;
-    break;
-    case 't':
-    print_time = 1;
-    break;
-    default:
-    fprintf(stderr, "Erreur : option '%c' inconnue\n", options[i]);
-    erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
-    break;
-    }
-    }*/
   set_option(argc, argv);
-  if (outfile != NULL) printf("outfile : %s\n", outfile);
+  if (outfile != NULL) print_v("outfile : %s\n", outfile);
     
   // Ouverture fichier
   char *fileext  = strrchr(filepath, '.') + 1; // extension du fichier
@@ -203,13 +184,20 @@ int main(int argc, char *argv[]) {
   free(dc_prec);
 
   fclose(fichier);
-  
-  char *filename = filepath; // nom du fichier
-  *(strrchr(filename, '.')) = 0;
-  if (nbcomp == 1) {
-    char *fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
+
+  char *filename;
+  char *fullfilename;
+  if (outfile == NULL) {
+    filename = filepath;
+    *(strrchr(filename, '.')) = 0;
+    fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
     strcpy(fullfilename, filename);
-    strcat(fullfilename, ".pgm");
+    if (nbcomp == 1) strcat(fullfilename, ".pgm");
+    else if (nbcomp == 3) strcat(fullfilename, ".ppm");
+  } else {
+    fullfilename = outfile;
+  }
+  if (nbcomp == 1) {
     FILE *outfile = fopen(fullfilename, "w+");
     fprintf(outfile, "P5\n");   // Magic number
     fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
@@ -228,9 +216,6 @@ int main(int argc, char *argv[]) {
     }
     fclose(outfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
-    char *fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
-    strcpy(fullfilename, filename);
-    strcat(fullfilename, ".ppm");
     FILE *outfile = fopen(fullfilename, "w+");
     fprintf(outfile, "P6\n");   // Magic number
     fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
