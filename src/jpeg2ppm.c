@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
   int nbbloc;
   for (int k=0; k < nbcomp; k++) {
     // Décodage de DC
-    nbbloc = 1;
+    nbbloc = 4;
     blocl16_t **blocs = (blocl16_t**) malloc(sizeof(blocl16_t*)*nbbloc);
     uint8_t off = 0;
 
