@@ -70,12 +70,20 @@ uint64_t cast_time(struct timeval time) {
   return time.tv_sec*1000000 + time.tv_usec;
 }
 
-void start_timer() {
+void init_timer() {
   if (print_time) {
     struct timeval t;
     gettimeofday(&t, NULL);
     timer = cast_time(t);
     abs_timer = timer;
+  }
+}
+
+void start_timer() {
+  if (print_time) {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    timer = cast_time(t);
   }
 }
 
@@ -89,7 +97,7 @@ void print_timer(char* text) {
   }
 }
 
-bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, uint64_t *debut, uint8_t *off, float ****stockage_coef) {
+bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, uint64_t *debut, uint8_t *off, float ****stockage_coef, uint64_t *timerBloc) {
   huffman_tree_t *hdc = NULL;
   huffman_tree_t *hac = NULL;
   qtable_prec_t *qtable = NULL;
@@ -100,7 +108,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
       
   if (hdc == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
- 
+
+  start_timer();
+  uint64_t time = timer;
   blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, debut, off);
   if (verbose) {
     print_v("[DC/AC] : ");
@@ -109,6 +119,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
     }
     print_v("\n");
   }
+  start_timer();
+  timerBloc[0] += timer-time;
+  time = timer;
   blocl16_t *bloc_iq = iquant(bloc, qtable->qtable);
   if (verbose) {
     print_v("[IQ] : ");
@@ -117,6 +130,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
     }
     print_v("\n");
   }
+  start_timer();
+  timerBloc[1] += timer-time;
+  time = timer;
   bloct16_t *bloc_zz = izz(bloc_iq);
   if (verbose) {
     print_v("[IZZ] : ");
@@ -126,6 +142,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
     }
     print_v("\n");
   }
+  start_timer();
+  timerBloc[2] += timer-time;
+  time = timer;
   bloctu8_t *bloc_idct = idct(bloc_zz, stockage_coef);
   if (verbose) {
     print_v("[IDCT] : ");
@@ -135,6 +154,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
     }
     print_v("\n");
   }
+  start_timer();
+  timerBloc[3] += timer-time;
+  time = timer;
   free(bloc);
   free(bloc_iq);
   free(bloc_zz);
@@ -147,6 +169,7 @@ int main(int argc, char *argv[]) {
   // Vérification arguments
   execname = argv[0];
   set_option(argc, argv);
+  init_timer();
   if (filepath == NULL) print_help();
   if (access(filepath, R_OK)) erreur("Pas de fichier '%s'", filepath);
   if (outfile != NULL) {
@@ -213,8 +236,14 @@ int main(int argc, char *argv[]) {
     ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbH*nbV);
   }
 
+  start_timer();
   float ****stockage_coef = calc_coef();
+  print_timer("Calcule des coefficients de l'iDCT");
 
+  start_timer();
+  uint64_t timerDecodage = timer;
+  // DCAC, IQ, IZZ, IDCT
+  uint64_t timerBloc[4] = {0, 0, 0, 0};
   uint8_t off = 0;
   uint64_t debut = ftell(fichier);
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
@@ -229,7 +258,7 @@ int main(int argc, char *argv[]) {
       for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
 	for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-	  bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef);
+	  bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef, timerBloc);
 	  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
 	  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
 	  ycc[k][blocY*nbH + blocX] = bloc;
@@ -238,6 +267,21 @@ int main(int argc, char *argv[]) {
     }
   }
   free(dc_prec);
+  start_timer();
+  timer -= timerBloc[0];
+  print_timer("Décodage DC/AC");
+  start_timer();
+  timer -= timerBloc[1];
+  print_timer("Décodage IQ");
+  start_timer();
+  timer -= timerBloc[2];
+  print_timer("Décodage IZZ");
+  start_timer();
+  timer -= timerBloc[3];
+  print_timer("Décodage IDCT");
+  timer = timerDecodage;
+  print_timer("Décodage complet de l'image");
+
   for (int x=0; x < 8; x++) {
     for (int y=0; y < 8; y++) {
       for (int lambda=0; lambda < 8; lambda++) {
@@ -251,6 +295,7 @@ int main(int argc, char *argv[]) {
 
   fclose(fichier);
 
+  start_timer();
   char *filename;
   char *fullfilename;
   if (outfile == NULL) {
@@ -283,7 +328,9 @@ int main(int argc, char *argv[]) {
     fclose(outfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     // Upsampler
+    start_timer();
     bloctu8_t ***yccUP = upsampler(ycc[1], ycc[2], img);
+    print_timer("Up sampler");
     
     FILE *outfile = fopen(fullfilename, "w+");
     fprintf(outfile, "P6\n");   // Magic number
@@ -319,7 +366,9 @@ int main(int argc, char *argv[]) {
     
     fclose(outfile);
   }
+  print_timer("Affichage pixel");
 
+  start_timer();
   // Free ycc
   for (int i=0; i<nbcomp; i++) {
     int nbH = nbmcuH * img->comps->comps[i]->hsampling;
@@ -333,8 +382,8 @@ int main(int argc, char *argv[]) {
 
   // Free entete
   free_img(img);
+  print_timer("Libération mémoire");
   
-  print_timer("Affichage pixel");
   if (print_time) {
     struct timeval t;
     gettimeofday(&t, NULL);
