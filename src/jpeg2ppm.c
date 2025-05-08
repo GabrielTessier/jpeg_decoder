@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
   int nbmcuH = ceil((float)nbBlocYH / img->comps->comps[0]->hsampling);
   int nbmcuV = ceil((float)nbBlocYV / img->comps->comps[0]->vsampling);
   int reelnbBlocYH = nbmcuH * img->comps->comps[0]->hsampling;
-  int reelnbBlocYV = nbmcuV * img->comps->comps[0]->vsampling;
+  //int reelnbBlocYV = nbmcuV * img->comps->comps[0]->vsampling;
   int nbMCU = nbmcuH*nbmcuV;
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
   for (int i=0; i<nbcomp; i++) {
@@ -220,14 +220,19 @@ int main(int argc, char *argv[]) {
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
   for (int i=0; i<nbMCU; i++) {
     print_v("MCU %d\n", i);
+    uint64_t mcuX = i%nbmcuH;
+    uint64_t mcuY = i/nbmcuH;
     for (int k=0; k<nbcomp; k++) {
       print_v("COMP %d\n", k);
-      for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
-	for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
+      uint64_t nbH = nbmcuH * img->comps->comps[k]->hsampling;
+      //uint64_t nbV = nbmcuV * img->comps->comps[k]->vsampling;
+      for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
+	for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
 	  bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef);
-	  int nbBlocParMCU = img->comps->comps[k]->hsampling * img->comps->comps[k]->vsampling;
-	  ycc[k][i*nbBlocParMCU + by*img->comps->comps[k]->hsampling + bx] = bloc;
+	  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
+	  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
+	  ycc[k][blocY*nbH + blocX] = bloc;
 	}
       }
     }
