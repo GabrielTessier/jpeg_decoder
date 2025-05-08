@@ -1,6 +1,33 @@
-
+#include <stdio.h>
+#include <stdlib.h>
 #include "entete.h"
 #include "options.h"
+
+enum option_type_e {LONGUE, COURTE};
+
+struct poption_s{
+  char* shortname;
+  char* longname;
+  void (*fnc)(char*);
+  char* param_name;
+  char* description;
+};
+typedef struct poption_s poption_t;
+struct option_s{
+  char* shortname;
+  char* longname;
+  void (*fnc)(void);
+  char* description;
+};
+typedef struct option_s option_t;
+
+static const option_t OPTION[3] = {
+    {"v", "verbose", set_verbose_param, "Affiche des informations suplémentaire durant l'exécution."},
+    {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
+    {"h", "help", print_help, "Affiche cette aide."}};
+
+static const poption_t OPTION_PARAMETRE[1] = {
+    {"o", "outfile", set_outfile, "fichier", "Placer la sortie dans le fichier."}};
 
 void set_verbose_param() { verbose = 1; }
 
@@ -11,23 +38,25 @@ void set_outfile(char* file) {
   outfile = file;
 }
 
-enum option_type_e {LONGUE, COURTE};
-
-struct poption_s{
-  char* shortname;
-  char* longname;
-  void (*fnc)(char*);
-};
-typedef struct poption_s poption_t;
-struct option_s{
-  char* shortname;
-  char* longname;
-  void (*fnc)(void);
-};
-typedef struct option_s option_t;
-
-static const option_t OPTION[2] = {{"v", "verbose", set_verbose_param}, {"t", "timer", set_timer_param}};
-static const poption_t OPTION_PARAMETRE[1] = {{"o", "outfile", set_outfile}};
+void print_help() {
+  printf("Usage : %s [option] fichier\n", execname);
+  printf("Option : \n");
+  for (size_t i=0; i<sizeof(OPTION)/sizeof(option_t); i++) {
+    printf("\t");
+    if (OPTION[i].shortname != NULL) printf("-%c\t", OPTION[i].shortname[0]);
+    if (OPTION[i].longname != NULL) printf("--%s\t", OPTION[i].longname);
+    if (OPTION[i].description != NULL) printf("%s", OPTION[i].description);
+    printf("\n");
+  }
+  for (size_t i=0; i<sizeof(OPTION_PARAMETRE)/sizeof(poption_t); i++) {
+    printf("\t");
+    if (OPTION_PARAMETRE[i].shortname != NULL) printf("-%c <%s>\t", OPTION_PARAMETRE[i].shortname[0], OPTION_PARAMETRE[i].param_name);
+    if (OPTION_PARAMETRE[i].longname != NULL) printf("--%s=<%s>\t", OPTION_PARAMETRE[i].longname, OPTION_PARAMETRE[i].param_name);
+    if (OPTION_PARAMETRE[i].description != NULL) printf("%s", OPTION_PARAMETRE[i].description);
+    printf("\n");
+  }
+  exit(EXIT_SUCCESS);
+}
 
 bool try_apply_option(char* name, enum option_type_e type) {
   for (size_t p=0; p<sizeof(OPTION)/sizeof(option_t); p++) {
@@ -41,7 +70,7 @@ bool try_apply_option(char* name, enum option_type_e type) {
 }
 
 bool try_apply_poption(char* name, char* next, enum option_type_e type) {
-  for (size_t p=0; p<sizeof(OPTION_PARAMETRE)/sizeof(option_t); p++) {
+  for (size_t p=0; p<sizeof(OPTION_PARAMETRE)/sizeof(poption_t); p++) {
     if (type == COURTE) {
       if (name[0] == OPTION_PARAMETRE[p].shortname[0]) {
 	if (next == NULL) erreur("Manque la valeur pour le paramètre '%c'", name[0]);

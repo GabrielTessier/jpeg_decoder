@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <sys/time.h>
+#include <unistd.h>
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
@@ -14,6 +15,7 @@
 #include "entete.h"
 #include "options.h"
 
+char *execname;
 int verbose;
 int print_time;
 char *filepath;
@@ -109,9 +111,10 @@ blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *
 
 int main(int argc, char *argv[]) {
   // Vérification arguments
-  if (argc < 2) 
-    erreur("Usage : %s <filepath>\nOptions :\n\t-v : verbose\n\t-t : print timers", argv[0]);
+  execname = argv[0];
   set_option(argc, argv);
+  if (filepath == NULL) print_help();
+  if (access(filepath, R_OK)) erreur("Pas de fichier '%s'", filepath);
   if (outfile != NULL) print_v("outfile : %s\n", outfile);
     
   // Ouverture fichier
