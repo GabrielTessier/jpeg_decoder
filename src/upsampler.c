@@ -13,18 +13,23 @@ bloctu8_t ***upsampler(bloctu8_t **cb, bloctu8_t **cr, img_t *img) {
   
   int nbBlocYH = ceil((float)img->width / 8);
   int nbBlocYV = ceil((float)img->height / 8);
+  int nbmcuH = ceil((float)nbBlocYH / ycomp->hsampling);
+  int nbmcuV = ceil((float)nbBlocYV / ycomp->vsampling);
+  int reelnbBlocYH = nbmcuH * ycomp->hsampling;
+  int reelnbBlocYV = nbmcuV * ycomp->vsampling;
   
-  res[0] = (bloctu8_t**) calloc(nbBlocYH*nbBlocYV, sizeof(bloctu8_t*));
-  res[1] = (bloctu8_t**) calloc(nbBlocYH*nbBlocYV, sizeof(bloctu8_t*));
+  res[0] = (bloctu8_t**) calloc(reelnbBlocYH*reelnbBlocYV, sizeof(bloctu8_t*));
+  res[1] = (bloctu8_t**) calloc(reelnbBlocYH*reelnbBlocYV, sizeof(bloctu8_t*));
 
   uint8_t facteurCbH = ycomp->hsampling / cbcomp->hsampling;
   uint8_t facteurCbV = ycomp->vsampling / cbcomp->vsampling;
   uint8_t facteurCrH = ycomp->hsampling / crcomp->hsampling;
   uint8_t facteurCrV = ycomp->vsampling / crcomp->vsampling;
-  uint64_t nbBlocCbH = nbBlocYH / facteurCbH;
-  uint64_t nbBlocCbV = nbBlocYV / facteurCbV;
-  uint64_t nbBlocCrH = nbBlocYH / facteurCrH;
-  uint64_t nbBlocCrV = nbBlocYV / facteurCrV;
+  printf("%d, %d; %d, %d\n", facteurCbH, facteurCbV, facteurCrH, facteurCrV);
+  uint64_t nbBlocCbH = nbmcuH * cbcomp->hsampling;
+  uint64_t nbBlocCbV = nbmcuV * cbcomp->vsampling;
+  uint64_t nbBlocCrH = nbmcuH * crcomp->hsampling;
+  uint64_t nbBlocCrV = nbmcuV * crcomp->vsampling;
   
   for (uint64_t i=0; i<nbBlocCbH; i++) {   // parcours des colonnes de blocs dans cb
     for (uint64_t j=0; j<nbBlocCbV; j++) { // parcours des lignes de blocs dans cb
@@ -36,7 +41,7 @@ bloctu8_t ***upsampler(bloctu8_t **cb, bloctu8_t **cr, img_t *img) {
           uint64_t dpy = py*facteurCbV;     // position y du pixel considéré dans res
           for (uint8_t offX=0; offX<facteurCbH; offX++) {   // parcours des colonnes où imprimer le pixel considéré dans res
             for (uint8_t offY=0; offY<facteurCbV; offY++) { // parcours des lignes où imprimer le pixel considéré dans res
-	      uint64_t blocId = ((dpy+offY)/8) * (nbBlocCbH*facteurCbH) + ((dpx+offX)/8);
+	      uint64_t blocId = ((dpy+offY)/8) * reelnbBlocYH + ((dpx+offX)/8);
 	      if (res[0][blocId] == NULL) res[0][blocId] = (bloctu8_t*) malloc(sizeof(bloctu8_t));
               res[0][blocId]->data[(dpx+offX)%8][(dpy+offY)%8] = cb[j*nbBlocCbH+i]->data[k][l];
 	    }

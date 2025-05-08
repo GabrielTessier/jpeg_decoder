@@ -45,18 +45,25 @@ float ****calc_coef() {
       }
     }
   }
+  for (int x=0; x < 8; x++) {
+    free(stockage_cos[x]);
+  }
+  free(stockage_cos);
   return stockage_coef;
 }
 
 bloctu8_t *idct(bloct16_t *freq, float ****stockage_coef) {
   bloctu8_t *res = (bloctu8_t*) malloc(sizeof(bloctu8_t));
-  for (int x=0; x < 8; x++)
+  for (int x=0; x < 8; x++) {
     for (int y=0; y < 8; y++) {
       float sum = 0; // double somme
-      for (int lambda=0; lambda < 8; lambda++)
+      for (int lambda=0; lambda < 8; lambda++) {
         for (int mu=0; mu < 8; mu++) {
-          sum += stockage_coef[x][y][lambda][mu] * freq->data[lambda][mu];
+          float val = stockage_coef[x][y][lambda][mu];
+	  val *= freq->data[lambda][mu];
+	  sum += val;
         }
+      }
       //res->data[x][y] = (uint8_t) (0.25 * sum + 128); // calcul de S(x,y) + offset
       sum *= 0.25;
       sum += 128;
@@ -64,5 +71,6 @@ bloctu8_t *idct(bloct16_t *freq, float ****stockage_coef) {
       if (sum > 255) sum = 255;
       res->data[x][y] = sum;
     }
+  }
   return res;
 }

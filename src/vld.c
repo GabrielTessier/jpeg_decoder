@@ -5,6 +5,7 @@
 #include "vld.h"
 
 int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice) {
+  if (magnitude == 0) return 0;
   int16_t min = 1<<(magnitude-1);
   int16_t max = (min<<1)-1;
   if (indice < min) return indice-max;  // Négatif
@@ -46,7 +47,7 @@ blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *
 int16_t *decodeDC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off, uint64_t size) {
   int16_t diff = 0;
   fseek(file, pos, SEEK_SET);// On se place au début du code
-  int16_t* res = (int16_t*) malloc(sizeof(int8_t)*size); // tableau contenant les dc décodé
+  int16_t* res = (int16_t*) malloc(sizeof(int16_t)*size); // tableau contenant les dc décodé
   uint64_t resi = 0; // indice de où on en est dans res
   huffman_tree_t* symb_decode = ht; // où on en est dans l'arbre de huffman
   // On lit char par char mais on traite bit par bit

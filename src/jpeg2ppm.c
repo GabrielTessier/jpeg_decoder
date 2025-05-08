@@ -102,9 +102,39 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
  
   blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, debut, off);
+  if (verbose) {
+    print_v("[DC/AC] : ");
+    for (int i=0; i<64; i++) {
+      print_v("%x, ", bloc->data[i]);
+    }
+    print_v("\n");
+  }
   blocl16_t *bloc_iq = iquant(bloc, qtable->qtable);
+  if (verbose) {
+    print_v("[IQ] : ");
+    for (int i=0; i<64; i++) {
+      print_v("%x, ", bloc_iq->data[i]);
+    }
+    print_v("\n");
+  }
   bloct16_t *bloc_zz = izz(bloc_iq);
+  if (verbose) {
+    print_v("[IZZ] : ");
+    for (int i=0; i<8; i++) {
+      for (int j=0; j<8; j++)
+	print_v("%x, ", bloc_zz->data[j][i]);
+    }
+    print_v("\n");
+  }
   bloctu8_t *bloc_idct = idct(bloc_zz, stockage_coef);
+  if (verbose) {
+    print_v("[IDCT] : ");
+    for (int i=0; i<8; i++) {
+      for (int j=0; j<8; j++) 
+	print_v("%x, ", bloc_idct->data[j][i]);
+    }
+    print_v("\n");
+  }
   free(bloc);
   free(bloc_iq);
   free(bloc_zz);
@@ -168,13 +198,18 @@ int main(int argc, char *argv[]) {
   // Parcours de toutes les composantes
   int nbBlocYH = ceil((float)img->width / 8);
   int nbBlocYV = ceil((float)img->height / 8);
-  int nbBlocY = nbBlocYH * nbBlocYV;
-  int nbBlocParMCU = img->comps->comps[0]->hsampling * img->comps->comps[0]->vsampling;
-  int nbMCU = nbBlocY / nbBlocParMCU;
+  //int nbBlocY = nbBlocYH * nbBlocYV;
+  //int nbBlocYParMCU = img->comps->comps[0]->hsampling * img->comps->comps[0]->vsampling;
+  //int nbMCU = nbBlocY / nbBlocYParMCU;
+  int nbmcuH = ceil((float)nbBlocYH / img->comps->comps[0]->hsampling);
+  int nbmcuV = ceil((float)nbBlocYV / img->comps->comps[0]->vsampling);
+  int reelnbBlocYH = nbmcuH * img->comps->comps[0]->hsampling;
+  int reelnbBlocYV = nbmcuV * img->comps->comps[0]->vsampling;
+  int nbMCU = nbmcuH*nbmcuV;
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
   for (int i=0; i<nbcomp; i++) {
-    int nbH = nbBlocYH * img->comps->comps[i]->hsampling / img->comps->comps[0]->hsampling;
-    int nbV = nbBlocYV * img->comps->comps[i]->vsampling / img->comps->comps[0]->vsampling;
+    int nbH = nbmcuH * img->comps->comps[i]->hsampling;
+    int nbV = nbmcuV * img->comps->comps[i]->vsampling;
     ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbH*nbV);
   }
 
@@ -184,16 +219,30 @@ int main(int argc, char *argv[]) {
   uint64_t debut = ftell(fichier);
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
   for (int i=0; i<nbMCU; i++) {
+    print_v("MCU %d\n", i);
     for (int k=0; k<nbcomp; k++) {
+      print_v("COMP %d\n", k);
       for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
+	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
 	  bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef);
+	  int nbBlocParMCU = img->comps->comps[k]->hsampling * img->comps->comps[k]->vsampling;
 	  ycc[k][i*nbBlocParMCU + by*img->comps->comps[k]->hsampling + bx] = bloc;
 	}
       }
     }
   }
   free(dc_prec);
+  for (int x=0; x < 8; x++) {
+    for (int y=0; y < 8; y++) {
+      for (int lambda=0; lambda < 8; lambda++) {
+        free(stockage_coef[x][y][lambda]);
+      }
+      free(stockage_coef[x][y]);
+    }
+    free(stockage_coef[x]);
+  }
+  free(stockage_coef);
 
   fclose(fichier);
 
@@ -223,7 +272,7 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-        fprintf(outfile, "%c", ycc[0][by*nbBlocYH + bx]->data[px][py]);
+        fprintf(outfile, "%c", ycc[0][by*reelnbBlocYH + bx]->data[px][py]);
       }
     }
     fclose(outfile);
@@ -244,7 +293,10 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-	rgb_t *rgb = ycc2rgb_pixel(ycc[0][by*nbBlocYH + bx]->data[px][py], yccUP[0][by*nbBlocYH + bx]->data[px][py], yccUP[1][by*nbBlocYH + bx]->data[px][py]);
+	uint8_t y = ycc[0][by*reelnbBlocYH + bx]->data[px][py];
+	uint8_t cb = yccUP[0][by*reelnbBlocYH + bx]->data[px][py];
+	uint8_t cr = yccUP[1][by*reelnbBlocYH + bx]->data[px][py];
+	rgb_t *rgb = ycc2rgb_pixel(y, cb, cr);
         fprintf(outfile, "%c%c%c", rgb->r, rgb->g, rgb->b);
 	free(rgb);
       }
