@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
   int nbmcuH = ceil((float)nbBlocYH / img->comps->comps[0]->hsampling);
   int nbmcuV = ceil((float)nbBlocYV / img->comps->comps[0]->vsampling);
   int reelnbBlocYH = nbmcuH * img->comps->comps[0]->hsampling;
-  //int reelnbBlocYV = nbmcuV * img->comps->comps[0]->vsampling;
+  int reelnbBlocYV = nbmcuV * img->comps->comps[0]->vsampling;
   int nbMCU = nbmcuH*nbmcuV;
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
   for (int i=0; i<nbcomp; i++) {
@@ -306,8 +306,34 @@ int main(int argc, char *argv[]) {
 	free(rgb);
       }
     }
+
+    // Free yccUP
+    
+    for (int i=0; i<2; i++) {
+      for (int j=0; j<reelnbBlocYH*reelnbBlocYV; j++) {
+	free(yccUP[i][j]);
+      }
+      free(yccUP[i]);
+    }
+    free(yccUP);
+    
     fclose(outfile);
   }
+
+  // Free ycc
+  for (int i=0; i<nbcomp; i++) {
+    int nbH = nbmcuH * img->comps->comps[i]->hsampling;
+    int nbV = nbmcuV * img->comps->comps[i]->vsampling;
+    for (int j=0; j<nbH*nbV; j++) {
+      free(ycc[i][j]);
+    }
+    free(ycc[i]);
+  }
+  free(ycc);
+
+  // Free entete
+  free_img(img);
+  
   print_timer("Affichage pixel");
   if (print_time) {
     struct timeval t;

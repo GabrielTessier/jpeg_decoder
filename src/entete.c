@@ -6,7 +6,55 @@
 #include <stdarg.h>
 #include "entete.h"
 #include "list.h"
+#include "vld.h"
 
+
+void free_qtables(qtable_prec_t **qtables) {
+  for (int i=0; i<4; i++) {
+    if (qtables[i] != NULL) {
+      free(qtables[i]->qtable);
+      free(qtables[i]);
+    }
+  }
+  free(qtables);
+}
+
+void free_huffman_tree(huffman_tree_t *tree) {
+  if (tree == NULL) return;
+  free_huffman_tree(tree->droit);
+  free_huffman_tree(tree->gauche);
+  free(tree);
+}
+
+void free_htables(htables_t *htables) {
+  for (int i=0; i<4; i++) {
+    if (htables->ac[i] != NULL) free_huffman_tree(htables->ac[i]);
+    if (htables->dc[i] != NULL) free_huffman_tree(htables->dc[i]);
+  }
+  free(htables->ac);
+  free(htables->dc);
+  free(htables);
+}
+
+void free_comps(comps_t *comps) {
+  free(comps->comps[0]);
+  free(comps->comps[1]);
+  free(comps->comps[2]);
+  free(comps->comps);
+  free(comps);
+}
+
+void free_other(other_t *other) {
+  free(other);
+}
+
+void free_img(img_t *img) {
+  free_qtables(img->qtables);
+  free_htables(img->htables);
+  free_comps(img->comps);
+  free_other(img->other);
+  free(img);
+}
 
 img_t* decode_entete(FILE *fichier) {
     img_t *img = calloc(1,sizeof(img_t));

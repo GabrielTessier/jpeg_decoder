@@ -67,6 +67,7 @@ struct couple_tree_depth_s {
 };
 typedef struct couple_tree_depth_s couple_tree_depth_t;
 
+void free_img(img_t *img);
 
 img_t* decode_entete(FILE *fichier);
 
