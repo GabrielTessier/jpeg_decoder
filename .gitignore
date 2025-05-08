@@ -1,6 +1,6 @@
 
-jpeg2ppm
+jpeg2ppm*
 
 *.blabla
-*.o
+obj/**
 out/**
