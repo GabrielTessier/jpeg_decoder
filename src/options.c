@@ -1,5 +1,7 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "entete.h"
 #include "options.h"
 
@@ -38,23 +40,52 @@ void set_outfile(char* file) {
   outfile = file;
 }
 
+char** get_max_size_str() {
+  char** res = (char**) malloc(sizeof(char*)*2);
+  int max_s = 2;
+  int max_l = 0;
+  for (size_t i=0; i<sizeof(OPTION_PARAMETRE)/sizeof(poption_t); i++) {
+    int ps = 5+sizeof(OPTION_PARAMETRE[i].param_name);
+    if (ps > max_s) max_s = ps;
+    int pl = 5+sizeof(OPTION_PARAMETRE[i].longname)+sizeof(OPTION_PARAMETRE[i].param_name);
+    if (pl > max_l) max_l = pl;
+  }
+  for (size_t i=0; i<sizeof(OPTION)/sizeof(option_t); i++) {
+    int pl = 2+sizeof(OPTION[i].longname);
+    if (pl > max_l) max_l = pl;
+  }
+  res[0] = (char*) malloc(sizeof(char)*(max_s+1));
+  res[1] = (char*) malloc(sizeof(char)*(max_l+1));
+  for (int i=0; i<max_s; i++) res[0][i] = ' ';
+  for (int i=0; i<max_l; i++) res[1][i] = ' ';
+  res[0][max_s] = 0;
+  res[1][max_l] = 0;
+  return res;
+}
+
 void print_help() {
   printf("Usage : %s [option] fichier\n", execname);
   printf("Option : \n");
+  char **max_size = get_max_size_str();
+  char *max_size_short = max_size[0];
+  char *max_size_long = max_size[1];
   for (size_t i=0; i<sizeof(OPTION)/sizeof(option_t); i++) {
-    printf("\t");
-    if (OPTION[i].shortname != NULL) printf("-%c\t", OPTION[i].shortname[0]);
-    if (OPTION[i].longname != NULL) printf("--%s\t", OPTION[i].longname);
+    printf("  ");
+    if (OPTION[i].shortname != NULL) printf("-%c%s  ", OPTION[i].shortname[0], max_size_short+2);
+    if (OPTION[i].longname != NULL) printf("--%s%s  ", OPTION[i].longname, max_size_long+2+strlen(OPTION[i].longname));
     if (OPTION[i].description != NULL) printf("%s", OPTION[i].description);
     printf("\n");
   }
   for (size_t i=0; i<sizeof(OPTION_PARAMETRE)/sizeof(poption_t); i++) {
-    printf("\t");
-    if (OPTION_PARAMETRE[i].shortname != NULL) printf("-%c <%s>\t", OPTION_PARAMETRE[i].shortname[0], OPTION_PARAMETRE[i].param_name);
-    if (OPTION_PARAMETRE[i].longname != NULL) printf("--%s=<%s>\t", OPTION_PARAMETRE[i].longname, OPTION_PARAMETRE[i].param_name);
+    printf("  ");
+    if (OPTION_PARAMETRE[i].shortname != NULL) printf("-%c <%s>%s  ", OPTION_PARAMETRE[i].shortname[0], OPTION_PARAMETRE[i].param_name, max_size_short+5+strlen(OPTION_PARAMETRE[i].param_name));
+    if (OPTION_PARAMETRE[i].longname != NULL) printf("--%s=<%s>%s  ", OPTION_PARAMETRE[i].longname, OPTION_PARAMETRE[i].param_name, max_size_long+5+strlen(OPTION_PARAMETRE[i].longname)+strlen(OPTION_PARAMETRE[i].param_name));
     if (OPTION_PARAMETRE[i].description != NULL) printf("%s", OPTION_PARAMETRE[i].description);
     printf("\n");
   }
+  free(max_size_short);
+  free(max_size_long);
+  free(max_size);
   exit(EXIT_SUCCESS);
 }
 
