@@ -23,6 +23,26 @@ char my_getc(FILE* file, char old) {
   return c;
 }
 
+blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, int16_t *dc_prec, uint64_t *debut, uint8_t *off) {
+  int16_t *sousdc = decodeDC(hdc, fichier, *debut, off, 1);
+  int16_t dc = sousdc[0];
+  dc += *dc_prec; // calcul du coef à partir de la différence
+  *dc_prec = dc;
+
+  *debut = ftell(fichier)-1; // début de AC
+  int16_t *ac = decodeAC(hac, fichier, *debut, off);
+
+  *debut = ftell(fichier)-1;
+  // écriture des DC, AC
+  blocl16_t * bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
+  bloc->data[0] = dc;
+  //memcpy(bloc->data+1, ac, 63*sizeof(int16_t));
+  for (int i=0; i<63; i++) bloc->data[i+1] = ac[i];
+  free(sousdc);
+  free(ac);
+  return bloc;
+}
+
 int16_t *decodeDC(huffman_tree_t* ht, FILE* file, uint64_t pos, uint8_t *off, uint64_t size) {
   int16_t diff = 0;
   fseek(file, pos, SEEK_SET);// On se place au début du code

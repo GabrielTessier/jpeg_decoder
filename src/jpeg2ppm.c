@@ -7,6 +7,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
@@ -87,26 +88,6 @@ void print_timer(char* text) {
   }
 }
 
-blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, int16_t *dc_prec, uint64_t *debut, uint8_t *off) {
-  int16_t *sousdc = decodeDC(hdc, fichier, *debut, off, 1);
-  int16_t dc = sousdc[0];
-  dc += *dc_prec; // calcul du coef à partir de la différence
-  *dc_prec = dc;
-
-  *debut = ftell(fichier)-1; // début de AC
-  int16_t *ac = decodeAC(hac, fichier, *debut, off);
-
-  *debut = ftell(fichier)-1;
-  // écriture des DC, AC
-  blocl16_t * bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
-  bloc->data[0] = dc;
-  //memcpy(bloc->data+1, ac, 63*sizeof(int16_t));
-  for (int i=0; i<63; i++) bloc->data[i+1] = ac[i];
-  free(sousdc);
-  free(ac);
-  return bloc;
-}
-
 // Fonction principale
 
 int main(int argc, char *argv[]) {
@@ -115,7 +96,18 @@ int main(int argc, char *argv[]) {
   set_option(argc, argv);
   if (filepath == NULL) print_help();
   if (access(filepath, R_OK)) erreur("Pas de fichier '%s'", filepath);
-  if (outfile != NULL) print_v("outfile : %s\n", outfile);
+  if (outfile != NULL) {
+    char* outfile_copy = malloc(sizeof(char)*(strlen(outfile)+1));
+    strcpy(outfile_copy, outfile);
+    char* folder = dirname(outfile_copy);
+    struct stat sb;
+    if (stat(folder, &sb) == -1) {
+      print_v("création du dosier %s\n", folder);
+      mkdir(folder, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    }
+    print_v("outfile : %s\n", outfile);
+    free(outfile_copy);
+  }
     
   // Ouverture fichier
   char *fileext  = strrchr(filepath, '.') + 1; // extension du fichier
