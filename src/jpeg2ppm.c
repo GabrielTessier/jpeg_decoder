@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
   // N&B ou couleur
   const uint8_t nbcomp = img->comps->nb;
-
+  
   if (all_option.verbose) {
     for (int i=0; i<nbcomp; i++) {
       print_v("Composante %d :\n", i);
@@ -166,16 +166,24 @@ int main(int argc, char *argv[]) {
   // (Plus petit que le vrai nombre car le prend pas en compte les MCU)
   int nbBlocH = ceil((float)img->width / 8);
   int nbBlocV = ceil((float)img->height / 8);
+
+  // Calcul du hsampling et vsampling maximal
+  uint8_t max_hsampling = 0;
+  uint8_t max_vsampling = 0;
+  for (int i=0; i<nbcomp; i++) {
+    if (img->comps->comps[i]->hsampling > max_hsampling) max_hsampling = img->comps->comps[i]->hsampling;
+    if (img->comps->comps[i]->vsampling > max_vsampling) max_vsampling = img->comps->comps[i]->vsampling;
+  }
   
   // Nombre de MCU horizontalement et verticalement
-  int nbmcuH = ceil((float)nbBlocH / img->comps->comps[0]->hsampling);
-  int nbmcuV = ceil((float)nbBlocV / img->comps->comps[0]->vsampling);
+  int nbmcuH = ceil((float)nbBlocH / max_hsampling);
+  int nbmcuV = ceil((float)nbBlocV / max_vsampling);
   // Nombre total de MCU
   int nbMCU = nbmcuH*nbmcuV;
 
   // Vrai nombre de bloc horizontalement et verticalement
-  int reelnbBlocH = nbmcuH * img->comps->comps[0]->hsampling;
-  int reelnbBlocV = nbmcuV * img->comps->comps[0]->vsampling;
+  int reelnbBlocH = nbmcuH * max_hsampling;
+  int reelnbBlocV = nbmcuV * max_vsampling;
 
   // Initialisation du tableau ycc
   // ycc contient un tableau par composante
@@ -260,7 +268,7 @@ int main(int argc, char *argv[]) {
   } else {
     fullfilename = all_option.outfile;
   }
-  if (nbcomp == 1) {
+  if (nbcomp == 1) { // Noir et Blanc
     FILE *outputfile = fopen(fullfilename, "w+");
     fprintf(outputfile, "P5\n");   // Magic number
     fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
@@ -280,9 +288,19 @@ int main(int argc, char *argv[]) {
     fclose(outputfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     // Upsampler
-    start_timer();
-    bloctu8_t ***yccUP = upsampler(ycc[1], ycc[2], img);
-    print_timer("Up sampler");
+    bloctu8_t ***yccUP = ycc;
+    if (max_hsampling != 1 || max_vsampling != 1) {
+      start_timer();
+      yccUP = upsampler(img, ycc);
+      print_timer("Up sampler");
+    }
+
+    uint8_t y_id, cb_id, cr_id;
+    for (int i=0; i<nbcomp; i++) {
+      if (img->comps->ordre[i] == 1) y_id = i;
+      if (img->comps->ordre[i] == 2) cb_id = i;
+      if (img->comps->ordre[i] == 3) cr_id = i;
+    }
     
     FILE *outputfile = fopen(fullfilename, "w+");
     fprintf(outputfile, "P6\n");   // Magic number
@@ -299,9 +317,9 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-	uint8_t y = ycc[0][by*reelnbBlocH + bx]->data[px][py];
-	uint8_t cb = yccUP[0][by*reelnbBlocH + bx]->data[px][py];
-	uint8_t cr = yccUP[1][by*reelnbBlocH + bx]->data[px][py];
+	uint8_t y = yccUP[y_id][by*reelnbBlocH + bx]->data[px][py];
+	uint8_t cb = yccUP[cb_id][by*reelnbBlocH + bx]->data[px][py];
+	uint8_t cr = yccUP[cr_id][by*reelnbBlocH + bx]->data[px][py];
 	rgb_t *pixel_rgb = ycc2rgb_pixel(y, cb, cr);
 	rgb[i*3+0] = pixel_rgb->r;
 	rgb[i*3+1] = pixel_rgb->g;
@@ -315,7 +333,7 @@ int main(int argc, char *argv[]) {
     
     // Free yccUP
     
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<nbcomp; i++) {
       for (int j=0; j<reelnbBlocH*reelnbBlocV; j++) {
 	free(yccUP[i][j]);
       }
