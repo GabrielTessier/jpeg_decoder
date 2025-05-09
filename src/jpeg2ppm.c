@@ -11,6 +11,7 @@
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
+#include "idct_opt.h"
 #include "upsampler.h"
 #include "vld.h"
 #include "ycc2rgb.h"
@@ -20,6 +21,7 @@
 char *execname;
 int verbose;
 int print_time;
+int idct_fast;
 char *filepath;
 char *outfile;
 uint64_t timer;
@@ -97,7 +99,7 @@ void print_timer(char* text) {
   }
 }
 
-bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, uint64_t *debut, uint8_t *off, float ****stockage_coef, uint64_t *timerBloc) {
+bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int comp, int16_t *dc_prec, uint8_t *off, uint64_t *timerBloc) {
   huffman_tree_t *hdc = NULL;
   huffman_tree_t *hac = NULL;
   qtable_prec_t *qtable = NULL;
@@ -111,7 +113,7 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
 
   start_timer();
   uint64_t time = timer;
-  blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, debut, off);
+  blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, off);
   if (verbose) {
     print_v("[DC/AC] : ");
     for (int i=0; i<64; i++) {
@@ -145,7 +147,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
   start_timer();
   timerBloc[2] += timer-time;
   time = timer;
-  bloctu8_t *bloc_idct = idct(bloc_zz, stockage_coef);
+  bloctu8_t *bloc_idct;
+  if (idct_fast) bloc_idct = idct_opt(bloc_zz);
+  else bloc_idct = idct(bloc_zz, stockage_coef);
   if (verbose) {
     print_v("[IDCT] : ");
     for (int i=0; i<8; i++) {
@@ -237,15 +241,15 @@ int main(int argc, char *argv[]) {
   }
 
   start_timer();
-  float ****stockage_coef = calc_coef();
-  print_timer("Calcule des coefficients de l'iDCT");
+  float ****stockage_coef = NULL;
+  if (!idct_fast) stockage_coef = calc_coef();
+  print_timer("Calcul des coefficients de l'iDCT");
 
   start_timer();
   uint64_t timerDecodage = timer;
   // DCAC, IQ, IZZ, IDCT
   uint64_t timerBloc[4] = {0, 0, 0, 0};
   uint8_t off = 0;
-  uint64_t debut = ftell(fichier);
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
   for (int i=0; i<nbMCU; i++) {
     print_v("MCU %d\n", i);
@@ -258,7 +262,7 @@ int main(int argc, char *argv[]) {
       for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
 	for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-	  bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef, timerBloc);
+	  bloctu8_t *bloc = decode_bloc(fichier, img, stockage_coef, k, dc_prec, &off, timerBloc);
 	  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
 	  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
 	  ycc[k][blocY*nbH + blocX] = bloc;
@@ -282,16 +286,18 @@ int main(int argc, char *argv[]) {
   timer = timerDecodage;
   print_timer("Décodage complet de l'image");
 
-  for (int x=0; x < 8; x++) {
-    for (int y=0; y < 8; y++) {
-      for (int lambda=0; lambda < 8; lambda++) {
-        free(stockage_coef[x][y][lambda]);
+  if (!idct_fast) {
+    for (int x=0; x < 8; x++) { 
+      for (int y=0; y < 8; y++) {
+	for (int lambda=0; lambda < 8; lambda++) {
+	  free(stockage_coef[x][y][lambda]);
+	}
+	free(stockage_coef[x][y]);
       }
-      free(stockage_coef[x][y]);
+      free(stockage_coef[x]);
     }
-    free(stockage_coef[x]);
+    free(stockage_coef);
   }
-  free(stockage_coef);
 
   fclose(fichier);
 
@@ -309,10 +315,10 @@ int main(int argc, char *argv[]) {
     fullfilename = outfile;
   }
   if (nbcomp == 1) {
-    FILE *outfile = fopen(fullfilename, "w+");
-    fprintf(outfile, "P5\n");   // Magic number
-    fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
-    fprintf(outfile, "255\n"); // nombre de valeurs d'une composante de couleur
+    FILE *outputfile = fopen(fullfilename, "w+");
+    fprintf(outputfile, "P5\n");   // Magic number
+    fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
+    fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
     print_v("width: %d, height: %d\n", img->width, img->height);
     for (int y=0; y<img->height; y++) {
@@ -322,23 +328,25 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-        fprintf(outfile, "%c", ycc[0][by*reelnbBlocYH + bx]->data[px][py]);
+        fprintf(outputfile, "%c", ycc[0][by*reelnbBlocYH + bx]->data[px][py]);
       }
     }
-    fclose(outfile);
+    fclose(outputfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     // Upsampler
     start_timer();
     bloctu8_t ***yccUP = upsampler(ycc[1], ycc[2], img);
     print_timer("Up sampler");
     
-    FILE *outfile = fopen(fullfilename, "w+");
-    fprintf(outfile, "P6\n");   // Magic number
-    fprintf(outfile, "%d %d\n", img->width, img->height); // largeur, hateur
-    fprintf(outfile, "255\n"); // nombre de valeurs d'une composante de couleur
+    FILE *outputfile = fopen(fullfilename, "w+");
+    fprintf(outputfile, "P6\n");   // Magic number
+    fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
+    fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
     print_v("width: %d, height: %d\n", img->width, img->height);
     for (int y=0; y<img->height; y++) {
+      char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
+      uint64_t i = 0;
       for (int x=0; x<img->width; x++) {
         // On print le pixel de coordonnée (x,y)
         int bx = x/8;  // bx-ieme bloc horizontalement
@@ -348,12 +356,18 @@ int main(int argc, char *argv[]) {
 	uint8_t y = ycc[0][by*reelnbBlocYH + bx]->data[px][py];
 	uint8_t cb = yccUP[0][by*reelnbBlocYH + bx]->data[px][py];
 	uint8_t cr = yccUP[1][by*reelnbBlocYH + bx]->data[px][py];
-	rgb_t *rgb = ycc2rgb_pixel(y, cb, cr);
-        fprintf(outfile, "%c%c%c", rgb->r, rgb->g, rgb->b);
-	free(rgb);
+	rgb_t *pixel_rgb = ycc2rgb_pixel(y, cb, cr);
+        //fprintf(outfile, "%c%c%c", rgb->r, rgb->g, rgb->b);
+	rgb[i*3+0] = pixel_rgb->r;
+	rgb[i*3+1] = pixel_rgb->g;
+	rgb[i*3+2] = pixel_rgb->b;
+	free(pixel_rgb);
+	i++;
       }
+      fwrite(rgb, sizeof(char), img->width*3, outputfile);
+      free(rgb);
     }
-
+    
     // Free yccUP
     
     for (int i=0; i<2; i++) {
@@ -364,9 +378,11 @@ int main(int argc, char *argv[]) {
     }
     free(yccUP);
     
-    fclose(outfile);
+    fclose(outputfile);
   }
   print_timer("Affichage pixel");
+
+  if (outfile == NULL) free(fullfilename);
 
   start_timer();
   // Free ycc

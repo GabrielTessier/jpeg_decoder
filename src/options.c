@@ -23,10 +23,11 @@ struct option_s{
 };
 typedef struct option_s option_t;
 
-static const option_t OPTION[3] = {
+static const option_t OPTION[4] = {
     {"v", "verbose", set_verbose_param, "Affiche des informations suplémentaire durant l'exécution."},
     {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
-    {"h", "help", print_help, "Affiche cette aide."}};
+    {"h", "help", print_help, "Affiche cette aide."},
+    {"f", "fast-idct", set_idct_fast_param, "Fast IDCT."}};
 
 static const poption_t OPTION_PARAMETRE[1] = {
     {"o", "outfile", set_outfile, "fichier", "Placer la sortie dans le fichier."}};
@@ -34,6 +35,8 @@ static const poption_t OPTION_PARAMETRE[1] = {
 void set_verbose_param() { verbose = 1; }
 
 void set_timer_param() { print_time = 1; }
+
+void set_idct_fast_param() { idct_fast = 1; }
 
 void set_outfile(char* file) {
   if (outfile != NULL) erreur("Maximum une image en output.");
