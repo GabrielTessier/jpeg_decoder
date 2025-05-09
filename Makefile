@@ -31,6 +31,7 @@ makedir :
 
 jpeg2ppm_sans_opt: $(OBJ_FILES_SANS_OPT)
 	$(LD) $(OBJ_FILES_SANS_OPT) $(LDFLAGS_SANS_OPT) -o $@
+	rm jpeg2ppm
 	ln -s $@ jpeg2ppm
 
 jpeg2ppm_debug: $(OBJ_FILES_DEBUG) 
