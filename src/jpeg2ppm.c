@@ -240,10 +240,12 @@ int main(int argc, char *argv[]) {
     ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbH*nbV);
   }
 
-  start_timer();
   float ****stockage_coef = NULL;
-  if (!idct_fast) stockage_coef = calc_coef();
-  print_timer("Calcul des coefficients de l'iDCT");
+  if (!idct_fast) {
+    start_timer();
+    stockage_coef = calc_coef();
+    print_timer("Calcul des coefficients de l'iDCT");
+  }
 
   start_timer();
   uint64_t timerDecodage = timer;
