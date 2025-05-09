@@ -5,7 +5,7 @@
 
 void Loeffler_iX(float *i0, float *i1);
 
-void Loeffler_iC(float *i0, float *i1, float k, float n);
+void Loeffler_iC(float *i0, float *i1, float k, int n);
 
 void Loeffler_iO(float *i0);
 

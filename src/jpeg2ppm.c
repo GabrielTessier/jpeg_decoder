@@ -18,14 +18,8 @@
 #include "entete.h"
 #include "options.h"
 
-char *execname;
-int verbose;
-int print_time;
-int idct_fast;
-char *filepath;
-char *outfile;
-uint64_t timer;
-uint64_t abs_timer;
+
+static all_option_t all_option;
 
 // Free les allocations de tableaux de blocs
 void free_blocs(void **blocs, uint8_t nbblocs) {
@@ -45,7 +39,7 @@ int8_t* copy_arr_int16_to_int8(int16_t *tab, int nb) {
 }
 
 void print_v(const char* format, ...) {
-  if (verbose) {
+  if (all_option.verbose) {
     va_list args;
     va_start(args, format);
     vfprintf(stdout, format, args);
@@ -54,7 +48,7 @@ void print_v(const char* format, ...) {
 }
 
 void print_hufftable(char* acu, huffman_tree_t* tree) {
-  if (verbose) {
+  if (all_option.verbose) {
     if (tree->droit == NULL && tree->gauche == NULL) {
       print_v("path : %s symbol : %x\n", acu, tree->symb);
       return;
@@ -73,29 +67,29 @@ uint64_t cast_time(struct timeval time) {
 }
 
 void init_timer() {
-  if (print_time) {
+  if (all_option.print_time) {
     struct timeval t;
     gettimeofday(&t, NULL);
-    timer = cast_time(t);
-    abs_timer = timer;
+    all_option.timer = cast_time(t);
+    all_option.abs_timer = all_option.timer;
   }
 }
 
 void start_timer() {
-  if (print_time) {
+  if (all_option.print_time) {
     struct timeval t;
     gettimeofday(&t, NULL);
-    timer = cast_time(t);
+    all_option.timer = cast_time(t);
   }
 }
 
 void print_timer(char* text) {
-  if (print_time) {
+  if (all_option.print_time) {
     struct timeval t;
     gettimeofday(&t, NULL);
     uint64_t tt = cast_time(t);
-    fprintf(stdout, "%s : %f s\n", text, (float) (tt-timer)/1000000);
-    timer = tt;
+    fprintf(stdout, "%s : %f s\n", text, (float) (tt-all_option.timer)/1000000);
+    all_option.timer = tt;
   }
 }
 
@@ -112,9 +106,9 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
   start_timer();
-  uint64_t time = timer;
+  uint64_t time = all_option.timer;
   blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, off);
-  if (verbose) {
+  if (all_option.verbose) {
     print_v("[DC/AC] : ");
     for (int i=0; i<64; i++) {
       print_v("%x, ", bloc->data[i]);
@@ -122,10 +116,10 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     print_v("\n");
   }
   start_timer();
-  timerBloc[0] += timer-time;
-  time = timer;
+  timerBloc[0] += all_option.timer-time;
+  time = all_option.timer;
   blocl16_t *bloc_iq = iquant(bloc, qtable->qtable);
-  if (verbose) {
+  if (all_option.verbose) {
     print_v("[IQ] : ");
     for (int i=0; i<64; i++) {
       print_v("%x, ", bloc_iq->data[i]);
@@ -133,10 +127,10 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     print_v("\n");
   }
   start_timer();
-  timerBloc[1] += timer-time;
-  time = timer;
+  timerBloc[1] += all_option.timer-time;
+  time = all_option.timer;
   bloct16_t *bloc_zz = izz(bloc_iq);
-  if (verbose) {
+  if (all_option.verbose) {
     print_v("[IZZ] : ");
     for (int i=0; i<8; i++) {
       for (int j=0; j<8; j++)
@@ -145,12 +139,12 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     print_v("\n");
   }
   start_timer();
-  timerBloc[2] += timer-time;
-  time = timer;
+  timerBloc[2] += all_option.timer-time;
+  time = all_option.timer;
   bloctu8_t *bloc_idct;
-  if (idct_fast) bloc_idct = idct_opt(bloc_zz);
+  if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
   else bloc_idct = idct(bloc_zz, stockage_coef);
-  if (verbose) {
+  if (all_option.verbose) {
     print_v("[IDCT] : ");
     for (int i=0; i<8; i++) {
       for (int j=0; j<8; j++) 
@@ -159,8 +153,8 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     print_v("\n");
   }
   start_timer();
-  timerBloc[3] += timer-time;
-  time = timer;
+  timerBloc[3] += all_option.timer-time;
+  time = all_option.timer;
   free(bloc);
   free(bloc_iq);
   free(bloc_zz);
@@ -171,30 +165,31 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
 
 int main(int argc, char *argv[]) {
   // Vérification arguments
-  execname = argv[0];
-  set_option(argc, argv);
+  all_option.execname = argv[0];
+  set_option(&all_option, argc, argv);
+
   init_timer();
-  if (filepath == NULL) print_help();
-  if (access(filepath, R_OK)) erreur("Pas de fichier '%s'", filepath);
-  if (outfile != NULL) {
-    char* outfile_copy = malloc(sizeof(char)*(strlen(outfile)+1));
-    strcpy(outfile_copy, outfile);
+  if (all_option.filepath == NULL) print_help(&all_option);
+  if (access(all_option.filepath, R_OK)) erreur("Pas de fichier '%s'", all_option.filepath);
+  if (all_option.outfile != NULL) {
+    char* outfile_copy = malloc(sizeof(char)*(strlen(all_option.outfile)+1));
+    strcpy(outfile_copy, all_option.outfile);
     char* folder = dirname(outfile_copy);
     struct stat sb;
     if (stat(folder, &sb) == -1) {
       print_v("création du dosier %s\n", folder);
       mkdir(folder, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     }
-    print_v("outfile : %s\n", outfile);
+    print_v("outfile : %s\n", all_option.outfile);
     free(outfile_copy);
   }
     
   // Ouverture fichier
-  char *fileext  = strrchr(filepath, '.') + 1; // extension du fichier
+  char *fileext  = strrchr(all_option.filepath, '.') + 1; // extension du fichier
   if ((fileext == NULL) || (!strcmp(fileext, "jpeg") && !strcmp(fileext, "jpg"))) {
     erreur("Erreur : mauvaise extension de fichier.");
   }
-  FILE *fichier = fopen(filepath, "r");
+  FILE *fichier = fopen(all_option.filepath, "r");
   if (fichier == NULL)
     erreur("Erreur : fichier introuvable.");
   // Parsing de l'en-tête
@@ -202,7 +197,7 @@ int main(int argc, char *argv[]) {
   img_t *img = decode_entete(fichier);
   print_timer("Décodage entête");
 
-  if (verbose) {
+  if (all_option.verbose) {
     // Affichage tables de Huffman
     char* acu = (char*) calloc(20, sizeof(char));
     print_v("huffman dc\n");
@@ -241,14 +236,14 @@ int main(int argc, char *argv[]) {
   }
 
   float ****stockage_coef = NULL;
-  if (!idct_fast) {
+  if (!all_option.idct_fast) {
     start_timer();
     stockage_coef = calc_coef();
     print_timer("Calcul des coefficients de l'iDCT");
   }
 
   start_timer();
-  uint64_t timerDecodage = timer;
+  uint64_t timerDecodage = all_option.timer;
   // DCAC, IQ, IZZ, IDCT
   uint64_t timerBloc[4] = {0, 0, 0, 0};
   uint8_t off = 0;
@@ -274,21 +269,21 @@ int main(int argc, char *argv[]) {
   }
   free(dc_prec);
   start_timer();
-  timer -= timerBloc[0];
+  all_option.timer -= timerBloc[0];
   print_timer("Décodage DC/AC");
   start_timer();
-  timer -= timerBloc[1];
+  all_option.timer -= timerBloc[1];
   print_timer("Décodage IQ");
   start_timer();
-  timer -= timerBloc[2];
+  all_option.timer -= timerBloc[2];
   print_timer("Décodage IZZ");
   start_timer();
-  timer -= timerBloc[3];
+  all_option.timer -= timerBloc[3];
   print_timer("Décodage IDCT");
-  timer = timerDecodage;
+  all_option.timer = timerDecodage;
   print_timer("Décodage complet de l'image");
 
-  if (!idct_fast) {
+  if (!all_option.idct_fast) {
     for (int x=0; x < 8; x++) { 
       for (int y=0; y < 8; y++) {
 	for (int lambda=0; lambda < 8; lambda++) {
@@ -306,15 +301,15 @@ int main(int argc, char *argv[]) {
   start_timer();
   char *filename;
   char *fullfilename;
-  if (outfile == NULL) {
-    filename = filepath;
+  if (all_option.outfile == NULL) {
+    filename = all_option.filepath;
     *(strrchr(filename, '.')) = 0;
     fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
     strcpy(fullfilename, filename);
     if (nbcomp == 1) strcat(fullfilename, ".pgm");
     else if (nbcomp == 3) strcat(fullfilename, ".ppm");
   } else {
-    fullfilename = outfile;
+    fullfilename = all_option.outfile;
   }
   if (nbcomp == 1) {
     FILE *outputfile = fopen(fullfilename, "w+");
@@ -384,7 +379,7 @@ int main(int argc, char *argv[]) {
   }
   print_timer("Affichage pixel");
 
-  if (outfile == NULL) free(fullfilename);
+  if (all_option.outfile == NULL) free(fullfilename);
 
   start_timer();
   // Free ycc
@@ -402,10 +397,10 @@ int main(int argc, char *argv[]) {
   free_img(img);
   print_timer("Libération mémoire");
   
-  if (print_time) {
+  if (all_option.print_time) {
     struct timeval t;
     gettimeofday(&t, NULL);
-    fprintf(stdout, "temps total : %f s\n", (float) (cast_time(t)-abs_timer)/1000000);
+    fprintf(stdout, "temps total : %f s\n", (float) (cast_time(t)-all_option.abs_timer)/1000000);
   }
   return 0;
 }

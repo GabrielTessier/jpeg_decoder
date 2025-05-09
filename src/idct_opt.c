@@ -8,15 +8,20 @@
 #define SQRT_2 1.4142135623730950488
 #define SQRT_8 2.8284271247461900976
 
+static const float fast_idct_coef[2][7] = {
+  {0, 0.9807852804, 0, 0.8314696123, 0, 0, 0.3826834324},
+  {0, 0.195090322, 0, 0.555570233, 0, 0, 0.9238795325}
+};
+
 void Loeffler_iX(float *i0, float *i1) {
   float t0 = *i0, t1 = *i1;
   *i0 = (t0 + t1) / 2;
   *i1 = (t0 - t1) / 2;
 }
 
-void Loeffler_iC(float *i0, float *i1, float k, float n) {
+void Loeffler_iC(float *i0, float *i1, float k, int n) {
   float t0 = *i0, t1 = *i1;
-  float tcos = cos(n*M_PI/16), tsin = sin(n*M_PI/16);
+  float tcos = fast_idct_coef[0][n], tsin = fast_idct_coef[1][n];
   *i0 = t0 / k * tcos - t1 / k * tsin;
   *i1 = t1 / k * tcos + t0 / k * tsin;
 }
