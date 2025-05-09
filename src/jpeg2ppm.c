@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <libgen.h>
-#include <stdarg.h>
 #include <math.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -17,81 +16,9 @@
 #include "ycc2rgb.h"
 #include "entete.h"
 #include "options.h"
+#include "utils.h"
 
-
-static all_option_t all_option;
-
-// Free les allocations de tableaux de blocs
-void free_blocs(void **blocs, uint8_t nbblocs) {
-  for (int i=0; i < nbblocs; i++)
-    free(blocs[i]);
-  free(blocs);
-}
-
-int8_t* copy_arr_int16_to_int8(int16_t *tab, int nb) {
-  int8_t* res = malloc(sizeof(int8_t)*nb);
-  for (int i=0; i<nb; i++) {
-    if (tab[i] < -128) res[i] = -128;
-    else if (tab[i] > 127) res[i] = 127;
-    else res[i] = (int8_t) tab[i];
-  }
-  return res;
-}
-
-void print_v(const char* format, ...) {
-  if (all_option.verbose) {
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    va_end(args);
-  }
-}
-
-void print_hufftable(char* acu, huffman_tree_t* tree) {
-  if (all_option.verbose) {
-    if (tree->droit == NULL && tree->gauche == NULL) {
-      print_v("path : %s symbol : %x\n", acu, tree->symb);
-      return;
-    }
-    int i = strlen(acu);
-    acu[i] = '0';
-    print_hufftable(acu, tree->gauche);
-    acu[i] = '1';
-    print_hufftable(acu, tree->droit);
-    acu[i] = 0;
-  }
-}
-
-uint64_t cast_time(struct timeval time) {
-  return time.tv_sec*1000000 + time.tv_usec;
-}
-
-void init_timer() {
-  if (all_option.print_time) {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    all_option.timer = cast_time(t);
-    all_option.abs_timer = all_option.timer;
-  }
-}
-
-void start_timer() {
-  if (all_option.print_time) {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    all_option.timer = cast_time(t);
-  }
-}
-
-void print_timer(char* text) {
-  if (all_option.print_time) {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    uint64_t tt = cast_time(t);
-    fprintf(stdout, "%s : %f s\n", text, (float) (tt-all_option.timer)/1000000);
-    all_option.timer = tt;
-  }
-}
+all_option_t all_option;
 
 bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int comp, int16_t *dc_prec, uint8_t *off, uint64_t *timerBloc) {
   huffman_tree_t *hdc = NULL;
@@ -201,9 +128,9 @@ int main(int argc, char *argv[]) {
     // Affichage tables de Huffman
     char* acu = (char*) calloc(20, sizeof(char));
     print_v("huffman dc\n");
-    print_hufftable(acu, img->htables->dc[0]);
+    print_hufftable(img->htables->dc[0]);
     print_v("huffman ac\n");
-    print_hufftable(acu, img->htables->ac[0]);
+    print_hufftable(img->htables->ac[0]);
     free(acu);
 
     // Affichage tables de quantification
