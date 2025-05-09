@@ -20,18 +20,29 @@
 
 all_option_t all_option;
 
-bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int comp, int16_t *dc_prec, uint8_t *off, uint64_t *timerBloc) {
+// Décode un bloc
+// fichier : le fichier image
+// img : la struct contenant toute les donées de l'image (décoder de l'entete)
+// stockage_coef : la liste les coefficients utilisé dans l'iDCT
+// comp : indice de la composante
+// dc_prec : tableau contenant les précédent DC pour chaque composante
+// *off : pointeur vers l'entier contenant l'offset de l'octet entrain d'être lu (on lit bit par bit)
+// timerBloc : tableau contenant les timers pour les différentes partie du décodage
+static bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float stockage_coef[8][8][8][8], int comp, int16_t *dc_prec, uint8_t *off, uint64_t timerBloc[4]) {
+  // On récupère les tables de huffman et de quantification pour la composante courante
   huffman_tree_t *hdc = NULL;
   huffman_tree_t *hac = NULL;
   qtable_prec_t *qtable = NULL;
-
   hdc = img->htables->dc[img->comps->comps[comp]->idhdc];
   hac = img->htables->ac[img->comps->comps[comp]->idhac];
   qtable = img->qtables[img->comps->comps[comp]->idq];
-      
+
+  // S'il manque une tables on exit avec une erreur
   if (hdc == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
+  if (hac == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
+  // On décode un bloc de l'image (et on cronomètre le temps)
   start_timer();
   uint64_t time = all_option.timer;
   blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, off);
@@ -42,6 +53,7 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     }
     print_v("\n");
   }
+  // On fait la quantification inverse (et on cronomètre le temps)
   start_timer();
   timerBloc[0] += all_option.timer-time;
   time = all_option.timer;
@@ -53,6 +65,7 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     }
     print_v("\n");
   }
+  // On fait le zig-zag inverse (et on cronomètre le temps)
   start_timer();
   timerBloc[1] += all_option.timer-time;
   time = all_option.timer;
@@ -65,10 +78,12 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
     }
     print_v("\n");
   }
+  // On fait la DCT inverse (et on cronomètre le temps)
   start_timer();
   timerBloc[2] += all_option.timer-time;
   time = all_option.timer;
   bloctu8_t *bloc_idct;
+  // On choisi entre la iDCT rapide et lente en fonction des options passé à l'exécutable
   if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
   else bloc_idct = idct(bloc_zz, stockage_coef);
   if (all_option.verbose) {
@@ -82,22 +97,23 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float ****stockage_coef, int c
   start_timer();
   timerBloc[3] += all_option.timer-time;
   time = all_option.timer;
+  // On libère la mémoire des blocs créé
   free(bloc);
   free(bloc_iq);
   free(bloc_zz);
   return bloc_idct;
 }
 
-// Fonction principale
-
 int main(int argc, char *argv[]) {
-  // Vérification arguments
+  // On set les options
   all_option.execname = argv[0];
   set_option(&all_option, argc, argv);
 
+  // Initialisation du timer et vérification qu'une image est passée en paramètre
   init_timer();
   if (all_option.filepath == NULL) print_help(&all_option);
   if (access(all_option.filepath, R_OK)) erreur("Pas de fichier '%s'", all_option.filepath);
+  // Création du dossier contenant l'image ppm en sortie
   if (all_option.outfile != NULL) {
     char* outfile_copy = malloc(sizeof(char)*(strlen(all_option.outfile)+1));
     strcpy(outfile_copy, all_option.outfile);
@@ -111,7 +127,7 @@ int main(int argc, char *argv[]) {
     free(outfile_copy);
   }
     
-  // Ouverture fichier
+  // Ouverture du fichier avec vérification de l'extension
   char *fileext  = strrchr(all_option.filepath, '.') + 1; // extension du fichier
   if ((fileext == NULL) || (!strcmp(fileext, "jpeg") && !strcmp(fileext, "jpg"))) {
     erreur("Erreur : mauvaise extension de fichier.");
@@ -119,42 +135,51 @@ int main(int argc, char *argv[]) {
   FILE *fichier = fopen(all_option.filepath, "r");
   if (fichier == NULL)
     erreur("Erreur : fichier introuvable.");
+  
   // Parsing de l'en-tête
   start_timer();
   img_t *img = decode_entete(fichier);
   print_timer("Décodage entête");
 
-  if (all_option.verbose) {
-    // Affichage tables de Huffman
-    char* acu = (char*) calloc(20, sizeof(char));
-    print_v("huffman dc\n");
-    print_hufftable(img->htables->dc[0]);
-    print_v("huffman ac\n");
-    print_hufftable(img->htables->ac[0]);
-    free(acu);
-
-    // Affichage tables de quantification
-    print_v("qtable : ");
-    for (int i=0; i<64; i++) {
-      print_v("%d, ", img->qtables[0]->qtable->data[i]);
-    }
-    print_v("\n");
-  }
-  
   // N&B ou couleur
   const uint8_t nbcomp = img->comps->nb;
+
+  if (all_option.verbose) {
+    for (int i=0; i<nbcomp; i++) {
+      print_v("Composante %d :\n", i);
+      // Affichage tables de Huffman
+      print_v("Huffman dc\n");
+      print_hufftable(img->htables->dc[0]);
+      print_v("Huffman ac\n");
+      print_hufftable(img->htables->ac[0]);
+
+      // Affichage tables de quantification
+      print_v("Table de quantification : ");
+      for (int i=0; i<64; i++) {
+	print_v("%d, ", img->qtables[0]->qtable->data[i]);
+      }
+      print_v("\n");
+    }
+  }
   
-  // Parcours de toutes les composantes
-  int nbBlocYH = ceil((float)img->width / 8);
-  int nbBlocYV = ceil((float)img->height / 8);
-  //int nbBlocY = nbBlocYH * nbBlocYV;
-  //int nbBlocYParMCU = img->comps->comps[0]->hsampling * img->comps->comps[0]->vsampling;
-  //int nbMCU = nbBlocY / nbBlocYParMCU;
-  int nbmcuH = ceil((float)nbBlocYH / img->comps->comps[0]->hsampling);
-  int nbmcuV = ceil((float)nbBlocYV / img->comps->comps[0]->vsampling);
-  int reelnbBlocYH = nbmcuH * img->comps->comps[0]->hsampling;
-  int reelnbBlocYV = nbmcuV * img->comps->comps[0]->vsampling;
+  // Nombre du bloc horizontalement et verticalement
+  // (Plus petit que le vrai nombre car le prend pas en compte les MCU)
+  int nbBlocH = ceil((float)img->width / 8);
+  int nbBlocV = ceil((float)img->height / 8);
+  
+  // Nombre de MCU horizontalement et verticalement
+  int nbmcuH = ceil((float)nbBlocH / img->comps->comps[0]->hsampling);
+  int nbmcuV = ceil((float)nbBlocV / img->comps->comps[0]->vsampling);
+  // Nombre total de MCU
   int nbMCU = nbmcuH*nbmcuV;
+
+  // Vrai nombre de bloc horizontalement et verticalement
+  int reelnbBlocH = nbmcuH * img->comps->comps[0]->hsampling;
+  int reelnbBlocV = nbmcuV * img->comps->comps[0]->vsampling;
+
+  // Initialisation du tableau ycc
+  // ycc contient un tableau par composante
+  // Chaque sous-tableau est de taille le nombre de bloc dans la composante (et stocke des blocs)
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
   for (int i=0; i<nbcomp; i++) {
     int nbH = nbmcuH * img->comps->comps[i]->hsampling;
@@ -162,13 +187,15 @@ int main(int argc, char *argv[]) {
     ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbH*nbV);
   }
 
-  float ****stockage_coef = NULL;
+  // Calcul des coefficients pour la DCT inverse (lente)
+  float stockage_coef[8][8][8][8];
   if (!all_option.idct_fast) {
     start_timer();
-    stockage_coef = calc_coef();
+    calc_coef(stockage_coef);
     print_timer("Calcul des coefficients de l'iDCT");
   }
 
+  // Décodage 
   start_timer();
   uint64_t timerDecodage = all_option.timer;
   // DCAC, IQ, IZZ, IDCT
@@ -210,19 +237,6 @@ int main(int argc, char *argv[]) {
   all_option.timer = timerDecodage;
   print_timer("Décodage complet de l'image");
 
-  if (!all_option.idct_fast) {
-    for (int x=0; x < 8; x++) { 
-      for (int y=0; y < 8; y++) {
-	for (int lambda=0; lambda < 8; lambda++) {
-	  free(stockage_coef[x][y][lambda]);
-	}
-	free(stockage_coef[x][y]);
-      }
-      free(stockage_coef[x]);
-    }
-    free(stockage_coef);
-  }
-
   fclose(fichier);
 
   start_timer();
@@ -252,7 +266,7 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-        fprintf(outputfile, "%c", ycc[0][by*reelnbBlocYH + bx]->data[px][py]);
+        fprintf(outputfile, "%c", ycc[0][by*reelnbBlocH + bx]->data[px][py]);
       }
     }
     fclose(outputfile);
@@ -277,9 +291,9 @@ int main(int argc, char *argv[]) {
         int by = y/8;  // by-ieme bloc verticalement
         int px = x%8;
         int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-	uint8_t y = ycc[0][by*reelnbBlocYH + bx]->data[px][py];
-	uint8_t cb = yccUP[0][by*reelnbBlocYH + bx]->data[px][py];
-	uint8_t cr = yccUP[1][by*reelnbBlocYH + bx]->data[px][py];
+	uint8_t y = ycc[0][by*reelnbBlocH + bx]->data[px][py];
+	uint8_t cb = yccUP[0][by*reelnbBlocH + bx]->data[px][py];
+	uint8_t cr = yccUP[1][by*reelnbBlocH + bx]->data[px][py];
 	rgb_t *pixel_rgb = ycc2rgb_pixel(y, cb, cr);
         //fprintf(outfile, "%c%c%c", rgb->r, rgb->g, rgb->b);
 	rgb[i*3+0] = pixel_rgb->r;
@@ -295,7 +309,7 @@ int main(int argc, char *argv[]) {
     // Free yccUP
     
     for (int i=0; i<2; i++) {
-      for (int j=0; j<reelnbBlocYH*reelnbBlocYV; j++) {
+      for (int j=0; j<reelnbBlocH*reelnbBlocV; j++) {
 	free(yccUP[i][j]);
       }
       free(yccUP[i]);
