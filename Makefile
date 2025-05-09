@@ -22,22 +22,22 @@ OBJ_FILES_DEBUG=$(patsubst src/%.c,obj/debug/%.o,$(SRC_FILES))
 OBJ_FILES_FAST=$(patsubst src/%.c,obj/fast/%.o,$(SRC_FILES))
 OBJ_FILES_SANS_OPT=$(patsubst src/%.c,obj/sans_opt/%.o,$(SRC_FILES))
 
-all: makedir jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast
+all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast
 
 makedir :
 	mkdir -p obj/debug
 	mkdir -p obj/fast
 	mkdir -p obj/sans_opt
 
-jpeg2ppm_sans_opt: $(OBJ_FILES_SANS_OPT)
+jpeg2ppm_sans_opt: makedir $(OBJ_FILES_SANS_OPT)
 	$(LD) $(OBJ_FILES_SANS_OPT) $(LDFLAGS_SANS_OPT) -o $@
 	rm -f jpeg2ppm
 	ln -s $@ jpeg2ppm
 
-jpeg2ppm_debug: $(OBJ_FILES_DEBUG) 
+jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG) 
 	$(LD) $(OBJ_FILES_DEBUG) $(LDFLAGS_DEBUG) -o $@
 
-jpeg2ppm_fast: $(OBJ_FILES_FAST) 
+jpeg2ppm_fast: makedir $(OBJ_FILES_FAST) 
 	$(LD) $(OBJ_FILES_FAST) $(LDFLAGS_FAST) -o $@
 
 obj/debug/%.o: src/%.c
