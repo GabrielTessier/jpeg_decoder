@@ -2,19 +2,18 @@
 
 #include <stdint.h>
 
-extern char *execname;
-extern int verbose;
-extern int print_time;
-extern int idct_fast;
-extern char *filepath;
-extern char *outfile;
-extern uint64_t timer;
-extern uint64_t abs_timer;
 
-void set_verbose_param();
-void set_timer_param();
-void set_idct_fast_param();
-void set_outfile(char *file);
-void print_help();
+struct all_option_s {
+  char *execname;
+  int verbose;
+  int print_time;
+  int idct_fast;
+  char *filepath;
+  char *outfile;
+  uint64_t timer;
+  uint64_t abs_timer;
+};
+typedef struct all_option_s all_option_t;
 
-void set_option(const int argc, char **argv);
+void print_help(all_option_t *all_option);
+void set_option(all_option_t *all_option, const int argc, char **argv);
