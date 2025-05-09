@@ -8,12 +8,12 @@ struct maillon_s {
 };
 typedef struct maillon_s maillon_t;
 
-struct list_s {
+struct file_s {
   maillon_t *debut, *fin;
 };
-typedef struct list_s list_t;
+typedef struct file_s file_t;
 
-list_t *init_list();
-void insert_list(list_t *l, void *val);
-void *extract_list(list_t *l);
-bool list_vide(list_t *l);
+file_t *init_file();
+void insertion_file(file_t *l, void *val);
+void *extraction_file(file_t *l);
+bool file_vide(file_t *l);
