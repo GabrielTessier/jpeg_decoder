@@ -74,6 +74,11 @@ struct img_s {
     comps_t *comps;             // Composantes de l'image
     section_done_t *section;    // Avancement des sections 
     other_t *other;             // Autres informations à vérifier
+    uint8_t max_hsampling;	// Sampling horizontale maximal
+    uint8_t max_vsampling;	// Sampling verticale maximal
+    uint64_t nbmcuH;		// Nombre de mcu horizontalement
+    uint64_t nbmcuV;		// Nombre de mcu verticalement
+    uint64_t nbMCU;		// Nombre total de mcu
 };
 typedef struct img_s img_t;
 

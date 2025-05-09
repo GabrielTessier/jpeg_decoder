@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
@@ -145,7 +146,7 @@ int main(int argc, char *argv[]) {
   const uint8_t nbcomp = img->comps->nb;
   
   if (all_option.verbose) {
-    for (int i=0; i<nbcomp; i++) {
+    for (uint8_t i=0; i<nbcomp; i++) {
       print_v("Composante %d :\n", i);
       // Affichage tables de Huffman
       print_v("Huffman dc\n");
@@ -155,43 +156,20 @@ int main(int argc, char *argv[]) {
 
       // Affichage tables de quantification
       print_v("Table de quantification : ");
-      for (int i=0; i<64; i++) {
+      for (uint8_t i=0; i<64; i++) {
 	print_v("%d, ", img->qtables[0]->qtable->data[i]);
       }
       print_v("\n");
     }
   }
-  
-  // Nombre du bloc horizontalement et verticalement
-  // (Plus petit que le vrai nombre car le prend pas en compte les MCU)
-  int nbBlocH = ceil((float)img->width / 8);
-  int nbBlocV = ceil((float)img->height / 8);
-
-  // Calcul du hsampling et vsampling maximal
-  uint8_t max_hsampling = 0;
-  uint8_t max_vsampling = 0;
-  for (int i=0; i<nbcomp; i++) {
-    if (img->comps->comps[i]->hsampling > max_hsampling) max_hsampling = img->comps->comps[i]->hsampling;
-    if (img->comps->comps[i]->vsampling > max_vsampling) max_vsampling = img->comps->comps[i]->vsampling;
-  }
-  
-  // Nombre de MCU horizontalement et verticalement
-  int nbmcuH = ceil((float)nbBlocH / max_hsampling);
-  int nbmcuV = ceil((float)nbBlocV / max_vsampling);
-  // Nombre total de MCU
-  int nbMCU = nbmcuH*nbmcuV;
-
-  // Vrai nombre de bloc horizontalement et verticalement
-  int reelnbBlocH = nbmcuH * max_hsampling;
-  int reelnbBlocV = nbmcuV * max_vsampling;
 
   // Initialisation du tableau ycc
   // ycc contient un tableau par composante
   // Chaque sous-tableau est de taille le nombre de bloc dans la composante (et stocke des blocs)
   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
-  for (int i=0; i<nbcomp; i++) {
-    int nbH = nbmcuH * img->comps->comps[i]->hsampling;
-    int nbV = nbmcuV * img->comps->comps[i]->vsampling;
+  for (uint8_t i=0; i<nbcomp; i++) {
+    uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
+    uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
     ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbH*nbV);
   }
 
@@ -215,15 +193,15 @@ int main(int argc, char *argv[]) {
   
   // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toute les composantes)
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
-  for (int i=0; i<nbMCU; i++) {
+  for (uint64_t i=0; i<img->nbMCU; i++) {
     print_v("MCU %d\n", i);
-    uint64_t mcuX = i%nbmcuH;
-    uint64_t mcuY = i/nbmcuH;
-    for (int k=0; k<nbcomp; k++) {
+    uint64_t mcuX = i%img->nbmcuH;
+    uint64_t mcuY = i/img->nbmcuH;
+    for (uint8_t k=0; k<nbcomp; k++) {
       print_v("COMP %d\n", k);
-      uint64_t nbH = nbmcuH * img->comps->comps[k]->hsampling;
-      for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
-	for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
+      uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+      for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
+	for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
 	  bloctu8_t *bloc = decode_bloc(fichier, img, stockage_coef, k, dc_prec, &off, timerBloc);
 	  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
@@ -275,28 +253,29 @@ int main(int argc, char *argv[]) {
     fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
     print_v("width: %d, height: %d\n", img->width, img->height);
-    for (int y=0; y<img->height; y++) {
-      for (int x=0; x<img->width; x++) {
+    uint64_t nb_blocH = img->nbmcuH * img->max_hsampling;
+    for (uint64_t y=0; y<img->height; y++) {
+      for (uint64_t x=0; x<img->width; x++) {
         // On print le pixel de coordonnée (x,y)
-        int bx = x/8;  // bx-ieme bloc horizontalement
-        int by = y/8;  // by-ieme bloc verticalement
-        int px = x%8;
-        int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-        fprintf(outputfile, "%c", ycc[0][by*reelnbBlocH + bx]->data[px][py]);
+        uint64_t bx = x/8;  // bx-ieme bloc horizontalement
+        uint64_t by = y/8;  // by-ieme bloc verticalement
+        uint64_t px = x%8;
+        uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
+        fprintf(outputfile, "%c", ycc[0][by*nb_blocH + bx]->data[px][py]);
       }
     }
     fclose(outputfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     // Upsampler
     bloctu8_t ***yccUP = ycc;
-    if (max_hsampling != 1 || max_vsampling != 1) {
+    if (img->max_hsampling != 1 || img->max_vsampling != 1) {
       start_timer();
       yccUP = upsampler(img, ycc);
       print_timer("Up sampler");
     }
 
     uint8_t y_id, cb_id, cr_id;
-    for (int i=0; i<nbcomp; i++) {
+    for (uint8_t i=0; i<nbcomp; i++) {
       if (img->comps->ordre[i] == 1) y_id = i;
       if (img->comps->ordre[i] == 2) cb_id = i;
       if (img->comps->ordre[i] == 3) cr_id = i;
@@ -308,18 +287,19 @@ int main(int argc, char *argv[]) {
     fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
     print_v("width: %d, height: %d\n", img->width, img->height);
-    for (int y=0; y<img->height; y++) {
+    uint64_t nb_blocH = img->nbmcuH * img->max_hsampling;
+    for (uint64_t y=0; y<img->height; y++) {
       char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
       uint64_t i = 0;
-      for (int x=0; x<img->width; x++) {
+      for (uint64_t x=0; x<img->width; x++) {
         // On print le pixel de coordonnée (x,y)
-        int bx = x/8;  // bx-ieme bloc horizontalement
-        int by = y/8;  // by-ieme bloc verticalement
-        int px = x%8;
-        int py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-	uint8_t y = yccUP[y_id][by*reelnbBlocH + bx]->data[px][py];
-	uint8_t cb = yccUP[cb_id][by*reelnbBlocH + bx]->data[px][py];
-	uint8_t cr = yccUP[cr_id][by*reelnbBlocH + bx]->data[px][py];
+	uint64_t bx = x/8;  // bx-ieme bloc horizontalement
+        uint64_t by = y/8;  // by-ieme bloc verticalement
+        uint64_t px = x%8;
+        uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
+	uint8_t y = yccUP[y_id][by*nb_blocH + bx]->data[px][py];
+	uint8_t cb = yccUP[cb_id][by*nb_blocH + bx]->data[px][py];
+	uint8_t cr = yccUP[cr_id][by*nb_blocH + bx]->data[px][py];
 	rgb_t *pixel_rgb = ycc2rgb_pixel(y, cb, cr);
 	rgb[i*3+0] = pixel_rgb->r;
 	rgb[i*3+1] = pixel_rgb->g;
@@ -332,14 +312,17 @@ int main(int argc, char *argv[]) {
     }
     
     // Free yccUP
-    
-    for (int i=0; i<nbcomp; i++) {
-      for (int j=0; j<reelnbBlocH*reelnbBlocV; j++) {
-	free(yccUP[i][j]);
+    if (img->max_hsampling != 1 || img->max_vsampling != 1) {
+      uint64_t nb_bloc_total = img->nbMCU * img->max_hsampling * img->max_vsampling;
+      for (uint8_t i=0; i<nbcomp; i++) {
+	if (img->comps->comps[i]->hsampling == img->max_hsampling && img->comps->comps[i]->vsampling == img->max_vsampling) continue;
+	for (uint64_t j=0; j<nb_bloc_total; j++) {
+	  free(yccUP[i][j]);
+	}
+	free(yccUP[i]);
       }
-      free(yccUP[i]);
+      free(yccUP);
     }
-    free(yccUP);
     
     fclose(outputfile);
   }
@@ -349,10 +332,10 @@ int main(int argc, char *argv[]) {
 
   start_timer();
   // Free ycc
-  for (int i=0; i<nbcomp; i++) {
-    int nbH = nbmcuH * img->comps->comps[i]->hsampling;
-    int nbV = nbmcuV * img->comps->comps[i]->vsampling;
-    for (int j=0; j<nbH*nbV; j++) {
+  for (uint8_t i=0; i<nbcomp; i++) {
+    uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
+    uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
+    for (uint64_t j=0; j<nbH*nbV; j++) {
       free(ycc[i][j]);
     }
     free(ycc[i]);

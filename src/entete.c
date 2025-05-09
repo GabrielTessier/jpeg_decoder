@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <math.h>
 #include "entete.h"
 #include "file.h"
 #include "vld.h"
@@ -171,6 +172,29 @@ static img_t* init_img() {
     return img;
 }
 
+static void calcul_image_information(img_t *img) {
+  // Nombre du bloc horizontalement et verticalement
+  // (Plus petit que le vrai nombre car le prend pas en compte les MCU)
+  int faux_nb_bloc_H = ceil((float)img->width / 8);
+  int faux_nb_bloc_V = ceil((float)img->height / 8);
+
+  // Calcul du hsampling et vsampling maximal
+  uint8_t max_hsampling = 0;
+  uint8_t max_vsampling = 0;
+  for (int i=0; i<img->comps->nb; i++) {
+    if (img->comps->comps[i]->hsampling > max_hsampling) max_hsampling = img->comps->comps[i]->hsampling;
+    if (img->comps->comps[i]->vsampling > max_vsampling) max_vsampling = img->comps->comps[i]->vsampling;
+  }
+  img->max_vsampling = max_vsampling;
+  img->max_hsampling = max_hsampling;
+  
+  // Nombre de MCU horizontalement et verticalement
+  img->nbmcuH = ceil((float)faux_nb_bloc_H / max_hsampling);
+  img->nbmcuV = ceil((float)faux_nb_bloc_V / max_vsampling);
+  // Nombre total de MCU
+  img->nbMCU = img->nbmcuH * img->nbmcuV;
+}
+
 
 img_t* decode_entete(FILE *fichier) {
     // Initialisation de img
@@ -187,6 +211,7 @@ img_t* decode_entete(FILE *fichier) {
 
     // Vérification des valeurs pour le mode baseline
     verif_entete_baseline(img);
+    calcul_image_information(img);
     return img;
 }
 
