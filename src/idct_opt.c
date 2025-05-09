@@ -11,7 +11,7 @@
 // Opération 'butterfly' inverse de Loeffler (en place)
 static void Loeffler_iX(float *i0, float *i1);
 // Opération de rotation inverse de Loeffler (en place)
-static void Loeffler_iC(float *i0, float *i1, float k, float n);
+static void Loeffler_iC(float *i0, float *i1, float k, int n);
 // Opération de dilatation inverse de Loeffler (en place)
 static void Loeffler_iO(float *i0);
 // Réordonne les composants de <coefs> pour inverser l'IDCT de Loeffler (en place)
@@ -34,7 +34,7 @@ static void Loeffler_iX(float *i0, float *i1) {
   *i1 = (t0 - t1) / 2;
 }
 
-static void Loeffler_iC(float *i0, float *i1, float k, float n) {
+static void Loeffler_iC(float *i0, float *i1, float k, int n) {
   float t0 = *i0, t1 = *i1;
   float tcos = fast_idct_coef[0][n], tsin = fast_idct_coef[1][n];
   *i0 = t0 / k * tcos - t1 / k * tsin;

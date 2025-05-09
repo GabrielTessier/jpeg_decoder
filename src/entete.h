@@ -9,92 +9,80 @@
 #include "vld.h"
 
 
+// Structure contenant une table de quantification et sa précision
 struct qtable_prec_s {
-    uint8_t precision;
-    qtable_t *qtable;
+    uint8_t precision;  // Doit valoir 0 (correspond à 8 bits) pour le mode baseline
+    qtable_t *qtable;   // Table de quantification
 };
 typedef struct qtable_prec_s qtable_prec_t;
 
+// Structure contenant les tables de Huffman de type DC et AC
 struct htables_s {
-    huffman_tree_t **dc;
-    huffman_tree_t **ac;
+    huffman_tree_t *dc[4];    // 4 tables maximum pour le type DC
+    huffman_tree_t *ac[4];    // 4 tables maximum pour le type AC
 };
 typedef struct htables_s htables_t;
 
+// Structure contenant les informations d'une seule composante de l'image
 struct idcomp_s {
-    uint8_t idc;
-    uint8_t hsampling;
-    uint8_t vsampling;
-    uint8_t idhdc;
-    uint8_t idhac;
-    uint8_t idq;
+    uint8_t idc;        // Indice de la composante
+    uint8_t hsampling;  // Facteur d'échantillonnage horizontale
+    uint8_t vsampling;  // Facteur d'échantillonnage verticale
+    uint8_t idhdc;      // Indice de la table de Huffman pour les coefficients DC
+    uint8_t idhac;      // Indice de la table de Huffman pour les coefficients AC
+    uint8_t idq;        // Indice de la table de quantification
 };
 typedef struct idcomp_s idcomp_t;
 
+// Structure contenant les informations sur les composantes de l'image
 struct comps_s {
-    uint8_t nb;
-    uint8_t ordre[3];
-    uint8_t precision_comp;
-    idcomp_t **comps;
+    uint8_t nb;             // Nombre de composantes
+    uint8_t ordre[3];       // Ordre des composantes (au maximum 3 composantes)
+    uint8_t precision_comp; // Précision des composantes (8 bits en baseline)
+    idcomp_t *comps[3];     // Informations sur chaque composante (au maximum 3 composantes)
 };
 typedef struct comps_s comps_t;
 
+// Structure indiquant l'avancement du traitement de l'entête
 struct section_done_s {
-    bool app0_done;
-    bool sof0_done;
-    bool dqt_done;
-    bool dht_done;
-    bool sos_done;
+    bool app0_done; // Indique si la section APP0 a été traitée
+    bool sof0_done; // Indique si la section SOF0 a été traitée
+    bool dqt_done;  // Indique si la section DQT a été traitée
+    bool dht_done;  // Indique si la section DHT a été traitée
+    bool sos_done;  // Indique si la section SOS a été traitée
 };
 typedef struct section_done_s section_done_t;
 
+// Structure contenant des informations complémentaires à vérifier pour le mode baseline
 struct other_s {
-    char jfif[5];
-    uint8_t version_jfif_x;
-    uint8_t version_jfif_y;
-    uint8_t ss;
-    uint8_t se;
-    uint8_t ah;
-    uint8_t al;
+    char jfif[5];           // Doit valoir "JFIF\0"
+    uint8_t version_jfif_x; // Doit valoir 1
+    uint8_t version_jfif_y; // Doit valoir 1
+    uint8_t ss;             // Doit valoir 0
+    uint8_t se;             // Doit valoir 63
+    uint8_t ah;             // Doit valoir 0
+    uint8_t al;             // Doit valoir 0
 };
 typedef struct other_s other_t;
 
+// Structure contennant les informations de l'entête de l'image
 struct img_s {
-    uint16_t height;
-    uint16_t width;
-    qtable_prec_t **qtables;
-    htables_t *htables;
-    comps_t *comps;
-    section_done_t *section;
-    other_t *other;
+    uint16_t height;            // Hauteur
+    uint16_t width;             // Largeur
+    qtable_prec_t *qtables[4];  // Tables de quantification
+    htables_t *htables;         // Tables de Huffman
+    comps_t *comps;             // Composantes de l'image
+    section_done_t *section;    // Avancement des sections 
+    other_t *other;             // Autres informations à vérifier
 };
 typedef struct img_s img_t;
 
 
-struct couple_tree_depth_s {
-    huffman_tree_t *tree;
-    uint8_t depth;
-};
-typedef struct couple_tree_depth_s couple_tree_depth_t;
-
+// Libère la structure img
 void free_img(img_t *img);
 
+// Affiche un message d'erreur dans la sortie d'erreur et arrête le programme
 void erreur(const char* text, ...);
 
+// Décode et renvoie les informations de l'entête de l'image
 img_t* decode_entete(FILE *fichier);
-
-void soi(FILE *fichier);
-
-void marqueur(FILE *fichier, img_t *img);
-
-void app0(FILE *fichier, img_t *img);
-
-void com(FILE *fichier);
-
-void sof0(FILE *fichier, img_t *img);
-
-void dqt(FILE *fichier, img_t *img);
-
-void dht(FILE *fichier, img_t *img);
-
-void sos(FILE *fichier, img_t *img);
