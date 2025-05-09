@@ -11,6 +11,7 @@
 #include "jpeg2ppm.h"
 #include "iqzz.h"
 #include "idct.h"
+#include "idct_opt.h"
 #include "upsampler.h"
 #include "vld.h"
 #include "ycc2rgb.h"
@@ -97,7 +98,7 @@ void print_timer(char* text) {
   }
 }
 
-bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, uint64_t *debut, uint8_t *off, float ****stockage_coef, uint64_t *timerBloc) {
+bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, uint8_t *off, uint64_t *timerBloc) {
   huffman_tree_t *hdc = NULL;
   huffman_tree_t *hac = NULL;
   qtable_prec_t *qtable = NULL;
@@ -111,7 +112,7 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
 
   start_timer();
   uint64_t time = timer;
-  blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, debut, off);
+  blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, off);
   if (verbose) {
     print_v("[DC/AC] : ");
     for (int i=0; i<64; i++) {
@@ -145,7 +146,8 @@ bloctu8_t *decode_bloc(FILE* fichier, img_t *img, int comp, int16_t *dc_prec, ui
   start_timer();
   timerBloc[2] += timer-time;
   time = timer;
-  bloctu8_t *bloc_idct = idct(bloc_zz, stockage_coef);
+  /* bloctu8_t *bloc_idct = idct(bloc_zz, stockage_coef); */
+  bloctu8_t *bloc_idct = idct_opt(bloc_zz);
   if (verbose) {
     print_v("[IDCT] : ");
     for (int i=0; i<8; i++) {
@@ -237,15 +239,14 @@ int main(int argc, char *argv[]) {
   }
 
   start_timer();
-  float ****stockage_coef = calc_coef();
-  print_timer("Calcule des coefficients de l'iDCT");
+ //  float ****stockage_coef = calc_coef();
+  print_timer("Calcul des coefficients de l'iDCT");
 
   start_timer();
   uint64_t timerDecodage = timer;
   // DCAC, IQ, IZZ, IDCT
   uint64_t timerBloc[4] = {0, 0, 0, 0};
   uint8_t off = 0;
-  uint64_t debut = ftell(fichier);
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
   for (int i=0; i<nbMCU; i++) {
     print_v("MCU %d\n", i);
@@ -258,7 +259,8 @@ int main(int argc, char *argv[]) {
       for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
 	for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-	  bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef, timerBloc);
+	  //bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &debut, &off, stockage_coef, timerBloc);
+      bloctu8_t *bloc = decode_bloc(fichier, img, k, dc_prec, &off, timerBloc);
 	  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
 	  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
 	  ycc[k][blocY*nbH + blocX] = bloc;
@@ -282,16 +284,16 @@ int main(int argc, char *argv[]) {
   timer = timerDecodage;
   print_timer("Décodage complet de l'image");
 
-  for (int x=0; x < 8; x++) {
-    for (int y=0; y < 8; y++) {
-      for (int lambda=0; lambda < 8; lambda++) {
-        free(stockage_coef[x][y][lambda]);
-      }
-      free(stockage_coef[x][y]);
-    }
-    free(stockage_coef[x]);
-  }
-  free(stockage_coef);
+  /* for (int x=0; x < 8; x++) { */
+  /*   for (int y=0; y < 8; y++) { */
+  /*     for (int lambda=0; lambda < 8; lambda++) { */
+  /*       free(stockage_coef[x][y][lambda]); */
+  /*     } */
+  /*     free(stockage_coef[x][y]); */
+  /*   } */
+  /*   free(stockage_coef[x]); */
+  /* } */
+  /* free(stockage_coef); */
 
   fclose(fichier);
 
@@ -353,7 +355,7 @@ int main(int argc, char *argv[]) {
 	free(rgb);
       }
     }
-
+    free(fullfilename);
     // Free yccUP
     
     for (int i=0; i<2; i++) {
