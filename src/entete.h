@@ -39,10 +39,19 @@ struct comps_s {
 };
 typedef struct comps_s comps_t;
 
+struct section_done_s {
+    bool app0_done;
+    bool sof0_done;
+    bool dqt_done;
+    bool dht_done;
+    bool sos_done;
+};
+typedef struct section_done_s section_done_t;
+
 struct other_s {
     char jfif[5];
-    uint8_t version_jfif_a;
-    uint8_t version_jfif_b;
+    uint8_t version_jfif_x;
+    uint8_t version_jfif_y;
     uint8_t ss;
     uint8_t se;
     uint8_t ah;
@@ -56,10 +65,11 @@ struct img_s {
     qtable_prec_t **qtables;
     htables_t *htables;
     comps_t *comps;
-    bool sosdone;
+    section_done_t *section;
     other_t *other;
 };
 typedef struct img_s img_t;
+
 
 struct couple_tree_depth_s {
     huffman_tree_t *tree;
@@ -69,9 +79,11 @@ typedef struct couple_tree_depth_s couple_tree_depth_t;
 
 void free_img(img_t *img);
 
+void erreur(const char* text, ...);
+
 img_t* decode_entete(FILE *fichier);
 
-void erreur(const char* text, ...);
+void soi(FILE *fichier);
 
 void marqueur(FILE *fichier, img_t *img);
 
@@ -79,9 +91,9 @@ void app0(FILE *fichier, img_t *img);
 
 void com(FILE *fichier);
 
-void dqt(FILE *fichier, img_t *img);
-
 void sof0(FILE *fichier, img_t *img);
+
+void dqt(FILE *fichier, img_t *img);
 
 void dht(FILE *fichier, img_t *img);
 

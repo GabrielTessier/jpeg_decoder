@@ -2,18 +2,18 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "list.h"
+#include "file.h"
 
-list_t *init_list() {
-  list_t* l = (list_t*) malloc(sizeof(list_t));
+file_t *init_file() {
+  file_t* l = (file_t*) malloc(sizeof(file_t));
   l->debut = NULL;
   l->fin = NULL;
   return l;
 }
 
 
-void insert_list(list_t *l, void *data) {
-  if (list_vide(l)) {
+void insertion_file(file_t *l, void *data) {
+  if (file_vide(l)) {
     l->debut = (maillon_t*) malloc(sizeof(maillon_t));
     l->debut->suiv = NULL;
     l->debut->prec = NULL;
@@ -29,8 +29,8 @@ void insert_list(list_t *l, void *data) {
   }
 }
 
-void *extract_list(list_t *l) {
-  if (list_vide(l)) return NULL;
+void *extraction_file(file_t *l) {
+  if (file_vide(l)) return NULL;
   maillon_t *m = l->fin;
   if (m->prec != NULL) {
     m->prec->suiv = NULL;
@@ -44,6 +44,6 @@ void *extract_list(list_t *l) {
   return data;
 }
 
-bool list_vide(list_t *l) {
+bool file_vide(file_t *l) {
   return l->debut == NULL;
 }
