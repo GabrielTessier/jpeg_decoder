@@ -3,21 +3,21 @@
 #include "jpeg2ppm.h"
 #include "idct.h"
 
-#define M_PI       3.14159265358979323846
+#define M_PI 3.14159265358979323846
 
-// In:  mcudct_t*
-// Out: ycbcr
+// Retourne C(lambda)*C(mu)
+static float f_C(int lambda, int mu);
+// Retourne un tableau 8x8 contenant les coefficients cos((2*x+1)*lambda*PI / 16) pour lambda, x dans [|0, 7|]
+static float **calc_cos;
 
-float func_C(int khi) { return (khi == 0) ? 1 / sqrt(2) : 1; }
-
-float f_C(int lambda, int mu) {
+static float f_C(int lambda, int mu) {
   if (lambda == 0) {
     return (mu == 0) ? 0.5 : 1/sqrt(2);
   }
   return (mu == 0) ?  1/sqrt(2) : 1;
 }
 
-float **calc_cos() {
+static float **calc_cos() {
   float **stockage_cos = malloc(sizeof(float*)*8);
   for (int x=0; x < 8; x++) {
     stockage_cos[x] = malloc(sizeof(float)*8);

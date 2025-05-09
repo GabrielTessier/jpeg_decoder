@@ -8,31 +8,46 @@
 #define SQRT_2 1.4142135623730950488
 #define SQRT_8 2.8284271247461900976
 
-void Loeffler_iX(float *i0, float *i1) {
+// Opération 'butterfly' inverse de Loeffler (en place)
+static void Loeffler_iX(float *i0, float *i1);
+// Opération de rotation inverse de Loeffler (en place)
+static void Loeffler_iC(float *i0, float *i1, float k, float n);
+// Opération de dilatation inverse de Loeffler (en place)
+static void Loeffler_iO(float *i0);
+// Réordonne les composants de <coefs> pour inverser l'IDCT de Loeffler (en place)
+static void reorder(float coefs[8]);
+// Applique l'IDCT de Loeffler en 1D sur <coefs> (en place)
+static void idct_opt_1D(float coefs[8]);
+// Transpose <mat>
+static void transpose(float mat[8][8]);
+
+
+
+static void Loeffler_iX(float *i0, float *i1) {
   float t0 = *i0, t1 = *i1;
   *i0 = (t0 + t1) / 2;
   *i1 = (t0 - t1) / 2;
 }
 
-void Loeffler_iC(float *i0, float *i1, float k, float n) {
+static void Loeffler_iC(float *i0, float *i1, float k, float n) {
   float t0 = *i0, t1 = *i1;
   float tcos = cos(n*M_PI/16), tsin = sin(n*M_PI/16);
   *i0 = t0 / k * tcos - t1 / k * tsin;
   *i1 = t1 / k * tcos + t0 / k * tsin;
 }
 
-void Loeffler_iO(float *i0) {
+static void Loeffler_iO(float *i0) {
   *i0 = (*i0) / SQRT_2;
 }
 
-void reorder(float coefs[8]) {
+static void reorder(float coefs[8]) {
    float temp[8] = {coefs[0], coefs[4], coefs[2], coefs[6], coefs[7], coefs[3], coefs[5], coefs[1]};
    for (int i=0; i<8; i++) {
      coefs[i] = temp[i];
    }
 }
 
-void idct_opt_1D(float coefs[8]) {
+static void idct_opt_1D(float coefs[8]) {
   reorder(coefs);
   // inversion étape 4
   Loeffler_iX(coefs+7, coefs+4);
@@ -58,8 +73,8 @@ void idct_opt_1D(float coefs[8]) {
     coefs[i] *= SQRT_8;
   }
  }
- 
-void transpose(float **mat) {
+
+static void transpose(float mat[8][8]) {
   for (int i=0; i<8; i++) {
     for (int j=i+1; j<8; j++) {
       float temp = mat[i][j];
@@ -70,9 +85,8 @@ void transpose(float **mat) {
 }
 
 bloctu8_t *idct_opt(bloct16_t *mcu) {
-  float **res = (float**) malloc(sizeof(float*)*8);
+  float res[8][8];
   for (int i=0; i<8; i++) {
-    res[i] = (float *) malloc(sizeof(float)*8);
     for (int j=0; j<8; j++) {
       res[i][j] = (float) mcu->data[i][j];
     }
