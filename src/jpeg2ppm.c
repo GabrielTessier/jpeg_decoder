@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     
   // Ouverture du fichier avec vérification de l'extension
   char *fileext  = strrchr(all_option.filepath, '.') + 1; // extension du fichier
-  if ((fileext == NULL) || (!strcmp(fileext, "jpeg") && !strcmp(fileext, "jpg"))) {
+  if ((fileext == NULL) || !(strcmp(fileext, "jpeg")==0 || strcmp(fileext, "jpg")==0)) {
     erreur("Erreur : mauvaise extension de fichier.");
   }
   FILE *fichier = fopen(all_option.filepath, "r");
@@ -195,12 +195,17 @@ int main(int argc, char *argv[]) {
     print_timer("Calcul des coefficients de l'iDCT");
   }
 
-  // Décodage 
+  // Décodage de l'image
   start_timer();
   uint64_t timerDecodage = all_option.timer;
-  // DCAC, IQ, IZZ, IDCT
+  
+  // timerBloc : DCAC, IQ, IZZ, IDCT
   uint64_t timerBloc[4] = {0, 0, 0, 0};
+
+  // On décode bit par bit, off est l'indice du bit dans l'octet en cours de lecture
   uint8_t off = 0;
+  
+  // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toute les composantes)
   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
   for (int i=0; i<nbMCU; i++) {
     print_v("MCU %d\n", i);
@@ -209,7 +214,6 @@ int main(int argc, char *argv[]) {
     for (int k=0; k<nbcomp; k++) {
       print_v("COMP %d\n", k);
       uint64_t nbH = nbmcuH * img->comps->comps[k]->hsampling;
-      //uint64_t nbV = nbmcuV * img->comps->comps[k]->vsampling;
       for (int by=0; by<img->comps->comps[k]->vsampling; by++) {
 	for (int bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
 	  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
@@ -221,7 +225,10 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+  
   free(dc_prec);
+
+  // Affichage des temps d'exécution des différente partie
   start_timer();
   all_option.timer -= timerBloc[0];
   print_timer("Décodage DC/AC");
@@ -240,6 +247,7 @@ int main(int argc, char *argv[]) {
   fclose(fichier);
 
   start_timer();
+  // Si pas de fichier output donnée on le calcul en remplaçant le .jpeg par .pgm ou .ppm
   char *filename;
   char *fullfilename;
   if (all_option.outfile == NULL) {
@@ -295,7 +303,6 @@ int main(int argc, char *argv[]) {
 	uint8_t cb = yccUP[0][by*reelnbBlocH + bx]->data[px][py];
 	uint8_t cr = yccUP[1][by*reelnbBlocH + bx]->data[px][py];
 	rgb_t *pixel_rgb = ycc2rgb_pixel(y, cb, cr);
-        //fprintf(outfile, "%c%c%c", rgb->r, rgb->g, rgb->b);
 	rgb[i*3+0] = pixel_rgb->r;
 	rgb[i*3+1] = pixel_rgb->g;
 	rgb[i*3+2] = pixel_rgb->b;
