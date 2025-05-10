@@ -5,8 +5,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
-#include "iqzz.h"
-#include "vld.h"
+
+#include <iqzz.h>
+#include <vld.h>
 
 
 // Structure contenant une table de quantification et sa précision

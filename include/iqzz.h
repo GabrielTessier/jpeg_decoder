@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "jpeg2ppm.h"
+#include <jpeg2ppm.h>
 
 // Structure contenant une table de quantification dans un tableau 1x64 
 struct qtable_s {

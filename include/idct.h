@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "jpeg2ppm.h"
+#include <jpeg2ppm.h>
 
 // Remplit <stockage_coef> des coefficients
 // C(lambda)*C(mu) * cos((2x+1)*lambda*PI/16) * sin((2x+1)*lambda*PI/16)
