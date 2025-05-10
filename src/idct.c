@@ -1,8 +1,9 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "jpeg2ppm.h"
-#include "idct.h"
+
+#include <jpeg2ppm.h>
+#include <idct.h>
 
 #define M_PI 3.14159265358979323846
 

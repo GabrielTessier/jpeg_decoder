@@ -4,8 +4,9 @@
 #include <string.h>
 #include <sys/time.h>
 #include <stdlib.h>
-#include "vld.h"
-#include "options.h"
+
+#include <vld.h>
+#include <options.h>
 
 extern all_option_t all_option;
 

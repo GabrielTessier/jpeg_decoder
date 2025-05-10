@@ -1,7 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "ycc2rgb.h"
-#include "jpeg2ppm.h"
+
+#include <ycc2rgb.h>
+#include <jpeg2ppm.h>
 
 bloc_rgb_t *ycc2rgb_bloc(bloctu8_t y[64], bloctu8_t cb[64], bloctu8_t cr[64]) {
   bloc_rgb_t *rgb = (bloc_rgb_t*) malloc(sizeof(bloc_rgb_t));
