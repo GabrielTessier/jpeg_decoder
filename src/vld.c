@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "utils.h"
 #include "vld.h"
 
 // Retourne la valeur correspondant à <indice> sachant la magnitude <magnitude>.
@@ -43,8 +44,7 @@ static char my_getc(FILE* file, char old) {
   if (old == (char) 0xff) {
     old = fgetc(file);
     if (old != 0) {
-      fprintf(stderr, "Erreur : Pas de 0x00 après un 0xff (Pas bien !!)\n");
-      exit(EXIT_FAILURE);
+      erreur("Erreur : Pas de 0x00 après un 0xff (Pas bien !!)\n");
     }
   }
   char c = fgetc(file);
@@ -123,8 +123,7 @@ static int16_t *decode_list_coef(huffman_tree_t* ht, FILE* file, uint8_t *off, e
       if (symb_decode->droit == NULL && symb_decode->gauche == NULL) {
 	if (type == DC) {
 	  if (code_que_un) {
-	    fprintf(stderr, "Le code de huffman avec que des 1 est utilisé\n");
-	    exit(EXIT_FAILURE);
+	    erreur("Le code de huffman avec que des 1 est utilisé\n");
 	  }
 	  res[resi] = decode_coef_DC(file, symb_decode, &i, &c);
 	  code_que_un = true;

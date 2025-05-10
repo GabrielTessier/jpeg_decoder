@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sys/time.h>
 #include "vld.h"
 
 // Print sur la sortie standar si option verbose
@@ -19,3 +20,6 @@ void start_timer();
 
 // Print le text suivi de la valeur du timer (si option timer)
 void print_timer(char* text);
+
+// Print une erreur et exit le programme
+void erreur(const char* text, ...);

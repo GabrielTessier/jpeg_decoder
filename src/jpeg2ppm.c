@@ -1,14 +1,9 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <libgen.h>
-#include <math.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include "jpeg2ppm.h"
+#include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "iqzz.h"
 #include "idct.h"
 #include "idct_opt.h"
@@ -18,6 +13,7 @@
 #include "entete.h"
 #include "options.h"
 #include "utils.h"
+#include "jpeg2ppm.h"
 
 all_option_t all_option;
 

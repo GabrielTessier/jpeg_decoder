@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
-#include <stdarg.h>
 #include <math.h>
 #include "entete.h"
 #include "file.h"
@@ -127,18 +126,6 @@ void free_img(img_t *img) {
   free(img);
 }
 
-
-void erreur(const char* text, ...) {
-    fprintf(stderr, "ERREUR : ");
-    va_list args;
-    va_start(args, text);
-    vfprintf(stderr, text, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-    exit(EXIT_FAILURE);
-}
-
-
 static bool fichier_fini(FILE *fichier) {
     char c1 = fgetc(fichier);
     char c2 = fgetc(fichier);
@@ -146,7 +133,6 @@ static bool fichier_fini(FILE *fichier) {
     if (c1 == EOF && c2 == EOF) return true;
     return false;
 }
-
 
 static void verif_entete_baseline(img_t *img) {
     // Section APP0

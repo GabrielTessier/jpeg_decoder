@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include "vld.h"
 #include "options.h"
 
@@ -67,4 +68,14 @@ void print_timer(char* text) {
     fprintf(stdout, "%s : %f s\n", text, (float) (tt-all_option.timer)/1000000);
     all_option.timer = tt;
   }
+}
+
+void erreur(const char* text, ...) {
+    fprintf(stderr, "ERREUR : ");
+    va_list args;
+    va_start(args, text);
+    vfprintf(stderr, text, args);
+    va_end(args);
+    fprintf(stderr, "\n");
+    exit(EXIT_FAILURE);
 }
