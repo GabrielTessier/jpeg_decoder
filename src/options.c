@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "utils.h"
-#include "options.h"
+
+#include <utils.h>
+#include <options.h>
 
 enum option_type_e {LONGUE, COURTE};
 

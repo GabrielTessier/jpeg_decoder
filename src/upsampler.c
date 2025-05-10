@@ -1,7 +1,8 @@
 
 #include <stdlib.h>
-#include "entete.h"
-#include "jpeg2ppm.h"
+
+#include <entete.h>
+#include <jpeg2ppm.h>
 
 // Retourne un tableau 1xnb_composante upsamplés
 bloctu8_t ***upsampler(img_t *img, bloctu8_t ***ycc) {

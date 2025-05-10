@@ -4,9 +4,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
-#include "entete.h"
-#include "file.h"
-#include "vld.h"
+
+#include <entete.h>
+#include <file.h>
+#include <vld.h>
 
 
 // Structure liant un noeud d'un arbre de Huffman avec sa profondeur dans l'arbre

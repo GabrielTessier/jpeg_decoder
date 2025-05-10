@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "utils.h"
-#include "vld.h"
+
+#include <utils.h>
+#include <vld.h>
 
 // Retourne la valeur correspondant à <indice> sachant la magnitude <magnitude>.
 static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice);

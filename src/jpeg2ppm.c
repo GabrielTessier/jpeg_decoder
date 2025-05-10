@@ -4,16 +4,17 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "iqzz.h"
-#include "idct.h"
-#include "idct_opt.h"
-#include "upsampler.h"
-#include "vld.h"
-#include "ycc2rgb.h"
-#include "entete.h"
-#include "options.h"
-#include "utils.h"
-#include "jpeg2ppm.h"
+
+#include <iqzz.h>
+#include <idct.h>
+#include <idct_opt.h>
+#include <upsampler.h>
+#include <vld.h>
+#include <ycc2rgb.h>
+#include <entete.h>
+#include <options.h>
+#include <utils.h>
+#include <jpeg2ppm.h>
 
 all_option_t all_option;
 

@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
-#include "iqzz.h"
-#include "jpeg2ppm.h"
+
+#include <iqzz.h>
+#include <jpeg2ppm.h>
 
 
 blocl16_t *iquant(blocl16_t *entree, qtable_t *qtable) {
