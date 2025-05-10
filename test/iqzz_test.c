@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include "../src/iqzz.h"
+
+#include <iqzz.h>
 
 #define ANSI_RED     "\x1b[31m"
 #define ANSI_GREEN   "\x1b[32m"
