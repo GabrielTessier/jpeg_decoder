@@ -1,7 +1,7 @@
 #pragma once
 
-#include "entete.h"
-#include "jpeg2ppm.h"
+#include <entete.h>
+#include <jpeg2ppm.h>
 
 /* Entrées :
  * cb         : tableau 8x8 contenant les Cb

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "jpeg2ppm.h"
+#include <jpeg2ppm.h>
 
 struct rgb_s {
   uint8_t r, g, b;

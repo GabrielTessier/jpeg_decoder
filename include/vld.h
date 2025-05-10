@@ -2,7 +2,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include "jpeg2ppm.h"
+
+#include <jpeg2ppm.h>
 
 // Structure représentant un arbre de Huffman
 struct huffman_tree_s {

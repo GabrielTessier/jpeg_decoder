@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sys/time.h>
-#include "vld.h"
+#include <vld.h>
 
 // Print sur la sortie standar si option verbose
 void print_v(const char *format, ...);
