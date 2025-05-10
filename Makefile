@@ -4,13 +4,13 @@ LD = gcc
 # -O0 désactive les optimisations à la compilation
 # C'est utile pour débugger, par contre en "production"
 # on active au moins les optimisations de niveau 2 (-O2).
-CFLAGS_DEBUG = -Wall -Wextra -std=c99 -Iinclude -O0 -fsanitize=address,undefined -g -lm
+CFLAGS_DEBUG = -Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
 LDFLAGS_DEBUG = -fsanitize=address,undefined -lm
 
-CFLAGS_FAST = -std=c99 -Iinclude -Ofast -lm
+CFLAGS_FAST = -std=c99 -Iinclude/ -Ofast -lm
 LDFLAGS_FAST = -lm
 
-CFLAGS_SANS_OPT = -std=c99 -Iinclude -O0 -lm
+CFLAGS_SANS_OPT = -std=c99 -Iinclude/ -O0 -lm
 LDFLAGS_SANS_OPT = -lm
 
 # Par défaut, on compile tous les fichiers source (.c) qui se trouvent dans le
