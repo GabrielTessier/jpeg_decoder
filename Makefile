@@ -16,11 +16,13 @@ LDFLAGS_SANS_OPT = -lm
 # Par défaut, on compile tous les fichiers source (.c) qui se trouvent dans le
 # répertoire src/
 SRC_FILES=$(wildcard src/*.c)
+TEST_FILES=$(wildcard test/*.c)
 
 # Par défaut, la compilation de src/toto.c génère le fichier objet obj/toto.o
 OBJ_FILES_DEBUG=$(patsubst src/%.c,obj/debug/%.o,$(SRC_FILES))
 OBJ_FILES_FAST=$(patsubst src/%.c,obj/fast/%.o,$(SRC_FILES))
 OBJ_FILES_SANS_OPT=$(patsubst src/%.c,obj/sans_opt/%.o,$(SRC_FILES))
+OBJ_FILES_TEST=$(patsubst test/%.c, obj/test/%.o,$(TEST_FILES))$(patsubst test/%_test.c, obj/sans_opt/%.o,$(TEST_FILES))
 
 all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast
 
@@ -28,6 +30,8 @@ makedir :
 	mkdir -p obj/debug
 	mkdir -p obj/fast
 	mkdir -p obj/sans_opt
+	mkdir -p obj/test
+	mkdir -p build
 
 jpeg2ppm_sans_opt: makedir $(OBJ_FILES_SANS_OPT)
 	$(LD) $(OBJ_FILES_SANS_OPT) $(LDFLAGS_SANS_OPT) -o $@
@@ -40,6 +44,9 @@ jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG)
 jpeg2ppm_fast: makedir $(OBJ_FILES_FAST) 
 	$(LD) $(OBJ_FILES_FAST) $(LDFLAGS_FAST) -o $@
 
+test: makedir $(OBJ_FILES_TEST)
+	$(LD) $(OBJ_FILES_TEST) $(LDFLAGS_SANS_OPT) -o build/iqzz_test
+
 obj/debug/%.o: src/%.c
 	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
 
@@ -49,7 +56,10 @@ obj/fast/%.o: src/%.c
 obj/sans_opt/%.o: src/%.c
 	$(CC) -c $(CFLAGS_SANS_OPT) $< -o $@
 
+obj/test/%.o: test/%.c src/iqzz.c
+	$(CC) -c $(CFLAGS_SANS_OPT) $< -o $@
+
 .PHONY: clean
 
 clean:
-	rm -rf jpeg2ppm* obj/
+	rm -rf jpeg2ppm* obj/ build/
