@@ -1,10 +1,9 @@
-
 #include <stdlib.h>
 
 #include <entete.h>
 #include <jpeg2ppm.h>
 
-// Retourne un tableau 1xnb_composante upsamplés
+// Retourne un tableau 1xnb_composante upsamplé
 bloctu8_t ***upsampler(img_t *img, bloctu8_t ***ycc) {
   uint8_t nbcomp = img->comps->nb;
   bloctu8_t ***res = (bloctu8_t ***) malloc(sizeof(bloctu8_t**)*nbcomp);

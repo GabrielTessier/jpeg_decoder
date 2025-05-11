@@ -22,4 +22,8 @@ void start_timer();
 void print_timer(char* text);
 
 // Print une erreur et exit le programme
-void erreur(const char* text, ...);
+void erreur(const char *text, ...);
+
+// Affiche le résultat du test <test_name> du fichier <argv[0]> indiqué par
+// l'entier <test_var> (1 pour résussi, 0 pour raté)
+void test_res(int test_var, char *test_name, char *argv[]);
