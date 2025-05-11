@@ -69,16 +69,16 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    bloctu8_t ***ycc_up = upsampler(img, ycc);
+    bloctu8_t ***ycc_up = upsampler(&img, ycc);
     // bloctu8_t ***ycc_ref = (bloctu8_t ***) malloc(sizeof(bloctu8_t)*nb_composantes);
     int test_upsampler = 1;
     int nb_blocs = (h1*img.nbmcuH) * (v1*img.nbmcuV); // prévoir un test tronqué
     for (int j=0; j<nb_composantes; j++) {
       //ycc_ref[j] = (bloctu8_t **) malloc(sizeof(bloctu8_t *)*nb_blocs);
-      for (int k=0; k<nb_blocs; k++) {
+      for (int k=0; k<nb_blocs && test_upsampler; k++) {
         for (int l=0; l<8; l++) {
           for (int m=0; m<8; m++) {
-            uint8_t ref = 
+            uint8_t ref = 0;
             if (ycc_up[j][k]->data[l][m] != ref) {
               test_upsampler = 0; // TODO
             }
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
       }
     }
     char test_name[80];
-    sprintf(test_name, "HVs : %s %s %s %s %s %s\n", h1, v1, h2, v2, h3, v3);
+    sprintf(test_name, "HVs : %d %d %d %d %d %d\n", h1, v1, h2, v2, h3, v3);
     test_res(test_upsampler, test_name, argv);
   }
 }
