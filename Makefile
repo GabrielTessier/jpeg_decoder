@@ -22,7 +22,7 @@ TEST_FILES=$(wildcard test/*.c)
 OBJ_FILES_DEBUG=$(patsubst src/%.c,obj/debug/%.o,$(SRC_FILES))
 OBJ_FILES_FAST=$(patsubst src/%.c,obj/fast/%.o,$(SRC_FILES))
 OBJ_FILES_SANS_OPT=$(patsubst src/%.c,obj/sans_opt/%.o,$(SRC_FILES))
-OBJ_FILES_TEST=$(patsubst test/%.c, obj/test/%.o,$(TEST_FILES))$(patsubst test/%_test.c, obj/sans_opt/%.o,$(TEST_FILES))
+OBJ_FILES_TEST=$(patsubst test/%.c, obj/test/%.o,$(TEST_FILES))$(patsubst test/%_test.c, obj/sans_opt/%.o,$(TEST_FILES)) obj/sans_opt/utils.o
 
 all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast
 

@@ -1,20 +1,4 @@
-#include <stdio.h>
-
 #include <iqzz.h>
-
-#define ANSI_RED     "\x1b[31m"
-#define ANSI_GREEN   "\x1b[32m"
-#define ANSI_RESET   "\x1b[0m"
-
-// Affiche le résultat du test <test_name> du fichier <argv[0]> indiqué par
-// l'entier <test_var> (1 pour résussi, 0 pour raté)
-void test_res(int test_var, char *test_name, char *argv[]) {
-  if (test_var) {
-    printf("%s %s PASSED%s\t%s\n", argv[0], ANSI_GREEN, ANSI_RESET, test_name);
-  } else {
-    printf("%s %s FAILED%s\t%s\n", argv[0], ANSI_RED, ANSI_RESET, test_name);
-  }
-}
 
 int main(int argc, char* argv[]) {
   // test zig-zag inverse

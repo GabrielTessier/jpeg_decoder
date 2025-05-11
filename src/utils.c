@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -7,9 +6,14 @@
 
 #include <vld.h>
 #include <options.h>
+#include <utils.h>
+
+#define ANSI_RED   "\x1b[31m"
+#define ANSI_GREEN "\x1b[32m"
+#define ANSI_RESET "\x1b[0m"
+
 
 extern all_option_t all_option;
-
 
 void print_v(const char* format, ...) {
   if (all_option.verbose) {
@@ -79,4 +83,12 @@ void erreur(const char* text, ...) {
     va_end(args);
     fprintf(stderr, "\n");
     exit(EXIT_FAILURE);
+}
+
+void test_res(int test_var, char *test_name, char *argv[]) {
+  if (test_var) {
+    printf("%s %s PASSED%s\t%s\n", argv[0], ANSI_GREEN, ANSI_RESET, test_name);
+  } else {
+    printf("%s %s FAILED%s\t%s\n", argv[0], ANSI_RED, ANSI_RESET, test_name);
+  }
 }
