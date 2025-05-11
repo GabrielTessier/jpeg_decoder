@@ -39,7 +39,7 @@ makedir :
 jpeg2ppm_sans_opt: makedir $(OBJ_FILES_SANS_OPT)
 	$(LD) $(OBJ_FILES_SANS_OPT) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/$@
 	rm -f jpeg2ppm
-	ln -s $(BIN_DIR)/$@ $(BIN_DIR)/jpeg2ppm
+	ln -s $@ $(BIN_DIR)/jpeg2ppm
 
 jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG) 
 	$(LD) $(OBJ_FILES_DEBUG) $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
