@@ -2,4 +2,4 @@
 *.blabla
 obj/**
 out/**
-build/**
+bin/**
