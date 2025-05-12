@@ -29,6 +29,9 @@ OBJ_FILES_SANS_OPT=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/sans_opt/%.o,$(SRC_FILES
 # 				$(patsubst %.c,$(OBJ_DIR)/sans_opt/%.o,$(shell cat $(TEST_DIR)/test.txt))\
 # 				$(OBJ_DIR)/test/test_utils.o
 TEST_FILES=$(patsubst %.c,%_test,$(shell cat $(TEST_DIR)/test.txt))
+TEST_OPTION=debug
+CFLAGS_TEST=-Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
+LDFLAGS_TEST=-fsanitize=address,undefined -lm
 
 all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast test
 
@@ -58,17 +61,17 @@ test_run: test
 		./$(BIN_DIR)/$$exec; \
 	done
 
-idct_opt_test: $(OBJ_DIR)/test/idct_opt_test.o $(OBJ_DIR)/debug/idct_opt.o $(OBJ_DIR)/debug/idct.o $(OBJ_DIR)/test/test_utils.o
-	$(LD) $^ $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+idct_opt_test: $(OBJ_DIR)/test/idct_opt_test.o $(OBJ_DIR)/$(TEST_OPTION)/idct_opt.o $(OBJ_DIR)/$(TEST_OPTION)/idct.o $(OBJ_DIR)/test/test_utils.o
+	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
-entete_test: $(OBJ_DIR)/test/entete_test.o $(OBJ_DIR)/debug/entete.o $(OBJ_DIR)/debug/file.o $(OBJ_DIR)/debug/vld.o $(OBJ_DIR)/debug/utils.o $(OBJ_DIR)/test/test_utils.o
-	$(LD) $^ $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+entete_test: $(OBJ_DIR)/test/entete_test.o $(OBJ_DIR)/$(TEST_OPTION)/entete.o $(OBJ_DIR)/$(TEST_OPTION)/file.o $(OBJ_DIR)/$(TEST_OPTION)/vld.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/test/test_utils.o
+	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
-vld_test: $(OBJ_DIR)/test/vld_test.o $(OBJ_DIR)/debug/vld.o $(OBJ_DIR)/debug/utils.o $(OBJ_DIR)/debug/options.o $(OBJ_DIR)/test/test_utils.o
-	$(LD) $^ $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+vld_test: $(OBJ_DIR)/test/vld_test.o $(OBJ_DIR)/$(TEST_OPTION)/vld.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/$(TEST_OPTION)/options.o $(OBJ_DIR)/test/test_utils.o
+	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
-%_test: $(OBJ_DIR)/test/%_test.o $(OBJ_DIR)/debug/%.o $(OBJ_DIR)/test/test_utils.o 
-	$(LD) $(OBJ_DIR)/test/$@.o $(OBJ_DIR)/debug/$(patsubst %_test,%,$@).o $(OBJ_DIR)/test/test_utils.o $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+%_test: $(OBJ_DIR)/test/%_test.o $(OBJ_DIR)/$(TEST_OPTION)/%.o $(OBJ_DIR)/test/test_utils.o 
+	$(LD) $(OBJ_DIR)/test/$@.o $(OBJ_DIR)/$(TEST_OPTION)/$(patsubst %_test,%.o,$@) $(OBJ_DIR)/test/test_utils.o $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
 $(OBJ_DIR)/debug/%.o: src/%.c
 	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
@@ -80,10 +83,10 @@ $(OBJ_DIR)/sans_opt/%.o: src/%.c
 	$(CC) -c $(CFLAGS_SANS_OPT) $< -o $@
 
 $(OBJ_DIR)/test/%_test.o: test/%_test.c src/%.c
-	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
+	$(CC) -c $(CFLAGS_TEST) $< -o $@
 
 $(OBJ_DIR)/test/test_utils.o: test/test_utils.c
-	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
+	$(CC) -c $(CFLAGS_TEST) $< -o $@
 
 .PHONY: clean
 
