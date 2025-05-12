@@ -17,4 +17,4 @@
 //bloctu8_t ***upsampler(bloctu8_t **cb, bloctu8_t **cr, uint64_t nbBlockCbH, uint64_t nbBlockCbV, uint64_t nbBlockCrH, uint64_t nbBlockCrV, idcomp_t* yfact, idcomp_t* cbfact, idcomp_t* crfact);
 bloctu8_t ***upsampler_copy(img_t *img, bloctu8_t ***ycc);
 
-void upsampler(img_t *img, uint8_t y_id, uint64_t x, uint64_t y, uint64_t *yccx, uint64_t *yccy);
+void upsampler(uint8_t hf, uint8_t vf, uint64_t x, uint64_t y, uint64_t *yccx, uint64_t *yccy);

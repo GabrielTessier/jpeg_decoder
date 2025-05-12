@@ -3,9 +3,7 @@
 #include <entete.h>
 #include <jpeg2ppm.h>
 
-void upsampler(img_t *img, uint8_t comp_id, uint64_t x, uint64_t y, uint64_t *yccx, uint64_t *yccy) {
-  uint8_t hf = img->max_hsampling / img->comps->comps[comp_id]->hsampling;
-  uint8_t vf = img->max_vsampling / img->comps->comps[comp_id]->vsampling;
+void upsampler(uint8_t hf, uint8_t vf, uint64_t x, uint64_t y, uint64_t *yccx, uint64_t *yccy) {
   *yccx = x/hf;
   *yccy = y/vf;
 }

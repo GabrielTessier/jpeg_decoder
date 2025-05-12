@@ -280,18 +280,27 @@ int main(int argc, char *argv[]) {
       uint64_t nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
       uint64_t nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
       uint64_t nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
+      uint8_t yhf = img->max_hsampling / img->comps->comps[y_id]->hsampling;
+      uint8_t yvf = img->max_vsampling / img->comps->comps[y_id]->vsampling;
+      uint8_t cbhf = img->max_hsampling / img->comps->comps[cb_id]->hsampling;
+      uint8_t cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
+      uint8_t crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
+      uint8_t crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
       for (uint64_t y=0; y<img->height; y++) {
          char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
          uint64_t i = 0;
          for (uint64_t x=0; x<img->width; x++) {
             // On print le pixel de coordonnée (x,y)
             uint64_t px, py;
-            upsampler(img, y_id, x, y, &px, &py);
-            int8_t y_ycc = ycc[y_id][(py/8)*nb_blocYH + (px/8)]->data[px%8][py%8];
-            upsampler(img, cb_id, x, y, &px, &py);
-            int8_t cb_ycc = ycc[cb_id][(py/8)*nb_blocCbH + (px/8)]->data[px%8][py%8];
-            upsampler(img, cr_id, x, y, &px, &py);
-            int8_t cr_ycc = ycc[cr_id][(py/8)*nb_blocCrH + (px/8)]->data[px%8][py%8];
+            px = x/yhf;
+	    py = y/yvf;
+            int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
+            px = x/cbhf;
+	    py = y/cbvf;
+            int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
+            px = x/crhf;
+	    py = y/crvf;
+            int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
             rgb_t *pixel_rgb = ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc);
             rgb[i*3+0] = pixel_rgb->r;
             rgb[i*3+1] = pixel_rgb->g;
