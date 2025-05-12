@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     write(fd[1], out, 64*sizeof(int16_t));
     int status;
     waitpid(pid, &status, 0);
-    test_res((WEXITSTATUS(status) == EXIT_FAILURE && outsize[test] != 0) || WEXITSTATUS(status) == 2, argv, "Test %d", test+1);
+    test_res(!((WEXITSTATUS(status) == EXIT_FAILURE && outsize[test] != 0) || WEXITSTATUS(status) == 2), argv, "Test %d", test+1);
     close(fd[0]);
     close(fd[1]);
   }
