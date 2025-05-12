@@ -40,7 +40,7 @@ static bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float stockage_coef[8][
    if (hac == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
-   // On décode un bloc de l'image (et on cronomètre le temps)
+   // On décode un bloc de l'image (et on chronomètre le temps)
    start_timer();
    uint64_t time = all_option.timer;
    blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, off);
