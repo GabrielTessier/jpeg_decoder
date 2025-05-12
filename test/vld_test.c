@@ -15,8 +15,8 @@ all_option_t all_option;
 
 static void free_huffman_tree(huffman_tree_t *tree) {
   if (tree == NULL) return;
-  free_huffman_tree(tree->droit);
-  free_huffman_tree(tree->gauche);
+  free_huffman_tree(tree->fils[1]);
+  free_huffman_tree(tree->fils[0]);
   free(tree);
 }
 
@@ -24,24 +24,24 @@ int main(int argc, char **argv) {
   (void) argc; // Pour ne pas avoir un warnning unused variable
   
   huffman_tree_t *dc = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  dc->droit = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  dc->gauche = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  dc->gauche->symb = 3;
+  dc->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  dc->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  dc->fils[0]->symb = 3;
   // 0 -> 3
   // 1 -> Interdit
   
   huffman_tree_t *ac = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->gauche = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->gauche->symb = 0x00;
-  ac->droit = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->droit->gauche = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->droit->gauche->symb = 0xf0;
-  ac->droit->droit = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->droit->droit->gauche = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->droit->droit->gauche->symb = 0x80;
-  ac->droit->droit->droit = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->droit->droit->droit->gauche = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-  ac->droit->droit->droit->gauche->symb = 0x22;
+  ac->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[0]->symb = 0x00;
+  ac->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[0]->symb = 0xf0;
+  ac->fils[1]->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[1]->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[1]->fils[0]->symb = 0x80;
+  ac->fils[1]->fils[1]->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[1]->fils[1]->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[1]->fils[1]->fils[0]->symb = 0x22;
   // 0 -> 0x00
   // 10 -> 0xf0
   // 110 -> 0x80
@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
   int outsize[] = {2, 0, 5, 20, 0};
   uint8_t *blocs[] = {bloc1, bloc2, bloc3, bloc4, bloc5};
   int16_t *outs[] = {out1, out2, out3, out4, out5};
+  char *name[] = {"Test DC normal", "Test DC symbole interdit", "Test AC 0xalpha gamma", "Test AC 0xF0", "Test AC 0x?0"};
 
   for (int test=0; test<nb_test; test++) {
     int fd[2];
@@ -116,7 +117,7 @@ int main(int argc, char **argv) {
     write(fd[1], out, 64*sizeof(int16_t));
     int status;
     waitpid(pid, &status, 0);
-    test_res(!((WEXITSTATUS(status) == EXIT_FAILURE && outsize[test] != 0) || WEXITSTATUS(status) == 2), argv, "Test %d", test+1);
+    test_res(!((WEXITSTATUS(status) == EXIT_FAILURE && outsize[test] != 0) || WEXITSTATUS(status) == 2), argv, name[test]);
     close(fd[0]);
     close(fd[1]);
   }
