@@ -52,7 +52,7 @@ jpeg2ppm_fast: makedir $(OBJ_FILES_FAST)
 test: makedir $(TEST_FILES)
 
 test_run: test
-	@echo "\n---------- Début des tests ----------"
+	@echo -e "\n---------- Début des tests ----------"
 	@for exec in $(TEST_FILES); do \
 		./$(BIN_DIR)/$$exec; \
 	done
@@ -88,8 +88,3 @@ $(OBJ_DIR)/test/test_utils.o: test/test_utils.c
 
 clean:
 	rm -rf $(BIN_DIR)/jpeg2ppm* $(OBJ_DIR)/ $(BIN_DIR)/*_test
-
-
-
-# test: makedir $(OBJ_FILES_TEST) 
-# 	$(LD) $(OBJ_FILES_TEST) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/iqzz_test
