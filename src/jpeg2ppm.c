@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
          if (img->comps->ordre[i] == 3) cr_id = i;
       }
     
-      FILE *outputfile = fopen(fullfilename, "w+");
+      FILE *outputfile = fopen(fullfilename, "w");
       fprintf(outputfile, "P6\n");   // Magic number
       fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hauteur
       fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
@@ -293,15 +293,15 @@ int main(int argc, char *argv[]) {
             // On print le pixel de coordonnée (x,y)
             uint64_t px, py;
             px = x/yhf;
-	    py = y/yvf;
+            py = y/yvf;
             int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
             px = x/cbhf;
-	    py = y/cbvf;
+	         py = y/cbvf;
             int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
             px = x/crhf;
-	    py = y/crvf;
+	         py = y/crvf;
             int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
-	    rgb_t pixel_rgb;
+	         rgb_t pixel_rgb;
             ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
             rgb[i*3+0] = pixel_rgb.r;
             rgb[i*3+1] = pixel_rgb.g;
