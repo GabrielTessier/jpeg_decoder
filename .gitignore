@@ -1,5 +1,5 @@
-
 *.blabla
 obj/**
 out/**
 bin/**
+compile_flags.txt
