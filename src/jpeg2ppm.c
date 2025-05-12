@@ -286,8 +286,8 @@ int main(int argc, char *argv[]) {
       uint8_t cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
       uint8_t crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
       uint8_t crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
+      char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
       for (uint64_t y=0; y<img->height; y++) {
-         char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
          uint64_t i = 0;
          for (uint64_t x=0; x<img->width; x++) {
             // On print le pixel de coordonnée (x,y)
@@ -301,16 +301,16 @@ int main(int argc, char *argv[]) {
             px = x/crhf;
 	    py = y/crvf;
             int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
-            rgb_t *pixel_rgb = ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc);
-            rgb[i*3+0] = pixel_rgb->r;
-            rgb[i*3+1] = pixel_rgb->g;
-            rgb[i*3+2] = pixel_rgb->b;
-            free(pixel_rgb);
+	    rgb_t pixel_rgb;
+            ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
+            rgb[i*3+0] = pixel_rgb.r;
+            rgb[i*3+1] = pixel_rgb.g;
+            rgb[i*3+2] = pixel_rgb.b;
             i++;
          }
          fwrite(rgb, sizeof(char), img->width*3, outputfile);
-         free(rgb);
       }
+      free(rgb);
       fclose(outputfile);
    }
    print_timer("Affichage pixel");
