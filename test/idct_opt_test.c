@@ -32,6 +32,6 @@ int main(int argc, char *argv[]) {
   }
   free(ref);
   free(res);
-  test_res(test_idct_opt, "idct fast comparée à idct 'classique'", argv);
+  test_res(test_idct_opt, argv, "idct fast comparée à idct 'classique'");
   return 0;
 }

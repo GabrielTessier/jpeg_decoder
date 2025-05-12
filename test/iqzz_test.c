@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     }
   }
   free(res);
-  test_res(test_izz, "zig-zag inverse", argv);
+  test_res(test_izz, argv, "zig-zag inverse");
   
   // test quantification inverse
   blocl16_t line2;
@@ -56,6 +56,6 @@ int main(int argc, char* argv[]) {
     }
   }
   free(res2);
-  test_res(test_iq, "quantification inverse", argv);
+  test_res(test_iq, argv, "quantification inverse");
   return 0;
 }
