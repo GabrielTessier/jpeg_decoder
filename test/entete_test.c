@@ -27,20 +27,20 @@ void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t idq, uin
    // QTABLES
    for (int i=0; i<4; i++) {
       if (i == idq) {
-            if (img->qtables[i] == NULL) {
-               test_qtables = false;
+         if (img->qtables[i] == NULL) {
+            test_qtables = false;
+         }
+         else {
+            if (img->qtables[i]->precision != 0) test_qtables = false;
+            qtable_t *qtable = img->qtables[i]->qtable;
+            uint8_t ref[64] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+            for (int i=0; i<64; i++) {
+               if (qtable->data[i] != ref[i]) test_qtables = false;
             }
-            else {
-               if (img->qtables[i]->precision != 0) test_qtables = false;
-               qtable_t *qtable = img->qtables[i]->qtable;
-               uint8_t ref[64] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-               for (int i=0; i<64; i++) {
-                  if (qtable->data[i] != ref[i]) test_qtables = false;
-               }
-            }
+         }
       }
       else {
-            if (img->qtables[i] != NULL) test_qtables = false;
+         if (img->qtables[i] != NULL) test_qtables = false;
       }
    }
 
@@ -48,41 +48,41 @@ void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t idq, uin
    // DC
    for (int i=0; i<4; i++) {
       if (i == idhdc) {
-            if (img->htables->dc[i] == NULL) {
-               test_htables = false;
-            }
-            else {
-               if (img->htables->dc[i]->fils[0]->symb != 7) test_htables = false;
-            }
+         if (img->htables->dc[i] == NULL) {
+            test_htables = false;
+         }
+         else {
+            if (img->htables->dc[i]->fils[0]->symb != 7) test_htables = false;
+         }
       }
       else {
-            if (img->htables->dc[i] != NULL) test_htables = false;
+         if (img->htables->dc[i] != NULL) test_htables = false;
       }
    }
    // AC
    for (int i=1; i<4; i++) {
       if (i == idhac) {
-            if (img->htables->ac[i] == NULL) {
-               test_htables = false;
-            }
-            else {
-               huffman_tree_t *tree = img->htables->ac[i];
-               if (tree->fils[0]->fils[0]->symb != 0x17) test_htables = false;
-               if (tree->fils[0]->fils[1]->symb != 0x18) test_htables = false;
-               if (tree->fils[1]->fils[0]->fils[0]->symb != 0x15) test_htables = false;
-               if (tree->fils[1]->fils[0]->fils[1]->fils[0]->symb != 0x8) test_htables = false;
-               if (tree->fils[1]->fils[0]->fils[1]->fils[1]->symb != 0x19) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[0]->fils[0]->fils[0]->symb != 0x0) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[0]->fils[0]->fils[1]->symb != 0x9) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[0]->fils[1]->fils[0]->symb != 0x13) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[0]->fils[1]->fils[1]->symb != 0x23) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[1]->fils[0]->fils[0]->symb != 0x28) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[1]->fils[0]->fils[1]->symb != 0x29) test_htables = false;
-               if (tree->fils[1]->fils[1]->fils[1]->fils[1]->fils[0]->symb != 0x37) test_htables = false;
-            }
+         if (img->htables->ac[i] == NULL) {
+            test_htables = false;
+         }
+         else {
+            huffman_tree_t *tree = img->htables->ac[i];
+            if (tree->fils[0]->fils[0]->symb != 0x17) test_htables = false;
+            if (tree->fils[0]->fils[1]->symb != 0x18) test_htables = false;
+            if (tree->fils[1]->fils[0]->fils[0]->symb != 0x15) test_htables = false;
+            if (tree->fils[1]->fils[0]->fils[1]->fils[0]->symb != 0x8) test_htables = false;
+            if (tree->fils[1]->fils[0]->fils[1]->fils[1]->symb != 0x19) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[0]->fils[0]->fils[0]->symb != 0x0) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[0]->fils[0]->fils[1]->symb != 0x9) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[0]->fils[1]->fils[0]->symb != 0x13) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[0]->fils[1]->fils[1]->symb != 0x23) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[1]->fils[0]->fils[0]->symb != 0x28) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[1]->fils[0]->fils[1]->symb != 0x29) test_htables = false;
+            if (tree->fils[1]->fils[1]->fils[1]->fils[1]->fils[0]->symb != 0x37) test_htables = false;
+         }
       }
       else {
-            if (img->htables->ac[i] != NULL) test_htables = false;
+         if (img->htables->ac[i] != NULL) test_htables = false;
       }
    }
 
