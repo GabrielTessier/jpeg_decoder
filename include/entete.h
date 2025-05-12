@@ -38,7 +38,7 @@ typedef struct idcomp_s idcomp_t;
 // Structure contenant les informations sur les composantes de l'image
 struct comps_s {
     uint8_t nb;             // Nombre de composantes
-    uint8_t ordre[3];       // Ordre des composantes (au maximum 3 composantes)
+    uint8_t ordre[3];       // Ordre d'apparition des composantes en fonction de leur indice (au maximum 3 composantes)
     uint8_t precision_comp; // Précision des composantes (8 bits en baseline)
     idcomp_t *comps[3];     // Informations sur chaque composante (au maximum 3 composantes)
 };
