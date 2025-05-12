@@ -13,6 +13,7 @@ void test_res(bool test_var, char *argv[], char *format, ...) {
   va_start(args, format);
   char str[80];
   vsprintf(str, format, args);
+  va_end(args);
   if (test_var) {
     printf("%s %s\r\t\t\tPASSED%s %s\n", argv[0], GREEN_BOLD, ANSI_RESET, str);
   } else {
