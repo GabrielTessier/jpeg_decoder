@@ -52,7 +52,8 @@ jpeg2ppm_fast: makedir $(OBJ_FILES_FAST)
 test: makedir $(TEST_FILES)
 
 test_run: test
-	@echo -e "\n---------- Début des tests ----------"
+	@echo
+	@echo "---------- Début des tests ----------"
 	@for exec in $(TEST_FILES); do \
 		./$(BIN_DIR)/$$exec; \
 	done
