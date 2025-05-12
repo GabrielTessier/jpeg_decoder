@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include <test_utils.h>
+#include "test_utils.h"
 #include <iqzz.h>
 
 int main(int argc, char* argv[]) {

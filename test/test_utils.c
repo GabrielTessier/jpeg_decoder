@@ -7,8 +7,8 @@
 
 void test_res(int test_var, char *test_name, char *argv[]) {
   if (test_var) {
-    printf("%s %s PASSED%s\t%s\n", argv[0], GREEN_BOLD, ANSI_RESET, test_name);
+    printf("%s %s\r\t\t\tPASSED%s %s\n", argv[0], GREEN_BOLD, ANSI_RESET, test_name);
   } else {
-    printf("%s %s FAILED%s\t%s\n", argv[0], RED_BOLD, ANSI_RESET, test_name);
+    printf("%s %s\r\t\t\tFAILED%s\t%s\n", argv[0], RED_BOLD, ANSI_RESET, test_name);
   }
 }
