@@ -217,32 +217,32 @@ static void marqueur(FILE *fichier, img_t *img) {
     
    // On associe le marqueur à la bonne section
    switch (marqueur[1]) {
-   case (char) 0xc0:   // Section SOF0
-      sof0(fichier, img);
-      break;
-   case (char) 0xc4:   // Section DHT
-      dht(fichier, img);
-      break;
-   case (char) 0xd8:   // Section SOI
-      erreur("Plusieurs SOI");
-      break;
-   case (char) 0xd9:   // Section EOI
-      erreur("Image sans SOS (ou EOI avant SOS)");
-      break;
-   case (char) 0xda:   // Section SOS
-      sos(fichier, img);
-      break;
-   case (char) 0xdb:   // Section DQT
-      dqt(fichier, img);
-      break;
-   case (char) 0xe0:   // Section APP0
-      app0(fichier, img);
-      break;
-   case (char) 0xfe:   // Section COMM
-      com(fichier);
-      break; 
-   default: 
-      erreur("Marqueur inconnu : %x", marqueur[1]);
+      case (char) 0xc0:   // Section SOF0
+         sof0(fichier, img);
+         break;
+      case (char) 0xc4:   // Section DHT
+         dht(fichier, img);
+         break;
+      case (char) 0xd8:   // Section SOI
+         erreur("Plusieurs SOI");
+         break;
+      case (char) 0xd9:   // Section EOI
+         erreur("Image sans SOS (ou EOI avant SOS)");
+         break;
+      case (char) 0xda:   // Section SOS
+         sos(fichier, img);
+         break;
+      case (char) 0xdb:   // Section DQT
+         dqt(fichier, img);
+         break;
+      case (char) 0xe0:   // Section APP0
+         app0(fichier, img);
+         break;
+      case (char) 0xfe:   // Section COMM
+         com(fichier);
+         break; 
+      default: 
+         erreur("Marqueur inconnu : %x", marqueur[1]);
    } 
 }
 

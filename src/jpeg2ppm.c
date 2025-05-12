@@ -266,9 +266,9 @@ int main(int argc, char *argv[]) {
    } else if (nbcomp == 3) {     // YCbCr -> RGB
       uint8_t y_id, cb_id, cr_id;
       for (uint8_t i=0; i<nbcomp; i++) {
-         if (img->comps->ordre[i] == 1) y_id = i;
-         if (img->comps->ordre[i] == 2) cb_id = i;
-         if (img->comps->ordre[i] == 3) cr_id = i;
+         if (img->comps->comps[0]->idc == img->comps->ordre[i]) y_id = i;
+         if (img->comps->comps[1]->idc == img->comps->ordre[i]) cb_id = i;
+         if (img->comps->comps[2]->idc == img->comps->ordre[i]) cr_id = i;
       }
     
       FILE *outputfile = fopen(fullfilename, "w");
