@@ -93,6 +93,7 @@ static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, int16_t *res
   default:
     uint8_t alpha = symb_decode->symb >> 4;
     uint8_t gamma = symb_decode->symb & 0b00001111;
+    if (gamma == 0) erreur("Code invalide pour AC : %x", symb_decode->symb);
     *resi += alpha;
     res[*resi] = read_val_from_magnitude(file, gamma, off, c);
     (*resi)++;
