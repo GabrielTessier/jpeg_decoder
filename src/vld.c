@@ -116,13 +116,13 @@ static int16_t *decode_list_coef(huffman_tree_t* ht, FILE* file, uint8_t *off, e
     while (i<8) {
       // on regarde si le bit courant est 0 ou 1
       if (((c>>(7-i)) & 1) == 1) {
-	symb_decode = symb_decode->droit;
+	symb_decode = symb_decode->fils[1];
       } else {
-	symb_decode = symb_decode->gauche;
+	symb_decode = symb_decode->fils[0];
 	code_que_un = false;
       }
       // Si on a atteint une fauille
-      if (symb_decode->droit == NULL && symb_decode->gauche == NULL) {
+      if (symb_decode->fils[1] == NULL && symb_decode->fils[0] == NULL) {
 	if (type == DC) {
 	  if (code_que_un) {
 	    erreur("Le code de huffman avec que des 1 est utilisé\n");

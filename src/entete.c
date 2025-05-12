@@ -8,6 +8,7 @@
 #include <entete.h>
 #include <file.h>
 #include <vld.h>
+#include <utils.h>
 
 
 // Structure liant un noeud d'un arbre de Huffman avec sa profondeur dans l'arbre
@@ -39,9 +40,6 @@ static void free_other(other_t *other);
 // Libère la structure img
 void free_img(img_t *img);
 
-// Affiche un message d'erreur dans la sortie d'erreur et arrête le programme
-void erreur(const char* text, ...);
-
 // Indique si on a atteint la fin du fichier
 static bool fichier_fini(FILE *fichier);
 
@@ -49,7 +47,7 @@ static bool fichier_fini(FILE *fichier);
 static void verif_entete_baseline(img_t *img);
 
 // Initialise une structure img
-static img_t* init_img();
+img_t* init_img();
 
 // Décode et renvoie les informations de l'entête de l'image
 img_t* decode_entete(FILE *fichier);
@@ -89,25 +87,25 @@ static void free_qtables(qtable_prec_t **qtables) {
 }
 
 static void free_huffman_tree(huffman_tree_t *tree) {
-  if (tree == NULL) return;
-  free_huffman_tree(tree->droit);
-  free_huffman_tree(tree->gauche);
-  free(tree);
+    if (tree == NULL) return;
+    free_huffman_tree(tree->fils[0]);
+    free_huffman_tree(tree->fils[1]);
+    free(tree);
 }
 
 static void free_htables(htables_t *htables) {
-  for (int i=0; i<4; i++) {
-    if (htables->ac[i] != NULL) free_huffman_tree(htables->ac[i]);
-    if (htables->dc[i] != NULL) free_huffman_tree(htables->dc[i]);
-  }
-  free(htables);
+    for (int i=0; i<4; i++) {
+        if (htables->ac[i] != NULL) free_huffman_tree(htables->ac[i]);
+        if (htables->dc[i] != NULL) free_huffman_tree(htables->dc[i]);
+    }
+    free(htables);
 }
 
 static void free_comps(comps_t *comps) {
-  free(comps->comps[0]);
-  free(comps->comps[1]);
-  free(comps->comps[2]);
-  free(comps);
+    for (int i=0; i<3; i++) {
+        if (comps->comps[i] != NULL) free(comps->comps[i]);
+    }
+    free(comps);
 }
 
 static void free_section_done(section_done_t *section) {
@@ -115,16 +113,16 @@ static void free_section_done(section_done_t *section) {
 }
 
 static void free_other(other_t *other) {
-  free(other);
+    free(other);
 }
 
 void free_img(img_t *img) {
-  free_qtables(img->qtables);
-  free_htables(img->htables);
-  free_comps(img->comps);
-  free_section_done(img->section);
-  free_other(img->other);
-  free(img);
+    free_qtables(img->qtables);
+    free_htables(img->htables);
+    free_comps(img->comps);
+    free_section_done(img->section);
+    free_other(img->other);
+    free(img);
 }
 
 static bool fichier_fini(FILE *fichier) {
@@ -150,7 +148,7 @@ static void verif_entete_baseline(img_t *img) {
 }
 
 
-static img_t* init_img() {
+img_t* init_img() {
     img_t *img = calloc(1,sizeof(img_t));
     img->htables = calloc(1,sizeof(htables_t));
     img->comps = calloc(1,sizeof(comps_t));
@@ -160,8 +158,8 @@ static img_t* init_img() {
 }
 
 static void calcul_image_information(img_t *img) {
-  // Nombre du bloc horizontalement et verticalement
-  // (Plus petit que le vrai nombre car le prend pas en compte les MCU)
+  // Nombre de bloc horizontalement et verticalement
+  // (Plus petit que le vrai nombre car ne prend pas en compte les MCU)
   int faux_nb_bloc_H = ceil((float)img->width / 8);
   int faux_nb_bloc_V = ceil((float)img->height / 8);
 
@@ -251,6 +249,7 @@ static void marqueur(FILE *fichier, img_t *img) {
 
 static void app0(FILE *fichier, img_t *img) {
     // Vérification de la longueur de la section APP0
+    // La section APP0 est obligatoirement de longueur 16
     uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
     if (length != 16) erreur("[APP0] Longueur section APP0 incorrect");
 
@@ -266,7 +265,10 @@ static void app0(FILE *fichier, img_t *img) {
 
 
 static void com(FILE *fichier) {
+    // Vérification de la longueur de la section COM
     uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
+    if (length < 2) erreur("[COM] Longueur section COM incorrect");
+
     // On ignore les commentaires
     fseek(fichier, length-2, SEEK_CUR);
 }
@@ -362,12 +364,12 @@ static void remplir_huffman(huffman_tree_t *htable, uint16_t nb_symb, uint8_t le
         }
         // Sinon on crée les fils gauche et droit et on augmente la profondeur
         else {
-            tree->gauche = calloc(1,sizeof(huffman_tree_t));
-            tree->droit = calloc(1,sizeof(huffman_tree_t));
+            tree->fils[0] = calloc(1,sizeof(huffman_tree_t));
+            tree->fils[1] = calloc(1,sizeof(huffman_tree_t));
             couple_tree_depth_t *couple1 = malloc(sizeof(couple_tree_depth_t));
             couple_tree_depth_t *couple2 = malloc(sizeof(couple_tree_depth_t));
-            couple1->tree = tree->gauche;
-            couple2->tree = tree->droit;
+            couple1->tree = tree->fils[0];
+            couple2->tree = tree->fils[1];
             couple1->depth = depth + 1;
             couple2->depth = depth + 1;
 

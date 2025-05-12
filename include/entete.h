@@ -75,11 +75,11 @@ struct img_s {
     comps_t *comps;             // Composantes de l'image
     section_done_t *section;    // Avancement des sections 
     other_t *other;             // Autres informations à vérifier
-    uint8_t max_hsampling;	// Sampling horizontale maximal
-    uint8_t max_vsampling;	// Sampling verticale maximal
-    uint64_t nbmcuH;		// Nombre de mcu horizontalement
-    uint64_t nbmcuV;		// Nombre de mcu verticalement
-    uint64_t nbMCU;		// Nombre total de mcu
+    uint8_t max_hsampling;	    // Sampling horizontale maximal
+    uint8_t max_vsampling;	    // Sampling verticale maximal
+    uint64_t nbmcuH;		    // Nombre de mcu horizontalement
+    uint64_t nbmcuV;		    // Nombre de mcu verticalement
+    uint64_t nbMCU;		        // Nombre total de mcu
 };
 typedef struct img_s img_t;
 
@@ -87,8 +87,8 @@ typedef struct img_s img_t;
 // Libère la structure img
 void free_img(img_t *img);
 
-// Affiche un message d'erreur dans la sortie d'erreur et arrête le programme
-void erreur(const char* text, ...);
+// Initialise une structure img
+img_t* init_img();
 
 // Décode et renvoie les informations de l'entête de l'image
 img_t* decode_entete(FILE *fichier);

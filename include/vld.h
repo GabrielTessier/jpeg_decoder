@@ -7,7 +7,8 @@
 
 // Structure représentant un arbre de Huffman
 struct huffman_tree_s {
-  struct huffman_tree_s *gauche, *droit;
+  // fils[0] représente le fils gauche et fils[1] le fils droit
+  struct huffman_tree_s *fils[2];
   uint8_t symb;
 };
 typedef struct huffman_tree_s huffman_tree_t;

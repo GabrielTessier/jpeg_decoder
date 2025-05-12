@@ -21,15 +21,15 @@ void print_v(const char* format, ...) {
 }
 
 static void print_hufftable_acu(char* acu, huffman_tree_t* tree) {
-  if (tree->droit == NULL && tree->gauche == NULL) {
+  if (tree->fils[0] == NULL && tree->fils[1] == NULL) {
     print_v("path : %s symbol : %x\n", acu, tree->symb);
     return;
   }
   int i = strlen(acu);
   acu[i] = '0';
-  print_hufftable_acu(acu, tree->gauche);
+  print_hufftable_acu(acu, tree->fils[0]);
   acu[i] = '1';
-  print_hufftable_acu(acu, tree->droit);
+  print_hufftable_acu(acu, tree->fils[1]);
   acu[i] = 0;
 }
 
