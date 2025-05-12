@@ -88,8 +88,3 @@ $(OBJ_DIR)/test/test_utils.o: test/test_utils.c
 
 clean:
 	rm -rf $(BIN_DIR)/jpeg2ppm* $(OBJ_DIR)/ $(BIN_DIR)/*_test
-
-
-
-# test: makedir $(OBJ_FILES_TEST) 
-# 	$(LD) $(OBJ_FILES_TEST) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/iqzz_test
