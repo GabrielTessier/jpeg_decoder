@@ -20,7 +20,7 @@ void main(int argc, char *argv[]) {
     // TAILLE
     if (img->height != 8) test_taille = 0;
     if (img->width != 8) test_taille = 0;
-    test_res(test_taille, "décode taille", argv);
+    test_res(test_taille, argv, "décode taille");
 
     // QTABLES
     if (img->qtables[0]->precision != 0) test_qtables = 0;
@@ -32,7 +32,7 @@ void main(int argc, char *argv[]) {
     for (int i=1; i<4; i++) {
         if (img->qtables[i] != NULL) test_qtables = 0;
     }
-    test_res(test_qtables, "décode qtables", argv);
+    test_res(test_qtables, argv, "décode qtables");
 
     // HTABLES
     // DC
@@ -57,7 +57,7 @@ void main(int argc, char *argv[]) {
     for (int i=1; i<4; i++) {
         if (img->htables->ac[i] != NULL) test_htables = 0;
     }
-    test_res(test_htables, "décode htables", argv);
+    test_res(test_htables, argv, "décode htables");
 
     // COMPS
     if (img->comps->nb != 1) test_comps = 0;
@@ -73,7 +73,7 @@ void main(int argc, char *argv[]) {
     if (img->comps->comps[0]->idq != 0) test_comps = 0;
     if (img->comps->comps[1] != NULL) test_comps = 0;
     if (img->comps->comps[2] != NULL) test_comps = 0;
-    test_res(test_comps, "décode comps", argv);
+    test_res(test_comps, argv, "décode comps");
 
     // OTHER
     if (strcmp(img->other->jfif,"JFIF") != 0) test_other = 0;
@@ -83,18 +83,18 @@ void main(int argc, char *argv[]) {
     if (img->other->se != 63) test_other = 0;
     if (img->other->ah != 0) test_other = 0;
     if (img->other->al != 0) test_other = 0;
-    test_res(test_other, "décode other", argv);
+    test_res(test_other, argv, "décode other");
 
     // SAMPLING
     if (img->max_hsampling != 1) test_sampling = 0;
     if (img->max_vsampling != 1) test_sampling = 0;
-    test_res(test_sampling, "décode sampling max", argv);
+    test_res(test_sampling, argv, "décode sampling max");
 
     // MCU
     if (img->nbmcuH != 1) test_mcu = 0;
     if (img->nbmcuV != 1) test_mcu = 0;
     if (img->nbMCU != 1) test_mcu = 0;
-    test_res(test_mcu, "décode nb mcu", argv);
+    test_res(test_mcu, argv, "décode nb mcu");
 
     free_img(img);
 }
