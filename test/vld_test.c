@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
       read(fd[0], out, 64*sizeof(int16_t));
       for (int i=0; i<64; i++) {
 	if (bl->data[i] != out[i]) {
-	  exit(2);
+	  exit(2);  // Code d'erreur 2 dans le cas où le bloc décodé n'est pas bon
 	}
       }
       fclose(f);
