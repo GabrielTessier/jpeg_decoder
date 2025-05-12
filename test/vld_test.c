@@ -131,6 +131,8 @@ int main(int argc, char **argv) {
     close(fd[1]);
   }
 
+  test_res(false, argv, "toto");
+
   free_huffman_tree(ac);
   free_huffman_tree(dc);
   
