@@ -20,7 +20,7 @@ all_option_t all_option;
 
 // Décode un bloc
 // fichier       : le fichier image
-// img           : la structure contenant toutes les données de l'image (obtenue à partir de l'en-tête)
+// img           : la structure contenant toutes les données de l'image (obtenue à partir de l'entête)
 // stockage_coef : le tableau 8x8x8x8 des coefficients utilisés dans l'iDCT
 // comp          : indice de la composante
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
    if (fichier == NULL)
       erreur("Erreur : fichier introuvable.");
   
-   // Parsing de l'en-tête
+   // Parsing de l'entête
    start_timer();
    img_t *img = decode_entete(fichier);
    print_timer("Décodage entête");
@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
          if (img->comps->ordre[i] == 3) cr_id = i;
       }
     
-      FILE *outputfile = fopen(fullfilename, "w+");
+      FILE *outputfile = fopen(fullfilename, "w");
       fprintf(outputfile, "P6\n");   // Magic number
       fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hauteur
       fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
@@ -286,31 +286,31 @@ int main(int argc, char *argv[]) {
       uint8_t cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
       uint8_t crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
       uint8_t crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
+      char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
       for (uint64_t y=0; y<img->height; y++) {
-         char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
          uint64_t i = 0;
          for (uint64_t x=0; x<img->width; x++) {
             // On print le pixel de coordonnée (x,y)
             uint64_t px, py;
             px = x/yhf;
-	    py = y/yvf;
+            py = y/yvf;
             int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
             px = x/cbhf;
-	    py = y/cbvf;
+	         py = y/cbvf;
             int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
             px = x/crhf;
-	    py = y/crvf;
+	         py = y/crvf;
             int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
-            rgb_t *pixel_rgb = ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc);
-            rgb[i*3+0] = pixel_rgb->r;
-            rgb[i*3+1] = pixel_rgb->g;
-            rgb[i*3+2] = pixel_rgb->b;
-            free(pixel_rgb);
+	         rgb_t pixel_rgb;
+            ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
+            rgb[i*3+0] = pixel_rgb.r;
+            rgb[i*3+1] = pixel_rgb.g;
+            rgb[i*3+2] = pixel_rgb.b;
             i++;
          }
          fwrite(rgb, sizeof(char), img->width*3, outputfile);
-         free(rgb);
       }
+      free(rgb);
       fclose(outputfile);
    }
    print_timer("Affichage pixel");
@@ -329,14 +329,14 @@ int main(int argc, char *argv[]) {
    }
    free(ycc);
 
-   // Free en-tête
+   // Free entête
    free_img(img);
    print_timer("Libération mémoire");
   
    if (all_option.print_time) {
       struct timeval t;
       gettimeofday(&t, NULL);
-      fprintf(stdout, "temps total : %f s\n", (float) (cast_time(t)-all_option.abs_timer)/1000000);
+      fprintf(stdout, "Temps total : %f s\n", (float) (cast_time(t)-all_option.abs_timer)/1000000);
    }
    return 0;
 }
