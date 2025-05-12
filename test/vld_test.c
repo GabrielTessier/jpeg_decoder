@@ -21,6 +21,8 @@ static void free_huffman_tree(huffman_tree_t *tree) {
 }
 
 int main(int argc, char **argv) {
+  (void) argc; // Pour ne pas avoir un warnning unused variable
+  
   huffman_tree_t *dc = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
   dc->droit = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
   dc->gauche = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
@@ -96,7 +98,7 @@ int main(int argc, char **argv) {
       blocl16_t *bl = decode_bloc_acdc(f, dc, ac, &dc_prec, &off);
       int16_t out[64];
       read(fd[0], out, 64*sizeof(int16_t));
-      for (size_t i=0; i<64; i++) {
+      for (int i=0; i<64; i++) {
 	if (bl->data[i] != out[i]) {
 	  exit(2);
 	}
@@ -107,7 +109,7 @@ int main(int argc, char **argv) {
       exit(EXIT_SUCCESS);
     }
     int16_t out[64];
-    for (size_t i=0; i<64; i++) {
+    for (int i=0; i<64; i++) {
       if (i<outsize[test]) out[i] = outs[test][i];
       else out[i] = 0;
     }
