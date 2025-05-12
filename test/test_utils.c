@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <test_utils.h>
+#include "test_utils.h"
 
 #define RED_BOLD   "\e[1;31m"
 #define GREEN_BOLD "\e[1;32m"
