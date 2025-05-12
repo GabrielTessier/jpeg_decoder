@@ -42,11 +42,15 @@ int main(int argc, char **argv) {
   ac->fils[1]->fils[1]->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
   ac->fils[1]->fils[1]->fils[1]->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
   ac->fils[1]->fils[1]->fils[1]->fils[0]->symb = 0x22;
+  ac->fils[1]->fils[1]->fils[1]->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[1]->fils[1]->fils[1]->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
+  ac->fils[1]->fils[1]->fils[1]->fils[1]->fils[0]->symb = 0x3b;
   // 0 -> 0x00
   // 10 -> 0xf0
   // 110 -> 0x80
   // 1110 -> 0x22
-  // 1111 -> Interdit
+  // 11110 -> 0x3b
+  // 11111 -> Interdit
 
   // DC = 6
   // AC = 0 ...
@@ -73,12 +77,17 @@ int main(int argc, char **argv) {
   uint8_t bloc5[] = {0b01101100};
   int16_t out5[] = {};
 
-  int nb_test = 5;
-  int bsize[] = {1, 1, 2, 2, 1};
-  int outsize[] = {2, 0, 5, 20, 0};
-  uint8_t *blocs[] = {bloc1, bloc2, bloc3, bloc4, bloc5};
-  int16_t *outs[] = {out1, out2, out3, out4, out5};
-  char *name[] = {"Test DC normal", "Test DC symbole interdit", "Test AC 0xalpha gamma", "Test AC 0xF0", "Test AC 0x?0"};
+  // DC = 6
+  // AC = 000 1026 0...
+  uint8_t bloc6[] = {0b01101111, 0b01000000, 0b00100000};
+  int16_t out6[] = {6, 0, 0, 0, 1026, 0};
+
+  int nb_test = 6;
+  int bsize[] = {1, 1, 2, 2, 1, 3};
+  int outsize[] = {2, 0, 5, 20, 0, 6};
+  uint8_t *blocs[] = {bloc1, bloc2, bloc3, bloc4, bloc5, bloc6};
+  int16_t *outs[] = {out1, out2, out3, out4, out5, out6};
+  char *name[] = {"Test DC normal", "Test DC symbole interdit", "Test AC 0xalpha gamma", "Test AC 0xF0", "Test AC 0x?0", "Test avec magnitude supérieure à 8"};
 
   for (int test=0; test<nb_test; test++) {
     int fd[2];
