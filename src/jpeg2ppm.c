@@ -20,7 +20,7 @@ all_option_t all_option;
 
 // Décode un bloc
 // fichier       : le fichier image
-// img           : la structure contenant toutes les données de l'image (obtenue à partir de l'en-tête)
+// img           : la structure contenant toutes les données de l'image (obtenue à partir de l'entête)
 // stockage_coef : le tableau 8x8x8x8 des coefficients utilisés dans l'iDCT
 // comp          : indice de la composante
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
    if (fichier == NULL)
       erreur("Erreur : fichier introuvable.");
   
-   // Parsing de l'en-tête
+   // Parsing de l'entête
    start_timer();
    img_t *img = decode_entete(fichier);
    print_timer("Décodage entête");
@@ -329,14 +329,14 @@ int main(int argc, char *argv[]) {
    }
    free(ycc);
 
-   // Free en-tête
+   // Free entête
    free_img(img);
    print_timer("Libération mémoire");
   
    if (all_option.print_time) {
       struct timeval t;
       gettimeofday(&t, NULL);
-      fprintf(stdout, "temps total : %f s\n", (float) (cast_time(t)-all_option.abs_timer)/1000000);
+      fprintf(stdout, "Temps total : %f s\n", (float) (cast_time(t)-all_option.abs_timer)/1000000);
    }
    return 0;
 }
