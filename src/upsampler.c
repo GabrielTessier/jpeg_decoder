@@ -26,8 +26,11 @@ bloctu8_t ***upsampler(img_t *img, bloctu8_t ***ycc) {
 
     if (facteurH == 1 && facteurV == 1) {
       for (uint64_t i=0; i<nb_blocH*nb_blocV; i++) {
-	for (uint8_t k=0; k<8; k++) for (uint8_t l=0; l<8; l++)
-				      res[c][i]->data[k][l] = ycc[c][i]->data[k][l];
+        for (uint8_t k=0; k<8; k++) {
+          for (uint8_t l=0; l<8; l++) {
+            res[c][i]->data[k][l] = ycc[c][i]->data[k][l];
+          }
+        }
       }
     }
   

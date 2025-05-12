@@ -25,7 +25,11 @@ TEST_FILES=$(wildcard $(TEST_DIR)/*.c)
 OBJ_FILES_DEBUG=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/debug/%.o,$(SRC_FILES))
 OBJ_FILES_FAST=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/fast/%.o,$(SRC_FILES))
 OBJ_FILES_SANS_OPT=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/sans_opt/%.o,$(SRC_FILES))
-OBJ_FILES_TEST=$(patsubst $(TEST_DIR)/%.c, $(OBJ_DIR)/test/%.o,$(TEST_FILES))$(patsubst $(TEST_DIR)/%_test.c, $(OBJ_DIR)/sans_opt/%.o,$(TEST_FILES)) $(OBJ_DIR)/sans_opt/utils.o
+#OBJ_FILES_TEST=$(patsubst $(TEST_DIR)/%.c, $(OBJ_DIR)/test/%.o,$(TEST_FILES))$(patsubst $(TEST_DIR)/%_test.c, $(OBJ_DIR)/sans_opt/%.o,$(TEST_FILES)) $(OBJ_DIR)/sans_opt/utils.o
+OBJ_FILES_TEST= $(patsubst %.c, $(OBJ_DIR)/test/%_test.o, $(shell cat $(TEST_DIR)/test.txt))\
+				$(patsubst %.c, $(OBJ_DIR)/sans_opt/%.o, $(shell cat $(TEST_DIR)/test.txt))\
+				$(OBJ_DIR)/test/test_utils.o
+TEST_FILES=$(patsubst %.c, %_test, $(shell cat $(TEST_DIR)/test.txt))
 
 all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast test
 
@@ -38,8 +42,7 @@ makedir :
 
 jpeg2ppm_sans_opt: makedir $(OBJ_FILES_SANS_OPT)
 	$(LD) $(OBJ_FILES_SANS_OPT) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/$@
-	rm -f jpeg2ppm
-	ln -s $@ $(BIN_DIR)/jpeg2ppm
+	ln -f -s $@ $(BIN_DIR)/jpeg2ppm
 
 jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG) 
 	$(LD) $(OBJ_FILES_DEBUG) $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
@@ -47,8 +50,15 @@ jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG)
 jpeg2ppm_fast: makedir $(OBJ_FILES_FAST) 
 	$(LD) $(OBJ_FILES_FAST) $(LDFLAGS_FAST) -o $(BIN_DIR)/$@
 
-test: makedir $(OBJ_FILES_TEST)
-	$(LD) $(OBJ_FILES_TEST) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/iqzz_test
+test: makedir $(TEST_FILES)
+
+test_run: test
+	for exec in $(TEST_FILES); do \
+		./$(BIN_DIR)/$$exec; \
+	done
+
+%_test: $(OBJ_DIR)/test/%_test.o $(OBJ_DIR)/debug/%.o $(OBJ_DIR)/test/test_utils.o
+	$(LD) $(OBJ_DIR)/test/$@.o $(OBJ_DIR)/debug/$(patsubst %_test,%,$@).o $(OBJ_DIR)/test/test_utils.o $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
 
 $(OBJ_DIR)/debug/%.o: src/%.c
 	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
@@ -59,10 +69,18 @@ $(OBJ_DIR)/fast/%.o: src/%.c
 $(OBJ_DIR)/sans_opt/%.o: src/%.c
 	$(CC) -c $(CFLAGS_SANS_OPT) $< -o $@
 
-$(OBJ_DIR)/test/%.o: test/%.c src/iqzz.c
-	$(CC) -c $(CFLAGS_SANS_OPT) $< -o $@
+$(OBJ_DIR)/test/%_test.o: test/%_test.c src/%.c
+	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
+
+$(OBJ_DIR)/test/test_utils.o: test/test_utils.c
+	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
 
 .PHONY: clean
 
 clean:
-	rm -rf $(BIN_DIR)/jpeg2ppm* obj/ $(BIN_DIR)/iqzz_test
+	rm -rf $(BIN_DIR)/jpeg2ppm* $(OBJ_DIR)/ $(BIN_DIR)/*_test
+
+
+
+# test: makedir $(OBJ_FILES_TEST) 
+# 	$(LD) $(OBJ_FILES_TEST) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/iqzz_test

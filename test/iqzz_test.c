@@ -1,7 +1,11 @@
-#include <utils.h>
+#include <stdlib.h>
+
+#include <test_utils.h>
 #include <iqzz.h>
 
 int main(int argc, char* argv[]) {
+  // pour éviter une erreur à la compilation
+  (void) argc;
   // test zig-zag inverse
   blocl16_t line;
   for (int i=0; i<64; i++) {
@@ -32,6 +36,7 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+  free(res);
   test_res(test_izz, "zig-zag inverse", argv);
   
   // test quantification inverse
@@ -41,15 +46,16 @@ int main(int argc, char* argv[]) {
     line2.data[i] = line.data[i]*2;
     qt.data[i] = line.data[i];
   }
-  blocl16_t res2;
-  res2 = *iquant(&line2, &qt);
+  blocl16_t *res2;
+  res2 = iquant(&line2, &qt);
   // Vérification
   int test_iq = 1;
   for (int i=0; i<64; i++) {
-    if (res2.data[i] != qt.data[i]*line2.data[i]) {
+    if (res2->data[i] != qt.data[i]*line2.data[i]) {
       test_iq = 0;
     }
   }
+  free(res2);
   test_res(test_iq, "quantification inverse", argv);
   return 0;
 }
