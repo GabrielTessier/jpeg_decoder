@@ -58,7 +58,13 @@ test_run: test
 	done
 
 idct_opt_test: $(OBJ_DIR)/test/idct_opt_test.o $(OBJ_DIR)/debug/idct_opt.o $(OBJ_DIR)/debug/idct.o $(OBJ_DIR)/test/test_utils.o
-	$(LD) $(OBJ_DIR)/test/idct_opt_test.o $(OBJ_DIR)/debug/idct_opt.o $(OBJ_DIR)/debug/idct.o $(OBJ_DIR)/test/test_utils.o $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+	$(LD) $^ $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+
+entete_test: $(OBJ_DIR)/test/entete_test.o $(OBJ_DIR)/debug/entete.o $(OBJ_DIR)/debug/file.o $(OBJ_DIR)/debug/vld.o $(OBJ_DIR)/debug/utils.o $(OBJ_DIR)/test/test_utils.o
+	$(LD) $^ $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
+
+vld_test: $(OBJ_DIR)/test/vld_test.o $(OBJ_DIR)/debug/vld.o $(OBJ_DIR)/debug/utils.o $(OBJ_DIR)/debug/options.o $(OBJ_DIR)/test/test_utils.o
+	$(LD) $^ $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
 
 %_test: $(OBJ_DIR)/test/%_test.o $(OBJ_DIR)/debug/%.o $(OBJ_DIR)/test/test_utils.o 
 	$(LD) $(OBJ_DIR)/test/$@.o $(OBJ_DIR)/debug/$(patsubst %_test,%,$@).o $(OBJ_DIR)/test/test_utils.o $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
