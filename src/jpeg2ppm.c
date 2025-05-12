@@ -264,12 +264,12 @@ int main(int argc, char *argv[]) {
     fclose(outputfile);
   } else if (nbcomp == 3) {     // YCbCr -> RGB
     // Upsampler
-    bloctu8_t ***yccUP = ycc;
-    if (img->max_hsampling != 1 || img->max_vsampling != 1) {
-      start_timer();
-      yccUP = upsampler(img, ycc);
-      print_timer("Up sampler");
-    }
+    //bloctu8_t ***yccUP = ycc;
+    //if (img->max_hsampling != 1 || img->max_vsampling != 1) {
+    //  start_timer();
+    //  yccUP = upsampler(img, ycc);
+    //  print_timer("Up sampler");
+    //}
 
     uint8_t y_id, cb_id, cr_id;
     for (uint8_t i=0; i<nbcomp; i++) {
@@ -284,20 +284,22 @@ int main(int argc, char *argv[]) {
     fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
     // Impression des pixels
     print_v("width: %d, height: %d\n", img->width, img->height);
-    uint64_t nb_blocH = img->nbmcuH * img->max_hsampling;
+    uint64_t nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
+    uint64_t nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
+    uint64_t nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
     for (uint64_t y=0; y<img->height; y++) {
       char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
       uint64_t i = 0;
       for (uint64_t x=0; x<img->width; x++) {
         // On print le pixel de coordonnée (x,y)
-	uint64_t bx = x/8;  // bx-ieme bloc horizontalement
-        uint64_t by = y/8;  // by-ieme bloc verticalement
-        uint64_t px = x%8;
-        uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-	uint8_t y = yccUP[y_id][by*nb_blocH + bx]->data[px][py];
-	uint8_t cb = yccUP[cb_id][by*nb_blocH + bx]->data[px][py];
-	uint8_t cr = yccUP[cr_id][by*nb_blocH + bx]->data[px][py];
-	rgb_t *pixel_rgb = ycc2rgb_pixel(y, cb, cr);
+        uint64_t px, py;
+	upsampler(img, y_id, x, y, &px, &py);
+        int8_t y_ycc = ycc[y_id][(py/8)*nb_blocYH + (px/8)]->data[px%8][py%8];
+	upsampler(img, cb_id, x, y, &px, &py);
+        int8_t cb_ycc = ycc[cb_id][(py/8)*nb_blocCbH + (px/8)]->data[px%8][py%8];
+	upsampler(img, cr_id, x, y, &px, &py);
+        int8_t cr_ycc = ycc[cr_id][(py/8)*nb_blocCrH + (px/8)]->data[px%8][py%8];
+	rgb_t *pixel_rgb = ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc);
 	rgb[i*3+0] = pixel_rgb->r;
 	rgb[i*3+1] = pixel_rgb->g;
 	rgb[i*3+2] = pixel_rgb->b;
@@ -307,20 +309,6 @@ int main(int argc, char *argv[]) {
       fwrite(rgb, sizeof(char), img->width*3, outputfile);
       free(rgb);
     }
-    
-    // Free yccUP
-    if (img->max_hsampling != 1 || img->max_vsampling != 1) {
-      uint64_t nb_bloc_total = img->nbMCU * img->max_hsampling * img->max_vsampling;
-      for (uint8_t i=0; i<nbcomp; i++) {
-	if (img->comps->comps[i]->hsampling == img->max_hsampling && img->comps->comps[i]->vsampling == img->max_vsampling) continue;
-	for (uint64_t j=0; j<nb_bloc_total; j++) {
-	  free(yccUP[i][j]);
-	}
-	free(yccUP[i]);
-      }
-      free(yccUP);
-    }
-    
     fclose(outputfile);
   }
   print_timer("Affichage pixel");

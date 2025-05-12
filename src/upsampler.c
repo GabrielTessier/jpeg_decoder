@@ -3,8 +3,15 @@
 #include <entete.h>
 #include <jpeg2ppm.h>
 
+void upsampler(img_t *img, uint8_t comp_id, uint64_t x, uint64_t y, uint64_t *yccx, uint64_t *yccy) {
+  uint8_t hf = img->max_hsampling / img->comps->comps[comp_id]->hsampling;
+  uint8_t vf = img->max_vsampling / img->comps->comps[comp_id]->vsampling;
+  *yccx = x/hf;
+  *yccy = y/vf;
+}
+
 // Retourne un tableau 1xnb_composante upsamplé
-bloctu8_t ***upsampler(img_t *img, bloctu8_t ***ycc) {
+bloctu8_t ***upsampler_copy(img_t *img, bloctu8_t ***ycc) {
   uint8_t nbcomp = img->comps->nb;
   bloctu8_t ***res = (bloctu8_t ***) malloc(sizeof(bloctu8_t**)*nbcomp);
   uint64_t nb_blocH = img->nbmcuH * img->max_hsampling;
