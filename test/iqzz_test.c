@@ -3,8 +3,13 @@
 #include "test_utils.h"
 #include <iqzz.h>
 
+/* Teste les fonctions izz et iq du module iqzz.
+ * Pour iq, on utilise comme table de quantification le tableau 1x64
+ * {2, 4, 8, ..., 128}.
+ */
+
 int main(int argc, char* argv[]) {
-  // pour éviter une erreur à la compilation
+  // pour éviter un warning à la compilation
   (void) argc;
   // test zig-zag inverse
   blocl16_t line;
@@ -43,7 +48,7 @@ int main(int argc, char* argv[]) {
   blocl16_t line2;
   qtable_t qt;
   for (int i=0; i<64; i++) {
-    line2.data[i] = line.data[i]*2;
+    line2.data[i] = (line.data[i]+1)*2;
     qt.data[i] = line.data[i];
   }
   blocl16_t *res2;
