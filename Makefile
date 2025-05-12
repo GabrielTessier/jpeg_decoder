@@ -4,14 +4,20 @@ LD = gcc
 # -O0 désactive les optimisations à la compilation
 # C'est utile pour débugger, par contre en "production"
 # on active au moins les optimisations de niveau 2 (-O2).
-CFLAGS_DEBUG = -Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
-LDFLAGS_DEBUG = -fsanitize=address,undefined -lm
+CFLAGS_DEBUG= -Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
+LDFLAGS_DEBUG= -fsanitize=address,undefined -lm
 
 CFLAGS_FAST = -std=c99 -Iinclude/ -Ofast -lm
 LDFLAGS_FAST = -lm
 
-CFLAGS_SANS_OPT = -std=c99 -Iinclude/ -O0 -lm
+CFLAGS_SANS_OPT = -std=c99 -Iinclude/ -O0 -lm 
 LDFLAGS_SANS_OPT = -lm
+
+CFLAGS_TEST=-Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
+LDFLAGS_TEST=-fsanitize=address,undefined -lm
+
+CFLAGS_PROF = -std=c99 -Iinclude/ -lm -pg
+LDFLAGS_PROF = -lm -pg
 
 SRC_DIR=src
 TEST_DIR=test
@@ -19,21 +25,18 @@ BIN_DIR=bin
 OBJ_DIR=obj
 
 SRC_FILES=$(wildcard $(SRC_DIR)/*.c)
-TEST_FILES=$(wildcard $(TEST_DIR)/*.c)
+TEST_FILES=$(patsubst %.c,%_test,$(shell cat $(TEST_DIR)/test.txt))
+TEST_OPTION=debug
 
 # Par défaut, la compilation de src/toto.c génère le fichier objet obj/toto.o
 OBJ_FILES_DEBUG=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/debug/%.o,$(SRC_FILES))
 OBJ_FILES_FAST=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/fast/%.o,$(SRC_FILES))
+OBJ_FILES_PROF=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/sans_opt/%.o,$(SRC_FILES))
 OBJ_FILES_SANS_OPT=$(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/sans_opt/%.o,$(SRC_FILES))
-# OBJ_FILES_TEST= $(patsubst %.c,$(OBJ_DIR)/test/%_test.o,$(shell cat $(TEST_DIR)/test.txt))\
-# 				$(patsubst %.c,$(OBJ_DIR)/sans_opt/%.o,$(shell cat $(TEST_DIR)/test.txt))\
-# 				$(OBJ_DIR)/test/test_utils.o
-TEST_FILES=$(patsubst %.c,%_test,$(shell cat $(TEST_DIR)/test.txt))
-TEST_OPTION=debug
-CFLAGS_TEST=-Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
-LDFLAGS_TEST=-fsanitize=address,undefined -lm
 
-all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast test
+
+
+all: jpeg2ppm_sans_opt jpeg2ppm_debug jpeg2ppm_fast jpeg2ppm_prof test 
 
 makedir :
 	mkdir -p $(OBJ_DIR)/debug
@@ -51,6 +54,9 @@ jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG)
 
 jpeg2ppm_fast: makedir $(OBJ_FILES_FAST) 
 	$(LD) $(OBJ_FILES_FAST) $(LDFLAGS_FAST) -o $(BIN_DIR)/$@
+
+jpeg2ppm_prof: makedir $(OBJ_FILES_PROF) 
+	$(LD) $(OBJ_FILES_PROF) $(LDFLAGS_PROF) -o $(BIN_DIR)/$@
 
 test: makedir $(TEST_FILES)
 
@@ -81,6 +87,9 @@ $(OBJ_DIR)/fast/%.o: src/%.c
 
 $(OBJ_DIR)/sans_opt/%.o: src/%.c
 	$(CC) -c $(CFLAGS_SANS_OPT) $< -o $@
+
+$(OBJ_DIR)/prof/%.o: src/%.c
+	$(CC) -c $(CFLAGS_PROF) $< -o $@
 
 $(OBJ_DIR)/test/%_test.o: test/%_test.c src/%.c
 	$(CC) -c $(CFLAGS_TEST) $< -o $@
