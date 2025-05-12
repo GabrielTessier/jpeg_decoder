@@ -1,11 +1,12 @@
 #include <utils.h>
 #include <entete.h>
 #include <options.h>
+#include "test_utils.h"
 
 all_option_t all_option;
 
 
-void main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     FILE *fichier = fopen("./test/test_file/invader.jpeg", "r");
     img_t *img = decode_entete(fichier);
 
@@ -97,4 +98,5 @@ void main(int argc, char *argv[]) {
     test_res(test_mcu, argv, "décode nb mcu");
 
     free_img(img);
+    return 0;
 }
