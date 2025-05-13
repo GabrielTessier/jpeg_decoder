@@ -93,4 +93,4 @@ void free_img(img_t *img);
 img_t* init_img();
 
 // Décode et renvoie les informations de l'entête de l'image
-img_t* decode_entete(FILE *fichier, bool premier_passage);
+void decode_entete(FILE *fichier, bool premier_passage, img_t *img);

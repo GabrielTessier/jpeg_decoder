@@ -10,7 +10,9 @@ all_option_t all_option;
 void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t idq, uint8_t idhdc, uint8_t idhac) {
    char chemin_fichier[80] = "test/test_file/";
    FILE *fichier = fopen(strcat(chemin_fichier, nom_fichier), "r");
-   img_t *img = decode_entete(fichier);
+
+   img_t *img = init_img();
+   decode_entete(fichier, true, img);
 
    int test_taille = true;
    int test_qtables = true;

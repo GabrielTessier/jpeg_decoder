@@ -5,7 +5,7 @@
 
 // Structure contenant une table de quantification dans un tableau 1x64 
 struct qtable_s {
-  uint8_t data[64];
+  uint16_t data[64];
 };
 typedef struct qtable_s qtable_t;
 

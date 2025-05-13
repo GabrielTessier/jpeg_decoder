@@ -219,7 +219,9 @@ int main(int argc, char *argv[]) {
   
    // Parsing de l'entête
    start_timer();
-   img_t *img = decode_entete(fichier, true);
+   // Initialisation de img
+   img_t *img = init_img();
+   decode_entete(fichier, true, img);
    print_timer("Décodage entête");
 
    // N&B ou couleur

@@ -37,9 +37,6 @@ static void free_section_done(section_done_t *section);
 // Libère les informations complémentaires
 static void free_other(other_t *other);
 
-// Libère la structure img
-void free_img(img_t *img);
-
 // Indique si on a atteint la fin du fichier
 static bool fichier_fini(FILE *fichier);
 
@@ -48,12 +45,6 @@ static void verif_entete(img_t *img);
 
 // Calcul d'informations complémentaires sur l'image (nombre de mcu et sampling maximal)
 static void calcul_image_information(img_t *img);
-
-// Initialise une structure img
-img_t* init_img();
-
-// Décode et renvoie les informations de l'entête de l'image
-img_t* decode_entete(FILE *fichier, bool premier_passage);
 
 // Vérifie la section SOI est présente
 static void soi(FILE *fichier);
@@ -160,7 +151,7 @@ static void verif_entete(img_t *img) {
       if (img->comps->precision_comp != 8) erreur("[SOF2] Précision des composantes doit valoir 8 (Progressif)");
       
       // Section SOS
-      if (img->other->ss < 0 || img->other->ss > 63) erreur("[SOS] Ss doit valoir entre 0 et 63 (Progressif)");
+      if (img->other->ss > 63) erreur("[SOS] Ss doit valoir entre 0 et 63 (Progressif)");
       if (img->other->se < img->other->ss || img->other->se > 63) erreur("[SOS] Se doit valoir entre Ss et 63 (Progressif)");
       // Ah != 0 non traité dans spectral selection
       if (img->other->ah != 0) erreur("[SOS] Ah doit valoir entre 0 (Progressif : spectral selection)");
@@ -204,12 +195,8 @@ img_t* init_img() {
 }
 
 
-img_t* decode_entete(FILE *fichier, bool premier_passage) {
-   img_t *img;
+void decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
    if (premier_passage) {
-      // Initialisation de img
-      img = init_img();
-
       // On vérifie que la section SOI est présente au début du fichier
       soi(fichier);
    }
@@ -238,7 +225,6 @@ img_t* decode_entete(FILE *fichier, bool premier_passage) {
 
       calcul_image_information(img);
    }
-   return img;
 }
 
 
@@ -362,7 +348,7 @@ static void dqt(FILE *fichier, img_t *img) {
       // Vérification de la précision des tables de quantification
       // En mode baseline, il faut une précision de 8 bits
       uint8_t precision = octet >> 4;
-      if (precision != 0) erreur("[DQT] Précision table de quantification doit valoir 0 (8 bits) (Baseline)");
+      if (precision != 0 && precision != 1) erreur("[DQT] Précision table de quantification doit valoir 0 ou 1 (8 bits ou 16 bits)");
         
       uint8_t id_quant = octet & 0b1111;
       // On vérifie que l'indice de la table est entre 0 et 3
@@ -375,7 +361,12 @@ static void dqt(FILE *fichier, img_t *img) {
       }
       img->qtables[id_quant]->precision = precision;
       for (uint8_t i=0; i<64; i++) {
-         img->qtables[id_quant]->qtable->data[i] = fgetc(fichier);
+         if (precision == 0) {
+            img->qtables[id_quant]->qtable->data[i] = fgetc(fichier);
+         }
+         else {
+            img->qtables[id_quant]->qtable->data[i] = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
+         }
       }
    }
    // On indique qu'on a traité la section DQT
