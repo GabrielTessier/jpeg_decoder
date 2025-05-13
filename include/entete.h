@@ -61,10 +61,10 @@ struct other_s {
     char jfif[5];           // Doit valoir "JFIF\0"
     uint8_t version_jfif_x; // Doit valoir 1
     uint8_t version_jfif_y; // Doit valoir 1
-    uint8_t ss;             // Doit valoir 0
-    uint8_t se;             // Doit valoir 63
-    uint8_t ah;             // Doit valoir 0
-    uint8_t al;             // Doit valoir 0
+    uint8_t ss;             // Doit valoir entre 0 et 63
+    uint8_t se;             // Doit valoir entre ss et 63
+    uint8_t ah;             // Doit valoir 0 (ah != 0 non traité)
+    uint8_t al;             // Doit valoir 0 (al != 0 non traité)
 };
 typedef struct other_s other_t;
 
