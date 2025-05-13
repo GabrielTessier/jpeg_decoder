@@ -10,7 +10,7 @@ LDFLAGS_DEBUG= -fsanitize=address,undefined -lm
 CFLAGS_FAST = -std=c99 -Iinclude/ -Ofast -lm
 LDFLAGS_FAST = -lm
 
-CFLAGS_SANS_OPT = -std=c99 -Iinclude/ -O0 -lm 
+CFLAGS_SANS_OPT = -std=c99 -Iinclude/ -O2 -lm 
 LDFLAGS_SANS_OPT = -lm
 
 CFLAGS_TEST=-Wall -Wextra -std=c99 -Iinclude/ -O0 -fsanitize=address,undefined -g -lm
@@ -47,7 +47,7 @@ makedir :
 
 jpeg2ppm_sans_opt: makedir $(OBJ_FILES_SANS_OPT)
 	$(LD) $(OBJ_FILES_SANS_OPT) $(LDFLAGS_SANS_OPT) -o $(BIN_DIR)/$@
-	ln -f -s $@ $(BIN_DIR)/jpeg2ppm
+	ln -f -s $@ jpeg2ppm
 
 jpeg2ppm_debug: makedir $(OBJ_FILES_DEBUG) 
 	$(LD) $(OBJ_FILES_DEBUG) $(LDFLAGS_DEBUG) -o $(BIN_DIR)/$@
