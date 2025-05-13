@@ -45,7 +45,7 @@ static char my_getc(FILE* file, char old) {
   if (old == (char) 0xff) {
     old = fgetc(file);
     if (old != 0) {
-      erreur("Pas de 0x00 après un 0xff (Pas bien !!)\n");
+      erreur("Pas de 0x00 après un 0xff (Pas bien !!) %x\n", ftell(file)-1);
     }
   }
   char c = fgetc(file);
@@ -149,6 +149,8 @@ void decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, b
       fseek(fichier, -1, SEEK_CUR);
       s_start = 1;
    }
-   decode_list_coef(hac, fichier, sortie, off, AC, s_start, s_end);
-   fseek(fichier, -1, SEEK_CUR);
+   if (s_start <= s_end) {
+      decode_list_coef(hac, fichier, sortie, off, AC, s_start, s_end);
+      fseek(fichier, -1, SEEK_CUR);
+   }
 }

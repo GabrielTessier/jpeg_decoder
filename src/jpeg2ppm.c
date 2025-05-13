@@ -37,8 +37,8 @@ static void decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, 
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
    // S'il manque une table on exit avec une erreur
-   if (hdc == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
-   if (hac == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
+   if (s_start == 0 && hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
+   if (s_end != 0 && hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
@@ -229,14 +229,23 @@ int main(int argc, char *argv[]) {
 	 uint64_t mcuX = i%img->nbmcuH;
 	 uint64_t mcuY = i/img->nbmcuH;
 	 for (uint8_t k=0; k<nbcomp; k++) {
-	    print_v("COMP %d\n", k);
-	    uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
-	    for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
-	       for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
-		  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-		  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
-		  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
-		  decode_bloc(fichier, img, k, sortieq[k][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, timerBloc);
+	    uint8_t idcomp = img->comps->ordre[k];
+	    if (idcomp == 0) break;
+	    uint8_t indice_comp = 0;
+	    for (uint8_t c=0; c<nbcomp; c++) {
+	       if (img->comps->comps[c]->idc == idcomp) {
+		  indice_comp = c;
+		  break;
+	       }
+	    }
+	    print_v("COMP %d\n", indice_comp);
+	    uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
+	    for (uint8_t by=0; by<img->comps->comps[indice_comp]->vsampling; by++) {
+	       for (uint8_t bx=0; bx<img->comps->comps[indice_comp]->hsampling; bx++) {
+		  print_v("BLOC %d\n", by*img->comps->comps[indice_comp]->hsampling+bx);
+		  uint64_t blocX = mcuX*img->comps->comps[indice_comp]->hsampling + bx;
+		  uint64_t blocY = mcuY*img->comps->comps[indice_comp]->vsampling + by;
+		  decode_bloc(fichier, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, timerBloc);
 	       }
 	    }
 	 }
