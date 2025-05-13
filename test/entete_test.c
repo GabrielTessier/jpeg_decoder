@@ -7,6 +7,7 @@
 #include <utils.h>
 #include <entete.h>
 #include <options.h>
+#include <vld.h>
 #include "test_utils.h"
 
 
@@ -209,7 +210,8 @@ static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts) {
 static void test_shaun(char *nom_fichier, char *argv[]) {
    char chemin_fichier[80] = "test/test_file/";
    FILE *fichier = fopen(strcat(chemin_fichier, nom_fichier), "r");
-   img_t *img = decode_entete(fichier);
+   img_t *img = init_img();
+   decode_entete(fichier, true, img);
 
    // Variables de test
    int test_taille	= true;
