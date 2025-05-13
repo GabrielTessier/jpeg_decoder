@@ -167,8 +167,8 @@ int main(int argc, char *argv[]) {
    bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
    for (uint8_t i=0; i<nbcomp; i++) {
       uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
-      uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
-      ycc[i] = (bloctu8_t**) malloc(sizeof(bloctu8_t*)*nbH*nbV);
+      uint64_t nbV = img->comps->comps[i]->vsampling;
+      ycc[i] = (bloctu8_t**) calloc(nbH*nbV, sizeof(bloctu8_t*));
    }
 
    // Calcul des coefficients pour la DCT inverse (lente)
@@ -188,27 +188,100 @@ int main(int argc, char *argv[]) {
 
    // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
    uint8_t off = 0;
+
+   // Si pas de fichier de sortie donné on le crée en remplaçant le .jpeg par .pgm ou .ppm
+   char *filename;
+   char *fullfilename;
+   if (all_option.outfile == NULL) {
+      filename = all_option.filepath;
+      *(strrchr(filename, '.')) = 0;
+      fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
+      strcpy(fullfilename, filename);
+      if (nbcomp == 1) strcat(fullfilename, ".pgm");
+      else if (nbcomp == 3) strcat(fullfilename, ".ppm");
+   } else {
+      fullfilename = all_option.outfile;
+   }
+   FILE *outputfile = fopen(fullfilename, "w");
+   if (nbcomp == 1) fprintf(outputfile, "P5\n");
+   else if (nbcomp == 3) fprintf(outputfile, "P6\n");
+   else erreur("Pas trois composante");
+   fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
+   fprintf(outputfile, "255\n");
+   uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
+   uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
+   char *rgb;
+   if (nbcomp == 3) {
+      for (uint8_t i=0; i<nbcomp; i++) {
+	 if (img->comps->comps[0]->idc == img->comps->ordre[i]) y_id = i;
+	 if (img->comps->comps[1]->idc == img->comps->ordre[i]) cb_id = i;
+	 if (img->comps->comps[2]->idc == img->comps->ordre[i]) cr_id = i;
+      }
+      nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
+      nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
+      nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
+      yhf = img->max_hsampling / img->comps->comps[y_id]->hsampling;
+      yvf = img->max_vsampling / img->comps->comps[y_id]->vsampling;
+      cbhf = img->max_hsampling / img->comps->comps[cb_id]->hsampling;
+      cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
+      crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
+      crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
+      rgb = (char*) malloc(sizeof(char) * img->width * 3);
+   }
   
    // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
    int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
    for (uint64_t i=0; i<img->nbMCU; i++) {
       print_v("MCU %d\n", i);
       uint64_t mcuX = i%img->nbmcuH;
-      uint64_t mcuY = i/img->nbmcuH;
       for (uint8_t k=0; k<nbcomp; k++) {
          print_v("COMP %d\n", k);
-         uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+	 uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
          for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
             for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
                print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
                bloctu8_t *bloc = decode_bloc(fichier, img, stockage_coef, k, dc_prec, &off, timerBloc);
                uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
-               uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
-               ycc[k][blocY*nbH + blocX] = bloc;
+	       if (ycc[k][blocX] != NULL) free(ycc[k][by*nbH + blocX]);
+               ycc[k][by*nbH + blocX] = bloc;
             }
          }
       }
+      if (i%img->nbmcuH == img->nbmcuH-1) {  // affichage une ligne de mcu
+	 for (uint64_t y=0; y<img->max_vsampling*8; y++) {
+	    for (uint64_t x=0; x<img->width; x++) {
+	       if (nbcomp == 1) {
+		  // On print le pixel de coordonnée (x,y)
+		  uint64_t bx = x/8;  // bx-ieme bloc horizontalement
+		  uint64_t px = x%8;
+		  uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
+		  fprintf(outputfile, "%c", ycc[0][bx]->data[px][py]);
+	       } else if (nbcomp == 3) {
+		  // On print le pixel de coordonnée (x,y)
+		  uint64_t px, py;
+		  px = x/yhf;
+		  py = y/yvf;
+		  int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
+		  px = x/cbhf;
+		  py = y/cbvf;
+		  int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
+		  px = x/crhf;
+		  py = y/crvf;
+		  int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
+		  rgb_t pixel_rgb;
+		  ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
+		  rgb[x*3+0] = pixel_rgb.r;
+		  rgb[x*3+1] = pixel_rgb.g;
+		  rgb[x*3+2] = pixel_rgb.b;
+	       }
+	    }
+	    if (nbcomp == 3) fwrite(rgb, sizeof(char), img->width*3, outputfile);
+	 }
+      }
    }
+   if (nbcomp == 3) free(rgb);
+
+   fclose(outputfile);
  
    free(dc_prec);
 
@@ -230,98 +303,13 @@ int main(int argc, char *argv[]) {
 
    fclose(fichier);
 
-   start_timer();
-   // Si pas de fichier de sortie donné on le crée en remplaçant le .jpeg par .pgm ou .ppm
-   char *filename;
-   char *fullfilename;
-   if (all_option.outfile == NULL) {
-      filename = all_option.filepath;
-      *(strrchr(filename, '.')) = 0;
-      fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
-      strcpy(fullfilename, filename);
-      if (nbcomp == 1) strcat(fullfilename, ".pgm");
-      else if (nbcomp == 3) strcat(fullfilename, ".ppm");
-   } else {
-      fullfilename = all_option.outfile;
-   }
-   if (nbcomp == 1) { // Noir et Blanc
-      FILE *outputfile = fopen(fullfilename, "w+");
-      fprintf(outputfile, "P5\n");   // Magic number
-      fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
-      fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
-      // Impression des pixels
-      print_v("width: %d, height: %d\n", img->width, img->height);
-      uint64_t nb_blocH = img->nbmcuH * img->max_hsampling;
-      for (uint64_t y=0; y<img->height; y++) {
-         for (uint64_t x=0; x<img->width; x++) {
-            // On print le pixel de coordonnée (x,y)
-            uint64_t bx = x/8;  // bx-ieme bloc horizontalement
-            uint64_t by = y/8;  // by-ieme bloc verticalement
-            uint64_t px = x%8;
-            uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-            fprintf(outputfile, "%c", ycc[0][by*nb_blocH + bx]->data[px][py]);
-         }
-      }
-      fclose(outputfile);
-   } else if (nbcomp == 3) {     // YCbCr -> RGB
-      uint8_t y_id, cb_id, cr_id;
-      for (uint8_t i=0; i<nbcomp; i++) {
-         if (img->comps->comps[0]->idc == img->comps->ordre[i]) y_id = i;
-         if (img->comps->comps[1]->idc == img->comps->ordre[i]) cb_id = i;
-         if (img->comps->comps[2]->idc == img->comps->ordre[i]) cr_id = i;
-      }
-    
-      FILE *outputfile = fopen(fullfilename, "w");
-      fprintf(outputfile, "P6\n");   // Magic number
-      fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hauteur
-      fprintf(outputfile, "255\n"); // nombre de valeurs d'une composante de couleur
-      // Impression des pixels
-      print_v("width: %d, height: %d\n", img->width, img->height);
-      uint64_t nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
-      uint64_t nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
-      uint64_t nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
-      uint8_t yhf = img->max_hsampling / img->comps->comps[y_id]->hsampling;
-      uint8_t yvf = img->max_vsampling / img->comps->comps[y_id]->vsampling;
-      uint8_t cbhf = img->max_hsampling / img->comps->comps[cb_id]->hsampling;
-      uint8_t cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
-      uint8_t crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
-      uint8_t crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
-      char *rgb = (char*) malloc(sizeof(char) * img->width * 3);
-      for (uint64_t y=0; y<img->height; y++) {
-         uint64_t i = 0;
-         for (uint64_t x=0; x<img->width; x++) {
-            // On print le pixel de coordonnée (x,y)
-            uint64_t px, py;
-            px = x/yhf;
-            py = y/yvf;
-            int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
-            px = x/cbhf;
-	         py = y/cbvf;
-            int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
-            px = x/crhf;
-	         py = y/crvf;
-            int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
-	         rgb_t pixel_rgb;
-            ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
-            rgb[i*3+0] = pixel_rgb.r;
-            rgb[i*3+1] = pixel_rgb.g;
-            rgb[i*3+2] = pixel_rgb.b;
-            i++;
-         }
-         fwrite(rgb, sizeof(char), img->width*3, outputfile);
-      }
-      free(rgb);
-      fclose(outputfile);
-   }
-   print_timer("Affichage pixel");
-
    if (all_option.outfile == NULL) free(fullfilename);
 
    start_timer();
    // Free ycc
    for (uint8_t i=0; i<nbcomp; i++) {
       uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
-      uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
+      uint64_t nbV = img->comps->comps[i]->vsampling;
       for (uint64_t j=0; j<nbH*nbV; j++) {
          free(ycc[i][j]);
       }
