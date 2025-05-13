@@ -332,7 +332,7 @@ int main(int argc, char *argv[]) {
    (void) argc; // Pour ne pas avoir un warning unused variable à la compilation
    test_invader("invader_normal.jpeg", argv, 1, 0, 0, 0);
    test_invader("invader_melange.jpeg", argv, 1, 0, 0, 0);
-   test_invader("invader_indice_diff.jpeg", argv, 250, 3, 2, 1);
-   test_shaun("shaun_the_sheep.jpg", argv);
+   test_invader("invader_indice_diff.jpeg", argv, 250, 3, 0, 1);
+   test_shaun("shaun_the_sheep.jpeg", argv);
    return 0;
 }
