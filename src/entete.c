@@ -44,13 +44,16 @@ void free_img(img_t *img);
 static bool fichier_fini(FILE *fichier);
 
 // Vérifie si les informations de l'entête sont conformes au mode baseline
-static void verif_entete_baseline(img_t *img);
+static void verif_entete(img_t *img);
+
+// Calcul d'informations complémentaires sur l'image (nombre de mcu et sampling maximal)
+static void calcul_image_information(img_t *img);
 
 // Initialise une structure img
 img_t* init_img();
 
 // Décode et renvoie les informations de l'entête de l'image
-img_t* decode_entete(FILE *fichier);
+img_t* decode_entete(FILE *fichier, bool premier_passage);
 
 // Vérifie la section SOI est présente
 static void soi(FILE *fichier);
@@ -64,8 +67,8 @@ static void app0(FILE *fichier, img_t *img);
 // Décode la section COM
 static void com(FILE *fichier);
 
-// Décode la section SOF0
-static void sof0(FILE *fichier, img_t *img);
+// Décode la section SOF
+static void sof(FILE *fichier, img_t *img);
 
 // Décode la section DQT
 static void dqt(FILE *fichier, img_t *img);
@@ -133,29 +136,39 @@ static bool fichier_fini(FILE *fichier) {
    return false;
 }
 
-static void verif_entete_baseline(img_t *img) {
+static void verif_entete(img_t *img) {
    // Section APP0
    if (strcmp(img->other->jfif,"JFIF") != 0) erreur("[APP0] Phrase JFIF manquante dans APP0");
    if (img->other->version_jfif_x != 1) erreur("[APP0] Version JFIF X doit valoir 1");
    if (img->other->version_jfif_y != 1) erreur("[APP0] Version JFIF Y doit valoir 1");
-   // Section SOF0
-   if (img->comps->precision_comp != 8) erreur("[SOF0] Précision des composantes doit valoir 8 (Baseline)");
-   // Section SOS
-   if (img->other->ss != 0) erreur("[SOS] Ss doit valoir 0 (Baseline)");
-   if (img->other->se != 63) erreur("[SOS] Se doit valoir 63 (Baseline)");
-   if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Baseline)");
-   if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Baseline)");
+   
+   // Baseline
+   if (img->section->num_sof == 0) { 
+      // Section SOF0
+      if (img->comps->precision_comp != 8) erreur("[SOF0] Précision des composantes doit valoir 8 (Baseline)");
+      
+      // Section SOS
+      if (img->other->ss != 0) erreur("[SOS] Ss doit valoir 0 (Baseline)");
+      if (img->other->se != 63) erreur("[SOS] Se doit valoir 63 (Baseline)");
+      if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Baseline)");
+      if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Baseline)");
+   }
+   //Progressif
+   else { 
+      // Section SOF2
+      // Précision 12 non traitée
+      if (img->comps->precision_comp != 8) erreur("[SOF2] Précision des composantes doit valoir 8 (Progressif)");
+      
+      // Section SOS
+      if (img->other->ss < 0 || img->other->ss > 63) erreur("[SOS] Ss doit valoir entre 0 et 63 (Progressif)");
+      if (img->other->se < img->other->ss || img->other->se > 63) erreur("[SOS] Se doit valoir entre Ss et 63 (Progressif)");
+      // Ah != 0 non traité dans spectral selection
+      if (img->other->ah != 0) erreur("[SOS] Ah doit valoir entre 0 (Progressif : spectral selection)");
+      // Al != 0 non traité dans spectral selection
+      if (img->other->al != 0) erreur("[SOS] Al doit valoir entre 0 (Progressif : spectral selection)");
+   }
 }
 
-
-img_t* init_img() {
-   img_t *img   = calloc(1,sizeof(img_t));
-   img->htables = calloc(1,sizeof(htables_t));
-   img->comps   = calloc(1,sizeof(comps_t));
-   img->section = calloc(1,sizeof(section_done_t));
-   img->other   = calloc(1,sizeof(other_t));
-   return img;
-}
 
 static void calcul_image_information(img_t *img) {
    // Nombre de bloc horizontalement et verticalement
@@ -181,22 +194,50 @@ static void calcul_image_information(img_t *img) {
 }
 
 
-img_t* decode_entete(FILE *fichier) {
-   // Initialisation de img
-   img_t *img = init_img();
-    
-   // On vérifie que la section SOI est présente
-   soi(fichier);
-   while (!img->section->sos_done && !fichier_fini(fichier)) {
+img_t* init_img() {
+   img_t *img   = calloc(1,sizeof(img_t));
+   img->htables = calloc(1,sizeof(htables_t));
+   img->comps   = calloc(1,sizeof(comps_t));
+   img->section = calloc(1,sizeof(section_done_t));
+   img->other   = calloc(1,sizeof(other_t));
+   return img;
+}
+
+
+img_t* decode_entete(FILE *fichier, bool premier_passage) {
+   img_t *img;
+   if (premier_passage) {
+      // Initialisation de img
+      img = init_img();
+
+      // On vérifie que la section SOI est présente au début du fichier
+      soi(fichier);
+   }
+   else {
+      // On remet sos_done à faux dans le cas où il y a plusieurs sections SOS (mode progressif)
+      img->section->sos_done = false;
+   }
+
+   // On boucle sur les marqueurs tant qu'on a pas atteint un SOS ou la fin de l'image
+   while (!img->section->sos_done && !img->section->eoi_done && !fichier_fini(fichier)) {
       // Décodage des marqueurs
       marqueur(fichier, img);
    }
-   // On affiche une erreur si on a atteint la fin du fichier avant d'avoir traité la section SOS
-   if (!img->section->sos_done) erreur("Image sans SOS");
 
-   // Vérification des valeurs pour le mode baseline
-   verif_entete_baseline(img);
-   calcul_image_information(img);
+   if (!img->section->sos_done && !img->section->eoi_done) {
+      // On affiche une erreur si on a atteint la fin du fichier avant une section SOS ou EOI
+      erreur("L'image se termine sans EOI");
+   }
+
+   if (premier_passage) {
+      // Si on a atteint un EOI avant un SOS
+      if (img->section->eoi_done) erreur("Image sans image");
+
+      // Vérification des valeurs de l'entête
+      verif_entete(img);
+
+      calcul_image_information(img);
+   }
    return img;
 }
 
@@ -210,7 +251,7 @@ static void soi(FILE *fichier) {
 static void marqueur(FILE *fichier, img_t *img) {
    // On lit un marqueur
    char marqueur[2];
-   fread(&marqueur, 1, 2, fichier);
+   (void) !fread(&marqueur, 1, 2, fichier);
 
    // On vérifie que le marqueur commence par 0xff
    if (marqueur[0] != (char) 0xff) erreur("Octet n°%ld devrait être un marqueur", ftell(fichier));
@@ -218,16 +259,23 @@ static void marqueur(FILE *fichier, img_t *img) {
    // On associe le marqueur à la bonne section
    switch (marqueur[1]) {
       case (char) 0xc0:   // Section SOF0
-         sof0(fichier, img);
+         img->section->num_sof = 0;
+         sof(fichier, img);
+         break;
+      case (char) 0xc2:   // Section SOF2
+         img->section->num_sof = 2;
+         sof(fichier, img);
          break;
       case (char) 0xc4:   // Section DHT
          dht(fichier, img);
          break;
       case (char) 0xd8:   // Section SOI
+         // On a déja décodé une section SOI au début du fichier
+         // Si on trouve une section SOI ici, on retourne une erreur
          erreur("Plusieurs SOI");
          break;
       case (char) 0xd9:   // Section EOI
-         erreur("Image sans SOS (ou EOI avant SOS)");
+         img->section->eoi_done = true;
          break;
       case (char) 0xda:   // Section SOS
          sos(fichier, img);
@@ -254,7 +302,7 @@ static void app0(FILE *fichier, img_t *img) {
    if (length != 16) erreur("[APP0] Longueur section APP0 incorrect");
 
    // On récupère les informations pour les vérifier après
-   fread(img->other->jfif, 1, 5, fichier);
+   (void) !fread(img->other->jfif, 1, 5, fichier);
    img->other->version_jfif_x = fgetc(fichier);
    img->other->version_jfif_y = fgetc(fichier);
 
@@ -274,16 +322,16 @@ static void com(FILE *fichier) {
 }
 
 
-static void sof0(FILE *fichier, img_t *img) {
-   // On récupère les informations de la section SOF0
+static void sof(FILE *fichier, img_t *img) {
+   // On récupère les informations de la section SOF
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    img->comps->precision_comp = fgetc(fichier);
    img->height = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    img->width = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    uint8_t nb_comp = fgetc(fichier);
 
-   // Vérification de la longueur de la section SOF0
-   if (length != 8+3*nb_comp) erreur("[SOF0] Longueur section SOF0 incorrect");
+   // Vérification de la longueur de la section SOF
+   if (length != 8+3*nb_comp) erreur("[SOF] Longueur section SOF incorrect");
 
    // On associe chaque composante à ses facteurs d'échantillonnage et à sa table de quantification
    img->comps->nb = nb_comp;
@@ -297,8 +345,8 @@ static void sof0(FILE *fichier, img_t *img) {
       img->comps->comps[i]->vsampling = sampling & 0b1111;
       img->comps->comps[i]->idq = id_quant;
    }
-   // On indique qu'on a traité la section SOF0
-   img->section->sof0_done = true;
+   // On indique qu'on a traité la section SOF
+   img->section->sof_done = true;
 }
 
 
@@ -408,7 +456,7 @@ static void dht(FILE *fichier, img_t *img) {
         
       // On récupère les longueurs des codes
       uint8_t longueur_codes_brutes[16];
-      fread(longueur_codes_brutes, 1, 16, fichier);
+      (void) !fread(longueur_codes_brutes, 1, 16, fichier);
 
       // On compte le nombre de codes
       uint16_t nb_codes = 0;
@@ -430,14 +478,14 @@ static void dht(FILE *fichier, img_t *img) {
       }
       // On récupère les symboles
       uint8_t symb[nb_codes];
-      fread(&symb, 1, nb_codes, fichier);
+      (void) !fread(&symb, 1, nb_codes, fichier);
 
       // On crée la table de Huffman
       huffman_tree_t **htables;
       if (is_dc) htables = img->htables->dc;
       else htables = img->htables->ac;
-      // On vérifie qu'il n'y ait pas plusieurs tables avec le même indice
-      if (htables[id_huff] != NULL) erreur("[DHT] Plusieurs table de Huffman ont le même indice");
+      // Si la table existe déja, on la redéfinit
+      if (htables[id_huff] != NULL) free_huffman_tree(htables[id_huff]);
       htables[id_huff] = calloc(1,sizeof(huffman_tree_t));
 
       // On remplit la table de Huffman sous forme d'un arbre
@@ -452,9 +500,9 @@ static void dht(FILE *fichier, img_t *img) {
 
 
 static void verif_sos(img_t *img) {
-   // On vérifie que chaque section a été traité avec de décoder SOS
+   // On vérifie que chaque section a été traité avant de décoder SOS
    if (!img->section->app0_done) erreur("Image sans APP0 (ou SOS avant APP0)");
-   if (!img->section->sof0_done) erreur("Image sans SOF0 (ou SOS avant SOF0)");
+   if (!img->section->sof_done) erreur("Image sans SOF (ou SOS avant SOF)");
    if (!img->section->dqt_done) erreur("Image sans DQT (ou SOS avant DQT)");
    if (!img->section->dht_done) erreur("Image sans DHT (ou SOS avant DHT)");
 }
@@ -466,9 +514,9 @@ static void sos(FILE *fichier, img_t *img) {
 
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
 
-   // On vérifie que le nombre de composantes est bien le même que celui défini dans SOF0
+   // On vérifie que le nombre de composantes est bien le même que celui défini dans SOF
    uint8_t nb_comp = fgetc(fichier);
-   if (nb_comp != img->comps->nb) erreur("[SOS] Nombre de composantes différent de celui défini dans SOF0)");
+   if (nb_comp != img->comps->nb) erreur("[SOS] Nombre de composantes différent de celui défini dans SOF)");
     
    // Vérification de la longueur de la section SOS
    if (length != 6+2*nb_comp) erreur("[SOS] Longueur section SOS incorrect");
@@ -483,7 +531,8 @@ static void sos(FILE *fichier, img_t *img) {
         
       // On associe chaque composante à ses tables de Huffman
       uint8_t j = 0;
-      while (img->comps->comps[j]->idc != id_comp) {j++;} // attention si id_comp pas dans comps
+      while (img->comps->comps[j]->idc != id_comp && j <= 3) {j++;} // attention si id_comp pas dans comps
+      if (j >= 4) erreur("[SOS] Indice de composante incorrect");
       img->comps->comps[j]->idhdc = id_huff >> 4;
       img->comps->comps[j]->idhac = id_huff & 0b1111;
    }

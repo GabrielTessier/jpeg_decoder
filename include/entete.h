@@ -46,11 +46,13 @@ typedef struct comps_s comps_t;
 
 // Structure indiquant l'avancement du traitement de l'entête
 struct section_done_s {
-    bool app0_done; // Indique si la section APP0 a été traitée
-    bool sof0_done; // Indique si la section SOF0 a été traitée
-    bool dqt_done;  // Indique si la section DQT a été traitée
-    bool dht_done;  // Indique si la section DHT a été traitée
-    bool sos_done;  // Indique si la section SOS a été traitée
+    bool app0_done;  // Indique si la section APP0 a été traitée
+    bool sof_done;   // Indique si la section SOF a été traitée
+    uint8_t num_sof; // Indique quelle section SOF a été traitée (0 pour Baseline et 2 pour Progressif)
+    bool dqt_done;   // Indique si une section DQT a été traitée
+    bool dht_done;   // Indique si une section DHT a été traitée
+    bool sos_done;   // Indique si une section SOS a été traitée
+    bool eoi_done;   // Indique si la section EOI a été traitée
 };
 typedef struct section_done_s section_done_t;
 
@@ -91,4 +93,4 @@ void free_img(img_t *img);
 img_t* init_img();
 
 // Décode et renvoie les informations de l'entête de l'image
-img_t* decode_entete(FILE *fichier);
+img_t* decode_entete(FILE *fichier, bool premier_passage);
