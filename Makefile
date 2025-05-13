@@ -70,7 +70,7 @@ test_run: test
 idct_opt_test: $(OBJ_DIR)/test/idct_opt_test.o $(OBJ_DIR)/$(TEST_OPTION)/idct_opt.o $(OBJ_DIR)/$(TEST_OPTION)/idct.o $(OBJ_DIR)/test/test_utils.o
 	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
-entete_test: $(OBJ_DIR)/test/entete_test.o $(OBJ_DIR)/$(TEST_OPTION)/entete.o $(OBJ_DIR)/$(TEST_OPTION)/file.o $(OBJ_DIR)/$(TEST_OPTION)/vld.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/test/test_utils.o
+entete_test: $(OBJ_DIR)/test/entete_test.o $(OBJ_DIR)/$(TEST_OPTION)/entete.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/$(TEST_OPTION)/file.o $(OBJ_DIR)/$(TEST_OPTION)/vld.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/test/test_utils.o
 	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
 vld_test: $(OBJ_DIR)/test/vld_test.o $(OBJ_DIR)/$(TEST_OPTION)/vld.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/$(TEST_OPTION)/options.o $(OBJ_DIR)/test/test_utils.o
