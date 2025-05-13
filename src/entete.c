@@ -550,12 +550,16 @@ static void sos(FILE *fichier, img_t *img) {
 
    // On vérifie que le nombre de composantes est bien le même que celui défini dans SOF
    uint8_t nb_comp = fgetc(fichier);
-   if (nb_comp != img->comps->nb) erreur("[SOS] Nombre de composantes différent de celui défini dans SOF)");
+   if (nb_comp > img->comps->nb) erreur("[SOS] Nombre de composantes dans le SOS supérieur au nombre total");
     
    // Vérification de la longueur de la section SOS
    if (length != 6+2*nb_comp) erreur("[SOS] Longueur section SOS incorrect");
 
-
+   // Réinitialise l'ordre des composantes
+   for (int i=0; i<3; i++) {
+      img->comps->ordre[i] = 0;
+   }
+   
    for (uint8_t i=0; i<=nb_comp-1; i++) {
       uint8_t id_comp = fgetc(fichier);
       uint8_t id_huff = fgetc(fichier);
