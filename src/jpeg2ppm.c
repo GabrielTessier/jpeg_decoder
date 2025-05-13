@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -102,13 +103,11 @@ static bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float stockage_coef[8][
    return bloc_idct;
 }
 
-int main(int argc, char *argv[]) {
+static void verif_option(int argc, char **argv) {
    // On set les options
    all_option.execname = argv[0];
    set_option(&all_option, argc, argv);
 
-   // Initialisation du timer 
-   init_timer();
    // Vérification qu'une image est passée en paramètre
    if (all_option.filepath == NULL) print_help(&all_option);
    if (access(all_option.filepath, R_OK)) erreur("Pas de fichier '%s'", all_option.filepath);
@@ -125,26 +124,41 @@ int main(int argc, char *argv[]) {
       print_v("outfile : %s\n", all_option.outfile);
       free(outfile_copy);
    }
-    
+}
+
+static FILE *ouverture_fichier_in() {
    // Ouverture du fichier avec vérification de l'extension
    char *fileext  = strrchr(all_option.filepath, '.') + 1; // extension du fichier
    if ((fileext == NULL) || !(strcmp(fileext, "jpeg")==0 || strcmp(fileext, "jpg")==0)) {
       erreur("Erreur : mauvaise extension de fichier.");
    }
    FILE *fichier = fopen(all_option.filepath, "r");
-   if (fichier == NULL)
-      erreur("Erreur : fichier introuvable.");
-  
-   // Parsing de l'entête
-   start_timer();
-   img_t *img = decode_entete(fichier);
-   print_timer("Décodage entête");
+   if (fichier == NULL) erreur("Erreur : fichier introuvable.");
+   return fichier;
+}
 
-   // N&B ou couleur
-   const uint8_t nbcomp = img->comps->nb;
-  
+static FILE *ouverture_fichier_out(uint8_t nbcomp) {
+   // Si pas de fichier de sortie donné on le crée en remplaçant le .jpeg par .pgm ou .ppm
+   char *filename;
+   char *fullfilename;
+   if (all_option.outfile == NULL) {
+      filename = all_option.filepath;
+      *(strrchr(filename, '.')) = 0;
+      fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
+      strcpy(fullfilename, filename);
+      if (nbcomp == 1) strcat(fullfilename, ".pgm");
+      else if (nbcomp == 3) strcat(fullfilename, ".ppm");
+   } else {
+      fullfilename = all_option.outfile;
+   }
+   FILE *outputfile = fopen(fullfilename, "w");
+   if (all_option.outfile == NULL) free(fullfilename);
+   return outputfile;
+}
+
+static void print_huffman_quant_table(img_t *img) {
    if (all_option.verbose) {
-      for (uint8_t i=0; i<nbcomp; i++) {
+      for (uint8_t i=0; i<img->comps->nb; i++) {
          print_v("Composante %d :\n", i);
          // Affichage tables de Huffman
          print_v("Huffman dc\n");
@@ -160,6 +174,60 @@ int main(int argc, char *argv[]) {
          print_v("\n");
       }
    }
+}
+
+static void save_mcu_ligne(FILE *outputfile, img_t *img, bloctu8_t ***ycc, char *rgb, uint8_t yhf, uint8_t yvf, uint8_t y_id, uint64_t nb_blocYH, uint8_t cbhf, uint8_t cbvf, uint8_t cb_id, uint64_t nb_blocCbH, uint8_t crhf, uint8_t crvf, uint8_t cr_id, uint64_t nb_blocCrH) {
+   const uint8_t nbcomp = img->comps->nb;
+   for (uint64_t y=0; y<img->max_vsampling*8; y++) {
+      for (uint64_t x=0; x<img->width; x++) {
+	 if (nbcomp == 1) {
+	    // On print le pixel de coordonnée (x,y)
+	    uint64_t bx = x/8;  // bx-ieme bloc horizontalement
+	    uint64_t px = x%8;
+	    uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
+	    fprintf(outputfile, "%c", ycc[0][bx]->data[px][py]);
+	 } else if (nbcomp == 3) {
+	    // On print le pixel de coordonnée (x,y)
+	    uint64_t px, py;
+	    px = x/yhf;
+	    py = y/yvf;
+	    int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
+	    px = x/cbhf;
+	    py = y/cbvf;
+	    int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
+	    px = x/crhf;
+	    py = y/crvf;
+	    int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
+	    rgb_t pixel_rgb;
+	    ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
+	    rgb[x*3+0] = pixel_rgb.r;
+	    rgb[x*3+1] = pixel_rgb.g;
+	    rgb[x*3+2] = pixel_rgb.b;
+	 }
+      }
+      if (nbcomp == 3) fwrite(rgb, sizeof(char), img->width*3, outputfile);
+   }
+}
+
+int main(int argc, char *argv[]) {
+   verif_option(argc, argv);
+   
+   // Initialisation du timer 
+   init_timer();
+    
+   FILE *fichier = ouverture_fichier_in();
+  
+   // Parsing de l'entête
+   start_timer();
+   img_t *img = decode_entete(fichier);
+   print_timer("Décodage entête");
+
+   // N&B ou couleur
+   const uint8_t nbcomp = img->comps->nb;
+
+   FILE *outputfile = ouverture_fichier_out(nbcomp);
+  
+   print_huffman_quant_table(img);
 
    // Initialisation du tableau ycc :
    // ycc contient un tableau par composante
@@ -182,27 +250,10 @@ int main(int argc, char *argv[]) {
    // Décodage de l'image
    start_timer();
    uint64_t timerDecodage = all_option.timer;
-  
    // timerBloc : DCAC, IQ, IZZ, IDCT
    uint64_t timerBloc[4] = {0, 0, 0, 0};
-
    // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
    uint8_t off = 0;
-
-   // Si pas de fichier de sortie donné on le crée en remplaçant le .jpeg par .pgm ou .ppm
-   char *filename;
-   char *fullfilename;
-   if (all_option.outfile == NULL) {
-      filename = all_option.filepath;
-      *(strrchr(filename, '.')) = 0;
-      fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+5));
-      strcpy(fullfilename, filename);
-      if (nbcomp == 1) strcat(fullfilename, ".pgm");
-      else if (nbcomp == 3) strcat(fullfilename, ".ppm");
-   } else {
-      fullfilename = all_option.outfile;
-   }
-   FILE *outputfile = fopen(fullfilename, "w");
    if (nbcomp == 1) fprintf(outputfile, "P5\n");
    else if (nbcomp == 3) fprintf(outputfile, "P6\n");
    else erreur("Pas trois composante");
@@ -248,35 +299,7 @@ int main(int argc, char *argv[]) {
          }
       }
       if (i%img->nbmcuH == img->nbmcuH-1) {  // affichage une ligne de mcu
-	 for (uint64_t y=0; y<img->max_vsampling*8; y++) {
-	    for (uint64_t x=0; x<img->width; x++) {
-	       if (nbcomp == 1) {
-		  // On print le pixel de coordonnée (x,y)
-		  uint64_t bx = x/8;  // bx-ieme bloc horizontalement
-		  uint64_t px = x%8;
-		  uint64_t py = y%8;  // le pixel est à la coordonnée (px,py) du blob (bx,by)
-		  fprintf(outputfile, "%c", ycc[0][bx]->data[px][py]);
-	       } else if (nbcomp == 3) {
-		  // On print le pixel de coordonnée (x,y)
-		  uint64_t px, py;
-		  px = x/yhf;
-		  py = y/yvf;
-		  int8_t y_ycc = ycc[y_id][(py>>3)*nb_blocYH + (px>>3)]->data[px%8][py%8];
-		  px = x/cbhf;
-		  py = y/cbvf;
-		  int8_t cb_ycc = ycc[cb_id][(py>>3)*nb_blocCbH + (px>>3)]->data[px%8][py%8];
-		  px = x/crhf;
-		  py = y/crvf;
-		  int8_t cr_ycc = ycc[cr_id][(py>>3)*nb_blocCrH + (px>>3)]->data[px%8][py%8];
-		  rgb_t pixel_rgb;
-		  ycc2rgb_pixel(y_ycc, cb_ycc, cr_ycc, &pixel_rgb);
-		  rgb[x*3+0] = pixel_rgb.r;
-		  rgb[x*3+1] = pixel_rgb.g;
-		  rgb[x*3+2] = pixel_rgb.b;
-	       }
-	    }
-	    if (nbcomp == 3) fwrite(rgb, sizeof(char), img->width*3, outputfile);
-	 }
+	 save_mcu_ligne(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
       }
    }
    if (nbcomp == 3) free(rgb);
@@ -302,8 +325,6 @@ int main(int argc, char *argv[]) {
    print_timer("Décodage complet de l'image");
 
    fclose(fichier);
-
-   if (all_option.outfile == NULL) free(fullfilename);
 
    start_timer();
    // Free ycc

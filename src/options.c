@@ -29,7 +29,7 @@ typedef struct option_s option_t;
 
 static void set_verbose_param(all_option_t *all_option);
 static void set_timer_param(all_option_t *all_option);
-static void set_idct_fast_param(all_option_t *all_option);
+static void set_idct_nofast_param(all_option_t *all_option);
 static void set_outfile(all_option_t *all_option, char *file);
 static char **get_max_size_str();
 static bool try_apply_option(all_option_t *all_option, char *name,
@@ -41,7 +41,7 @@ static const option_t OPTION[4] = {
     {"v", "verbose", set_verbose_param, "Affiche des informations suplémentaire durant l'exécution."},
     {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
     {"h", "help", print_help, "Affiche cette aide."},
-    {"f", "fast-idct", set_idct_fast_param, "Fast IDCT."}};
+    {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas la fast IDCT."}};
 
 static const poption_t OPTION_PARAMETRE[1] = {
     {"o", "outfile", set_outfile, "fichier", "Placer la sortie dans le fichier."}};
@@ -50,7 +50,7 @@ static void set_verbose_param(all_option_t *all_option) { all_option->verbose = 
 
 static void set_timer_param(all_option_t *all_option) { all_option->print_time = 1; }
 
-static void set_idct_fast_param(all_option_t *all_option) { all_option->idct_fast = 1; }
+static void set_idct_nofast_param(all_option_t *all_option) { all_option->idct_fast = 0; }
 
 static void set_outfile(all_option_t *all_option, char* file) {
   if (all_option->outfile != NULL) erreur("Maximum une image en output.");
@@ -140,6 +140,7 @@ static bool try_apply_poption(all_option_t *all_option, char* name, char* next, 
 }
 
 void set_option(all_option_t *all_option, const int argc, char **argv) {
+  all_option->idct_fast = 1;
   for (int i=1; i<argc; i++) {
     char* str = argv[i];
     if (str[0] != '-') {
