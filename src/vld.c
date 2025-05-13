@@ -150,7 +150,7 @@ void decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, b
       s_start = 1;
    }
    if (s_start <= s_end) {
-    decode_list_coef(hac, fichier, sortie, off, AC, s_start, s_end);
-    fseek(fichier, -1, SEEK_CUR);
+      decode_list_coef(hac, fichier, sortie, off, AC, s_start, s_end);
+      fseek(fichier, -1, SEEK_CUR);
    }
 }
