@@ -138,6 +138,13 @@ static void verif_entete(img_t *img) {
       // Section SOF0
       if (img->comps->precision_comp != 8) erreur("[SOF0] Précision des composantes doit valoir 8 (Baseline)");
       
+      // Section DQT
+      for (int i=0; i<4; i++) {
+         if (img->qtables[i] != NULL) {
+            if (img->qtables[i]->precision != 0) erreur("[DQT] Précision des tables de quantification doit valoir 0 (8 bits) (Baseline)");
+         }
+      }
+
       // Section SOS
       if (img->other->ss != 0) erreur("[SOS] Ss doit valoir 0 (Baseline)");
       if (img->other->se != 63) erreur("[SOS] Se doit valoir 63 (Baseline)");
@@ -148,15 +155,15 @@ static void verif_entete(img_t *img) {
    else { 
       // Section SOF2
       // Précision 12 non traitée
-      if (img->comps->precision_comp != 8) erreur("[SOF2] Précision des composantes doit valoir 8 (Progressif)");
+      if (img->comps->precision_comp != 8) erreur("[SOF2] Précision des composantes : %d non pris charge (Progressif)", img->comps->precision_comp);
       
       // Section SOS
       if (img->other->ss > 63) erreur("[SOS] Ss doit valoir entre 0 et 63 (Progressif)");
       if (img->other->se < img->other->ss || img->other->se > 63) erreur("[SOS] Se doit valoir entre Ss et 63 (Progressif)");
       // Ah != 0 non traité dans spectral selection
-      if (img->other->ah != 0) erreur("[SOS] Ah doit valoir entre 0 (Progressif : spectral selection)");
+      if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Progressif : spectral selection)");
       // Al != 0 non traité dans spectral selection
-      if (img->other->al != 0) erreur("[SOS] Al doit valoir entre 0 (Progressif : spectral selection)");
+      if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Progressif : spectral selection)");
    }
 }
 
