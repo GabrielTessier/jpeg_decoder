@@ -16,7 +16,7 @@
 #include <utils.h>
 #include <jpeg2ppm.h>
 
-all_option_t all_option;
+extern all_option_t all_option;
 
 // Décode un bloc
 // fichier       : le fichier image

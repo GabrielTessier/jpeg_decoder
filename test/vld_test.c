@@ -11,8 +11,6 @@
 #include <options.h>
 #include "test_utils.h"
 
-all_option_t all_option;
-
 static void free_huffman_tree(huffman_tree_t *tree) {
    if (tree == NULL) return;
    free_huffman_tree(tree->fils[1]);

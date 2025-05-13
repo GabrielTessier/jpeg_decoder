@@ -7,6 +7,8 @@
 #include <utils.h>
 #include <options.h>
 
+all_option_t all_option;
+
 enum option_type_e {LONGUE, COURTE};
 
 struct poption_s{
