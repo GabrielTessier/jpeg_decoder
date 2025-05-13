@@ -25,7 +25,7 @@ static int16_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *
 // Remplit <res>[<resi>] avec la composante non constante du bloc fréquentiel à
 // l'adresse <file>+<off>, décodé grâce à l'arbre de Huffman <symb_decode>. <c>
 // est la valeur de l'octet courant.
-static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t s_start, uint8_t s_end, uint8_t *off, char *c);
+static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c);
 
 // Retourne un tableau contenant les coefficients (AC ou DC selon <type>)
 // décodés à l'adresse <file>+<off> à l'aide de l'arbre de Huffman <ht>
@@ -82,7 +82,7 @@ static int16_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *
   return read_val_from_magnitude(file, symb_decode->symb, off, c);
 }
 
-static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t s_start, uint8_t s_end, uint8_t *off, char *c) {
+static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c) {
   switch (symb_decode->symb) {
   case (uint8_t) 0x00:
     *resi = 64;
@@ -127,7 +127,7 @@ static void decode_list_coef(huffman_tree_t* ht, FILE* file, blocl16_t *sortie, 
 	  code_que_un = true;
 	  resi++;
 	} else {
-	   decode_coef_AC(file, symb_decode, sortie, &resi, s_start, s_end, &i, &c);
+	   decode_coef_AC(file, symb_decode, sortie, &resi, &i, &c);
 	}
 	symb_decode = ht;
 	if (resi > s_end) break;

@@ -172,16 +172,16 @@ static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts) {
    size_t line_size_max = 100;
    char *line = (char *) malloc(sizeof(char)*line_size_max);
    bool test_hufftable = true;
-   while (fgets(&line, &line_size_max, file)) {
+   while (fgets(line, line_size_max, file)) {
       if (strstr(line, "Huffman table type ") != NULL) {
 	 // type de table
 	 char acdc[3];
 	 sscanf(line, "Huffman table type %s\n", acdc);
-	 fgets(&line, &line_size_max, file);
+	 fgets(line, line_size_max, file);
 	 // indice de table
 	 int id;
 	 sscanf(line, "Huffman table index %d\n", &id);
-	 fgets(&line, &line_size_max, file);
+	 fgets(line, line_size_max, file);
 	 // nombre de symboles de Huffman
 	 int nb_symb;
 	 sscanf(line, "total nb of Huffman symbols %d\n", &nb_symb);

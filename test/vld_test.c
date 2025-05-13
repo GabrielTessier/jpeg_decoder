@@ -107,11 +107,12 @@ int main(int argc, char **argv) {
 	 FILE *f = fopen("/tmp/vld_test_d", "r");
 	 int16_t dc_prec = 0;
 	 uint8_t off = 0;
-	 blocl16_t *bl = decode_bloc_acdc(f, dc, ac, &dc_prec, &off);
+	 blocl16_t bl;
+	 decode_bloc_acdc(f, dc, ac, &bl, 0, 63, &dc_prec, &off);
 	 int16_t out[64];
 	 read(fd_out[0], out, 64*sizeof(int16_t));
 	 for (int i=0; i<64; i++) {
-	    if (bl->data[i] != out[i]) {
+	    if (bl.data[i] != out[i]) {
 	       exit(2);  // Code d'erreur 2 dans le cas où le bloc décodé n'est pas bon
 	    }
 	 }

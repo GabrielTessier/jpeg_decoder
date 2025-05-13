@@ -51,16 +51,16 @@ int main(int argc, char* argv[]) {
     line2.data[i] = (line.data[i]+1)*2;
     qt.data[i] = line.data[i];
   }
-  blocl16_t *res2;
-  res2 = iquant(&line2, &qt);
+  blocl16_t res2;
+  for (int i=0; i<64; i++) res2.data[i] = line2.data[i];
+  iquant(&res2, 0, 63, &qt);
   // Vérification
   int test_iq = 1;
   for (int i=0; i<64; i++) {
-    if (res2->data[i] != qt.data[i]*line2.data[i]) {
+    if (res2.data[i] != qt.data[i]*line2.data[i]) {
       test_iq = 0;
     }
   }
-  free(res2);
   test_res(test_iq, argv, "quantification inverse");
   return 0;
 }
