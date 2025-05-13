@@ -40,8 +40,14 @@ static void free_other(other_t *other);
 // Indique si on a atteint la fin du fichier
 static bool fichier_fini(FILE *fichier);
 
+// Vérifie si les informations de l'entête dans la section APP0 sont conformes
+static void verif_entete_app0(img_t *img);
+
 // Vérifie si les informations de l'entête sont conformes au mode baseline
-static void verif_entete(img_t *img);
+static void verif_entete_baseline(img_t *img);
+
+// Vérifie si les informations de l'entête sont conformes au mode progressif
+static void verif_entete_progressif(img_t *img);
 
 // Calcul d'informations complémentaires sur l'image (nombre de mcu et sampling maximal)
 static void calcul_image_information(img_t *img);
@@ -127,44 +133,65 @@ static bool fichier_fini(FILE *fichier) {
    return false;
 }
 
-static void verif_entete(img_t *img) {
+static void verif_entete_app0(img_t *img) {
    // Section APP0
    if (strcmp(img->other->jfif,"JFIF") != 0) erreur("[APP0] Phrase JFIF manquante dans APP0");
    if (img->other->version_jfif_x != 1) erreur("[APP0] Version JFIF X doit valoir 1");
    if (img->other->version_jfif_y != 1) erreur("[APP0] Version JFIF Y doit valoir 1");
-   
-   // Baseline
-   if (img->section->num_sof == 0) { 
-      // Section SOF0
-      if (img->comps->precision_comp != 8) erreur("[SOF0] Précision des composantes doit valoir 8 (Baseline)");
-      
-      // Section DQT
-      for (int i=0; i<4; i++) {
-         if (img->qtables[i] != NULL) {
-            if (img->qtables[i]->precision != 0) erreur("[DQT] Précision des tables de quantification doit valoir 0 (8 bits) (Baseline)");
-         }
-      }
+}
 
-      // Section SOS
-      if (img->other->ss != 0) erreur("[SOS] Ss doit valoir 0 (Baseline)");
-      if (img->other->se != 63) erreur("[SOS] Se doit valoir 63 (Baseline)");
-      if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Baseline)");
-      if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Baseline)");
+
+static void verif_entete_baseline(img_t *img) {
+   // Section SOF0
+   if (img->comps->precision_comp != 8) erreur("[SOF0] Précision composante doit valoir 8 (Baseline)");   
+   
+   // Section DQT
+   for (int i=0; i<4; i++) {
+      if (img->qtables[i] != NULL) {
+         if (img->qtables[i]->precision != 0) erreur("[DQT] Précision table de quantification doit valoir 0 (8 bits) (Baseline)");
+      }
    }
-   //Progressif
-   else { 
-      // Section SOF2
-      // Précision 12 non traitée
-      if (img->comps->precision_comp != 8) erreur("[SOF2] Précision des composantes : %d non pris charge (Progressif)", img->comps->precision_comp);
-      
-      // Section SOS
-      if (img->other->ss > 63) erreur("[SOS] Ss doit valoir entre 0 et 63 (Progressif)");
-      if (img->other->se < img->other->ss || img->other->se > 63) erreur("[SOS] Se doit valoir entre Ss et 63 (Progressif)");
-      // Ah != 0 non traité dans spectral selection
-      if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Progressif : spectral selection)");
-      // Al != 0 non traité dans spectral selection
-      if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Progressif : spectral selection)");
+
+   // Section DHT
+   // En baseline, les indices des tables de Huffman doivent être 0 ou 1
+   if (img->htables->dc[2] != NULL) erreur("[DHT] Indice table de Huffman DC doit valoir 0 ou 1");
+   if (img->htables->dc[3] != NULL) erreur("[DHT] Indice table de Huffman DC doit valoir 0 ou 1");
+   if (img->htables->ac[2] != NULL) erreur("[DHT] Indice table de Huffman AC doit valoir 0 ou 1");
+   if (img->htables->ac[3] != NULL) erreur("[DHT] Indice table de Huffman AC doit valoir 0 ou 1");
+
+   // Section SOS
+   for (int i=0; i<3; i++) {
+      if (img->comps->comps[i] != NULL) {
+         // En baseline, les indices des tables de Huffman doivent être 0 ou 1
+         if (img->comps->comps[i]->idhdc > 1) erreur("[SOS] Indice table de Huffman DC doit valoir 0 ou 1 (Baseline)");
+         if (img->comps->comps[i]->idhac > 1) erreur("[SOS] Indice table de Huffman AC doit valoir 0 ou 1 (Baseline)");
+      }
    }
+   if (img->other->ss != 0) erreur("[SOS] Ss doit valoir 0 (Baseline)");
+   if (img->other->se != 63) erreur("[SOS] Se doit valoir 63 (Baseline)");
+   if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Baseline)");
+   if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Baseline)");
+}
+
+
+static void verif_entete_progressif(img_t *img) {
+   // Section SOF2
+   // Précision 12 non traitée
+   if (img->comps->precision_comp != 8) erreur("[SOF2] Précision composante : %d non pris charge (Progressif)", img->comps->precision_comp);
+   for (int i=0; i<3; i++) {
+      if (img->comps->comps[i] != NULL) {
+         // En progressif, les indices des composantes doivent être entre 1 et 4
+         if (img->comps->comps[i]->idc > 4) erreur("[SOF2] Indice composante doit valoir entre 1 et 4 (Progressif)");
+      }
+   }
+
+   // Section SOS
+   if (img->other->ss > 63) erreur("[SOS] Ss doit valoir entre 0 et 63 (Progressif)");
+   if (img->other->se < img->other->ss || img->other->se > 63) erreur("[SOS] Se doit valoir entre Ss et 63 (Progressif)");
+   // Ah != 0 non traité dans spectral selection
+   if (img->other->ah != 0) erreur("[SOS] Ah doit valoir 0 (Progressif : spectral selection)");
+   // Al != 0 non traité dans spectral selection
+   if (img->other->al != 0) erreur("[SOS] Al doit valoir 0 (Progressif : spectral selection)");
 }
 
 
@@ -203,6 +230,7 @@ img_t* init_img() {
 
 
 void decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
+   // On passe plusieurs fois dans cette fonction s'il y a plusieurs sections SOS dans l'image (Progressif)
    if (premier_passage) {
       // On vérifie que la section SOI est présente au début du fichier
       soi(fichier);
@@ -218,19 +246,26 @@ void decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
       marqueur(fichier, img);
    }
 
-   if (!img->section->sos_done && !img->section->eoi_done) {
-      // On affiche une erreur si on a atteint la fin du fichier avant une section SOS ou EOI
-      erreur("L'image se termine sans EOI");
+   if (img->section->sos_done) {
+      // On effectue les calculs et les vérifications nécessaires si c'est le premier passage dans decode_entete
+      if (premier_passage) {
+         calcul_image_information(img);
+         // Si on a atteint un EOI avant un SOS
+         if (img->section->eoi_done) erreur("Image sans image");
+
+         // Vérification des valeurs de l'entête
+         verif_entete_app0(img);
+         // Vérification pour le mode baseline
+         if (img->section->num_sof == 0) verif_entete_baseline(img);
+      }
+      // Vérification pour le mode progressif
+      if (img->section->num_sof == 2) verif_entete_progressif(img);
    }
-
-   if (premier_passage) {
-      // Si on a atteint un EOI avant un SOS
-      if (img->section->eoi_done) erreur("Image sans image");
-
-      // Vérification des valeurs de l'entête
-      verif_entete(img);
-
-      calcul_image_information(img);
+   else {
+      if (!img->section->eoi_done) {
+         // On affiche une erreur si on a atteint la fin du fichier avant une section SOS ou EOI
+         erreur("L'image se termine sans EOI");
+      }
    }
 }
 
@@ -330,6 +365,7 @@ static void sof(FILE *fichier, img_t *img) {
    img->comps->nb = nb_comp;
    for (int i=0; i<=nb_comp-1; i++) {
       uint8_t id_comp = fgetc(fichier);
+      if (id_comp == 0) erreur("[SOF] Indice composante doit être différent de 0");
       uint8_t sampling = fgetc(fichier);
       uint8_t id_quant = fgetc(fichier);
       img->comps->comps[i] = malloc(sizeof(idcomp_t));
