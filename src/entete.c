@@ -278,43 +278,43 @@ static void soi(FILE *fichier) {
 
 static void marqueur(FILE *fichier, img_t *img) {
    // On lit un marqueur
-   char marqueur[2];
+   uint8_t marqueur[2];
    (void) !fread(&marqueur, 1, 2, fichier);
 
    // On vérifie que le marqueur commence par 0xff
-   if (marqueur[0] != (char) 0xff) erreur("Octet n°%ld (%x) devrait être un marqueur %x %x", ftell(fichier)-2, ftell(fichier)-2, marqueur[0], marqueur[1]);
+   if (marqueur[0] != (uint8_t) 0xff) erreur("Octet n°%ld (%x) devrait être un marqueur %x %x", ftell(fichier)-2, ftell(fichier)-2, marqueur[0], marqueur[1]);
     
    // On associe le marqueur à la bonne section
    switch (marqueur[1]) {
-      case (char) 0xc0:   // Section SOF0
+      case (uint8_t) 0xc0:   // Section SOF0
          img->section->num_sof = 0;
          sof(fichier, img);
          break;
-      case (char) 0xc2:   // Section SOF2
+      case (uint8_t) 0xc2:   // Section SOF2
          img->section->num_sof = 2;
          sof(fichier, img);
          break;
-      case (char) 0xc4:   // Section DHT
+      case (uint8_t) 0xc4:   // Section DHT
          dht(fichier, img);
          break;
-      case (char) 0xd8:   // Section SOI
+      case (uint8_t) 0xd8:   // Section SOI
          // On a déja décodé une section SOI au début du fichier
          // Si on trouve une section SOI ici, on retourne une erreur
          erreur("Plusieurs SOI");
          break;
-      case (char) 0xd9:   // Section EOI
+      case (uint8_t) 0xd9:   // Section EOI
          img->section->eoi_done = true;
          break;
-      case (char) 0xda:   // Section SOS
+      case (uint8_t) 0xda:   // Section SOS
          sos(fichier, img);
          break;
-      case (char) 0xdb:   // Section DQT
+      case (uint8_t) 0xdb:   // Section DQT
          dqt(fichier, img);
          break;
-      case (char) 0xe0:   // Section APP0
+      case (uint8_t) 0xe0:   // Section APP0
          app0(fichier, img);
          break;
-      case (char) 0xfe:   // Section COMM
+      case (uint8_t) 0xfe:   // Section COMM
          com(fichier);
          break; 
       default: 
