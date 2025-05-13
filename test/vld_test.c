@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 	 uint8_t off = 0;
 	 blocl16_t bl;
 	 for (int i=0; i<64; i++) bl.data[i] = 0;
-	 decode_bloc_acdc(f, dc, ac, &bl, 0, 63, &dc_prec, &off);
+	 decode_bloc_acdc(f, 0, dc, ac, &bl, 0, 63, &dc_prec, &off);
 	 int16_t out[64];
 	 read(fd_out[0], out, 64*sizeof(int16_t));
 	 for (int i=0; i<64; i++) {

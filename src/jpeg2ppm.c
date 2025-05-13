@@ -27,7 +27,7 @@ extern all_option_t all_option;
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
 // *off          : pointeur vers l'entier contenant l'offset de l'octet entrain d'être lu (on lit bit par bit)
 // timerBloc     : tableau contenant les timers pour les différentes parties du décodage
-static void decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, uint64_t timerBloc[4]) {
+static uint8_t decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, uint64_t timerBloc[4]) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -42,9 +42,13 @@ static void decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, 
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   decode_bloc_acdc(fichier, hdc, hac, sortie, s_start, s_end, dc_prec+comp, off);
+   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec+comp, off);
+   if (skip_bloc != 0) skip_bloc--;
+   printf("skip : %d\n", skip_bloc);
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, s_start, s_end, qtable->qtable);
+
+   return skip_bloc;
 }
 
 static void verif_option(int argc, char **argv) {
@@ -224,6 +228,7 @@ int main(int argc, char *argv[]) {
       // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
       int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
       uint8_t off = 0;
+      uint16_t *skip_blocs = (uint16_t*) calloc(nbcomp, sizeof(uint16_t));
       for (uint64_t i=0; i<img->nbMCU; i++) {
 	 print_v("MCU %d\n", i);
 	 uint64_t mcuX = i%img->nbmcuH;
@@ -238,18 +243,25 @@ int main(int argc, char *argv[]) {
 		  break;
 	       }
 	    }
+	    printf("comp : %d\n", indice_comp);
 	    print_v("COMP %d\n", indice_comp);
 	    uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
 	    for (uint8_t by=0; by<img->comps->comps[indice_comp]->vsampling; by++) {
 	       for (uint8_t bx=0; bx<img->comps->comps[indice_comp]->hsampling; bx++) {
-		  print_v("BLOC %d\n", by*img->comps->comps[indice_comp]->hsampling+bx);
-		  uint64_t blocX = mcuX*img->comps->comps[indice_comp]->hsampling + bx;
-		  uint64_t blocY = mcuY*img->comps->comps[indice_comp]->vsampling + by;
-		  decode_bloc(fichier, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, timerBloc);
+		  if (skip_blocs[indice_comp] == 0) {
+		     print_v("BLOC %d\n", by*img->comps->comps[indice_comp]->hsampling+bx);
+		     uint64_t blocX = mcuX*img->comps->comps[indice_comp]->hsampling + bx;
+		     uint64_t blocY = mcuY*img->comps->comps[indice_comp]->vsampling + by;
+		     uint16_t skip_bloc = decode_bloc(fichier, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, timerBloc);
+		     skip_blocs[indice_comp] = skip_bloc;
+		  } else {
+		     skip_blocs[indice_comp]--;
+		  }
 	       }
 	    }
 	 }
       }
+      free(skip_blocs);
       fseek(fichier, 1, SEEK_CUR);
 
       FILE *outputfile = ouverture_fichier_out(nbcomp);
