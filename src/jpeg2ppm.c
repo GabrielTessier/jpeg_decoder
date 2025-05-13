@@ -37,8 +37,8 @@ static void decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, 
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
    // S'il manque une table on exit avec une erreur
-   //if (hdc == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
-   //if (hac == NULL) erreur("Pas de table de huffman pour la composante %d\n", comp);
+   //if (hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
+   //if (hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
    //if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
