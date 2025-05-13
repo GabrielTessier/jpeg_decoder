@@ -11,7 +11,7 @@ typedef struct qtable_s qtable_t;
 
 // Retourne le bloc <entree> déquantifié à l'aide de <qtable>,
 // sous forme de tableau 1x64
-blocl16_t *iquant(blocl16_t *entree, qtable_t *qtable);
+void iquant(blocl16_t *entree, uint8_t s_start, uint8_t s_end, qtable_t *qtable);
 
 // Retourne le bloc <entree> (un tableau 1x64) après
 // avoir inversé l'opération de zig-zag, donc sous

@@ -282,7 +282,7 @@ static void marqueur(FILE *fichier, img_t *img) {
    (void) !fread(&marqueur, 1, 2, fichier);
 
    // On vérifie que le marqueur commence par 0xff
-   if (marqueur[0] != (char) 0xff) erreur("Octet n°%ld devrait être un marqueur", ftell(fichier));
+   if (marqueur[0] != (char) 0xff) erreur("Octet n°%ld (%x) devrait être un marqueur %x %x", ftell(fichier)-2, ftell(fichier)-2, marqueur[0], marqueur[1]);
     
    // On associe le marqueur à la bonne section
    switch (marqueur[1]) {

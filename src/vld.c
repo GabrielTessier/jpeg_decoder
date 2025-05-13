@@ -25,11 +25,11 @@ static int16_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *
 // Remplit <res>[<resi>] avec la composante non constante du bloc fréquentiel à
 // l'adresse <file>+<off>, décodé grâce à l'arbre de Huffman <symb_decode>. <c>
 // est la valeur de l'octet courant.
-static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, int16_t *res, uint64_t *resi, uint8_t *off, char *c);
+static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t s_start, uint8_t s_end, uint8_t *off, char *c);
 
 // Retourne un tableau contenant les coefficients (AC ou DC selon <type>)
 // décodés à l'adresse <file>+<off> à l'aide de l'arbre de Huffman <ht>
-static int16_t *decode_list_coef(huffman_tree_t *ht, FILE *file, uint8_t *off, enum acdc_e type);
+static void decode_list_coef(huffman_tree_t* ht, FILE* file, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint8_t s_start, uint8_t s_end);
 
 
 
@@ -45,7 +45,7 @@ static char my_getc(FILE* file, char old) {
   if (old == (char) 0xff) {
     old = fgetc(file);
     if (old != 0) {
-      erreur("Erreur : Pas de 0x00 après un 0xff (Pas bien !!)\n");
+      erreur("Pas de 0x00 après un 0xff (Pas bien !!)\n");
     }
   }
   char c = fgetc(file);
@@ -82,10 +82,10 @@ static int16_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *
   return read_val_from_magnitude(file, symb_decode->symb, off, c);
 }
 
-static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, int16_t *res, uint64_t *resi, uint8_t *off, char *c) {
+static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t s_start, uint8_t s_end, uint8_t *off, char *c) {
   switch (symb_decode->symb) {
   case (uint8_t) 0x00:
-    *resi = 63;
+    *resi = 64;
     break;
   case (uint8_t) 0xf0:
     *resi += 16;
@@ -95,18 +95,14 @@ static void decode_coef_AC(FILE *file, huffman_tree_t *symb_decode, int16_t *res
     uint8_t gamma = symb_decode->symb & 0b00001111;
     if (gamma == 0) erreur("Code invalide pour AC : %x", symb_decode->symb);
     *resi += alpha;
-    res[*resi] = read_val_from_magnitude(file, gamma, off, c);
+    sortie->data[(*resi)] = read_val_from_magnitude(file, gamma, off, c);
     (*resi)++;
     break;
   }
 }
 
-static int16_t *decode_list_coef(huffman_tree_t* ht, FILE* file, uint8_t *off, enum acdc_e type) {
-  uint64_t size = 0;
-  if (type==AC) size = 63;
-  else size = 1;
-  int16_t* res = (int16_t*) calloc(size, sizeof(int16_t)); // tableau contenant les dc décodé
-  uint64_t resi = 0; // indice de où on en est dans res
+static void decode_list_coef(huffman_tree_t* ht, FILE* file, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint8_t s_start, uint8_t s_end) {
+  uint64_t resi = s_start; // indice de où on en est dans res
   huffman_tree_t* symb_decode = ht; // où on en est dans l'arbre de huffman
   // On lit char par char mais on traite bit par bit
   uint8_t i = *off;
@@ -127,41 +123,32 @@ static int16_t *decode_list_coef(huffman_tree_t* ht, FILE* file, uint8_t *off, e
 	  if (code_que_un) {
 	    erreur("Le code de huffman avec que des 1 est utilisé\n");
 	  }
-	  res[resi] = decode_coef_DC(file, symb_decode, &i, &c);
+	  sortie->data[resi] = decode_coef_DC(file, symb_decode, &i, &c);
 	  code_que_un = true;
 	  resi++;
 	} else {
-	  decode_coef_AC(file, symb_decode, res, &resi, &i, &c);
+	   decode_coef_AC(file, symb_decode, sortie, &resi, s_start, s_end, &i, &c);
 	}
 	symb_decode = ht;
-	if (resi >= size) break;
+	if (resi > s_end) break;
       }
       i++;
     }
-    if (resi >= size) break;
+    if (resi > s_end) break;
     c = my_getc(file, c);
     i = 0;
   }
   *off = i+1;
-  return res;
 }
 
-blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, int16_t *dc_prec, uint8_t *off) {
-  int16_t *sousdc = decode_list_coef(hdc, fichier, off, DC);
-  int16_t dc = sousdc[0];
-  dc += *dc_prec; // calcul du coef à partir de la différence
-  *dc_prec = dc;
-
-  fseek(fichier, -1, SEEK_CUR);
-  int16_t *ac = decode_list_coef(hac, fichier, off, AC);
-
-  fseek(fichier, -1, SEEK_CUR);
-  // écriture des DC, AC
-  blocl16_t * bloc = (blocl16_t*) malloc(sizeof(blocl16_t));
-  bloc->data[0] = dc;
-  //memcpy(bloc->data+1, ac, 63*sizeof(int16_t));
-  for (int i=0; i<63; i++) bloc->data[i+1] = ac[i];
-  free(sousdc);
-  free(ac);
-  return bloc;
+void decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off) {
+   if (s_start == 0) {
+      decode_list_coef(hdc, fichier, sortie, off, DC, 0, 0);
+      sortie->data[0] += *dc_prec;
+      *dc_prec = sortie->data[0];
+      fseek(fichier, -1, SEEK_CUR);
+      s_start = 1;
+   }
+   decode_list_coef(hac, fichier, sortie, off, AC, s_start, s_end);
+   fseek(fichier, -1, SEEK_CUR);
 }

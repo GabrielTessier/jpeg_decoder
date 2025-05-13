@@ -27,7 +27,7 @@ extern all_option_t all_option;
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
 // *off          : pointeur vers l'entier contenant l'offset de l'octet entrain d'être lu (on lit bit par bit)
 // timerBloc     : tableau contenant les timers pour les différentes parties du décodage
-static bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float stockage_coef[8][8][8][8], int comp, int16_t *dc_prec, uint8_t *off, uint64_t timerBloc[4]) {
+static void decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, uint64_t timerBloc[4]) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -42,65 +42,9 @@ static bloctu8_t *decode_bloc(FILE* fichier, img_t *img, float stockage_coef[8][
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   start_timer();
-   uint64_t time = all_option.timer;
-   blocl16_t *bloc = decode_bloc_acdc(fichier, hdc, hac, dc_prec+comp, off);
-   if (all_option.verbose) {
-      print_v("[DC/AC] : ");
-      for (int i=0; i<64; i++) {
-         print_v("%x, ", bloc->data[i]);
-      }
-      print_v("\n");
-   }
+   decode_bloc_acdc(fichier, hdc, hac, sortie, s_start, s_end, dc_prec+comp, off);
    // On fait la quantification inverse (et on chronomètre le temps)
-   start_timer();
-   timerBloc[0] += all_option.timer-time;
-   time = all_option.timer;
-   blocl16_t *bloc_iq = iquant(bloc, qtable->qtable);
-   if (all_option.verbose) {
-      print_v("[IQ] : ");
-      for (int i=0; i<64; i++) {
-         print_v("%x, ", bloc_iq->data[i]);
-      }
-      print_v("\n");
-   }
-   // On fait le zig-zag inverse (et on chronomètre le temps)
-   start_timer();
-   timerBloc[1] += all_option.timer-time;
-   time = all_option.timer;
-   bloct16_t *bloc_zz = izz(bloc_iq);
-   if (all_option.verbose) {
-      print_v("[IZZ] : ");
-      for (int i=0; i<8; i++) {
-         for (int j=0; j<8; j++)
-            print_v("%x, ", bloc_zz->data[j][i]);
-      }
-      print_v("\n");
-   }
-   // On fait la DCT inverse (et on chronomètre le temps)
-   start_timer();
-   timerBloc[2] += all_option.timer-time;
-   time = all_option.timer;
-   bloctu8_t *bloc_idct;
-   // On choisit entre la iDCT rapide et lente en fonction des options passées en ligne de commande
-   if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
-   else bloc_idct = idct(bloc_zz, stockage_coef);
-   if (all_option.verbose) {
-      print_v("[IDCT] : ");
-      for (int i=0; i<8; i++) {
-         for (int j=0; j<8; j++) 
-            print_v("%x, ", bloc_idct->data[j][i]);
-      }
-      print_v("\n");
-   }
-   start_timer();
-   timerBloc[3] += all_option.timer-time;
-   time = all_option.timer;
-   // On libère la mémoire des blocs créés
-   free(bloc);
-   free(bloc_iq);
-   free(bloc_zz);
-   return bloc_idct;
+   iquant(sortie, s_start, s_end, qtable->qtable);
 }
 
 static void verif_option(int argc, char **argv) {
@@ -226,19 +170,20 @@ int main(int argc, char *argv[]) {
 
    // N&B ou couleur
    const uint8_t nbcomp = img->comps->nb;
-
-   FILE *outputfile = ouverture_fichier_out(nbcomp);
   
    print_huffman_quant_table(img);
 
    // Initialisation du tableau ycc :
    // ycc contient un tableau par composante
    // Chaque sous-tableau est de taille le nombre de bloc dans la composante (et stocke des blocs 8x8)
-   bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
+   blocl16_t ***sortieq = (blocl16_t***) malloc(sizeof(blocl16_t**)*nbcomp);
    for (uint8_t i=0; i<nbcomp; i++) {
       uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
-      uint64_t nbV = img->comps->comps[i]->vsampling;
-      ycc[i] = (bloctu8_t**) calloc(nbH*nbV, sizeof(bloctu8_t*));
+      uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
+      sortieq[i] = (blocl16_t**) malloc(nbH*nbV*sizeof(blocl16_t));
+      for (uint64_t j=0; j<nbH*nbV; j++) {
+	 sortieq[i][j] = (blocl16_t*) calloc(1, sizeof(blocl16_t));
+      }
    }
 
    // Calcul des coefficients pour la DCT inverse (lente)
@@ -254,13 +199,6 @@ int main(int argc, char *argv[]) {
    uint64_t timerDecodage = all_option.timer;
    // timerBloc : DCAC, IQ, IZZ, IDCT
    uint64_t timerBloc[4] = {0, 0, 0, 0};
-   // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
-   uint8_t off = 0;
-   if (nbcomp == 1) fprintf(outputfile, "P5\n");
-   else if (nbcomp == 3) fprintf(outputfile, "P6\n");
-   else erreur("Pas trois composante");
-   fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
-   fprintf(outputfile, "255\n");
    uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
    uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
    char *rgb;
@@ -281,34 +219,93 @@ int main(int argc, char *argv[]) {
       crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
       rgb = (char*) malloc(sizeof(char) * img->width * 3);
    }
-  
-   // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
-   int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
-   for (uint64_t i=0; i<img->nbMCU; i++) {
-      print_v("MCU %d\n", i);
-      uint64_t mcuX = i%img->nbmcuH;
-      for (uint8_t k=0; k<nbcomp; k++) {
-         print_v("COMP %d\n", k);
-	 uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
-         for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
-            for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
-               print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-               bloctu8_t *bloc = decode_bloc(fichier, img, stockage_coef, k, dc_prec, &off, timerBloc);
-               uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
-	       if (ycc[k][blocX] != NULL) free(ycc[k][by*nbH + blocX]);
-               ycc[k][by*nbH + blocX] = bloc;
-            }
-         }
-      }
-      if (i%img->nbmcuH == img->nbmcuH-1) {  // affichage une ligne de mcu
-	 save_mcu_ligne(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
-      }
-   }
-   if (nbcomp == 3) free(rgb);
 
-   fclose(outputfile);
- 
-   free(dc_prec);
+   while (!img->section->eoi_done) {
+      // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
+      int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
+      uint8_t off = 0;
+      for (uint64_t i=0; i<img->nbMCU; i++) {
+	 print_v("MCU %d\n", i);
+	 uint64_t mcuX = i%img->nbmcuH;
+	 uint64_t mcuY = i/img->nbmcuH;
+	 for (uint8_t k=0; k<nbcomp; k++) {
+	    print_v("COMP %d\n", k);
+	    uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+	    for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
+	       for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
+		  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
+		  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
+		  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
+		  decode_bloc(fichier, img, k, sortieq[k][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, timerBloc);
+	       }
+	    }
+	 }
+      }
+      fseek(fichier, 1, SEEK_CUR);
+
+      FILE *outputfile = ouverture_fichier_out(nbcomp);
+
+      // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
+      if (nbcomp == 1) fprintf(outputfile, "P5\n");
+      else if (nbcomp == 3) fprintf(outputfile, "P6\n");
+      else erreur("Pas trois composante");
+      fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
+      fprintf(outputfile, "255\n");
+
+      // Initialisation du tableau ycc :
+      // ycc contient un tableau par composante
+      // Chaque sous-tableau est de taille le nombre de bloc dans la composante (et stocke des blocs 8x8)
+      bloctu8_t ***ycc = (bloctu8_t ***) malloc(sizeof(bloctu8_t **)*nbcomp);
+      for (uint8_t i=0; i<nbcomp; i++) {
+	 uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
+	 uint64_t nbV = img->comps->comps[i]->vsampling;
+	 ycc[i] = (bloctu8_t**) calloc(nbH*nbV, sizeof(bloctu8_t*));
+      }
+
+      for (uint64_t i=0; i<img->nbMCU; i++) {
+	 print_v("MCU %d\n", i);
+	 uint64_t mcuX = i%img->nbmcuH;
+	 uint64_t mcuY = i/img->nbmcuH;
+	 for (uint8_t k=0; k<nbcomp; k++) {
+	    print_v("COMP %d\n", k);
+	    uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+	    for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
+	       for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
+		  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
+		  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
+		  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
+		  bloct16_t *bloc_zz = izz(sortieq[k][blocY*nbH + blocX]);
+		  bloctu8_t *bloc_idct;
+		  if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
+		  else bloc_idct = idct(bloc_zz, stockage_coef);
+		  free(bloc_zz);
+		  if (ycc[k][by*nbH + blocX] != NULL) free(ycc[k][by*nbH + blocX]);
+		  ycc[k][by*nbH + blocX] = bloc_idct;
+	       }
+	    }
+	 }
+	 if (i%img->nbmcuH == img->nbmcuH-1) {  // affichage une ligne de mcu
+	    save_mcu_ligne(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	 }
+      }
+
+      fclose(outputfile);
+      free(dc_prec);
+      // Free ycc
+      for (uint8_t i=0; i<nbcomp; i++) {
+	 uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
+	 uint64_t nbV = img->comps->comps[i]->vsampling;
+	 for (uint64_t j=0; j<nbH*nbV; j++) {
+	    free(ycc[i][j]);
+	 }
+	 free(ycc[i]);
+      }
+      free(ycc);
+      
+      decode_entete(fichier, false, img);
+   }
+
+   if (nbcomp == 3) free(rgb);
 
    // Affichage des temps d'exécution des différentes parties
    start_timer();
@@ -327,22 +324,20 @@ int main(int argc, char *argv[]) {
    print_timer("Décodage complet de l'image");
 
    fclose(fichier);
-
-   start_timer();
-   // Free ycc
+   
+   // Free sortieq
    for (uint8_t i=0; i<nbcomp; i++) {
       uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
-      uint64_t nbV = img->comps->comps[i]->vsampling;
+      uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
       for (uint64_t j=0; j<nbH*nbV; j++) {
-         free(ycc[i][j]);
+	 free(sortieq[i][j]);
       }
-      free(ycc[i]);
+      free(sortieq[i]);
    }
-   free(ycc);
+   free(sortieq);
 
    // Free entête
    free_img(img);
-   print_timer("Libération mémoire");
   
    if (all_option.print_time) {
       struct timeval t;

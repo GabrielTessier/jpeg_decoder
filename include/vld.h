@@ -20,4 +20,4 @@ enum acdc_e { AC, DC };
 // décodé à l'aide des tables de Huffman <hdc> (DC) et <hac> (AC).
 // On retrouve la composante constante de ce bloc fréquentiel
 // à l'aide de <dc_prec>.
-blocl16_t *decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, int16_t *dc_prec, uint8_t *off);
+void decode_bloc_acdc(FILE *fichier, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off);

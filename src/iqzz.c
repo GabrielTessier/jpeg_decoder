@@ -5,13 +5,11 @@
 #include <jpeg2ppm.h>
 
 
-blocl16_t *iquant(blocl16_t *entree, qtable_t *qtable) {
-  blocl16_t *res = (blocl16_t*) malloc(sizeof(blocl16_t));
-  for (int i=0; i<64; i++) {
+void iquant(blocl16_t *entree, uint8_t s_start, uint8_t s_end, qtable_t *qtable) {
+  for (int i=s_start; i<=s_end; i++) {
     // Déquantification
-    res->data[i] = entree->data[i] * qtable->data[i];
+    entree->data[i] = entree->data[i] * qtable->data[i];
   }
-  return res;
 }
 
 bloct16_t *izz(blocl16_t *entree) {
