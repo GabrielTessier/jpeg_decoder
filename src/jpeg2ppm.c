@@ -28,7 +28,7 @@ extern all_option_t all_option;
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
 // *off          : pointeur vers l'entier contenant l'offset de l'octet entrain d'être lu (on lit bit par bit)
 // timerBloc     : tableau contenant les timers pour les différentes parties du décodage
-static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, bool *stop)
+static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off)
 {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
@@ -47,10 +47,7 @@ static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sort
       erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off, stop);
-   printf("%u\n", skip_bloc);
-   if (*stop)
-      return 0;
+   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off);
    if (skip_bloc != 0)
       skip_bloc--;
    // On fait la quantification inverse (et on chronomètre le temps)
@@ -307,8 +304,7 @@ void decode_baseline_image(FILE *infile, img_t *img)
                   print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
                   uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
                   uint64_t blocY = mcuY * img->comps->comps[indice_comp]->vsampling + by;
-                  bool stop = false;
-                  uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, &stop);
+                  uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
                   skip_blocs[indice_comp] = skip_bloc;
                }
                else
@@ -460,8 +456,6 @@ void decode_progressive_image(FILE *infile, img_t *img)
       int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
       uint8_t off = 0;
       uint16_t *skip_blocs = (uint16_t *)calloc(nbcomp, sizeof(uint16_t));
-      bool stop = false;
-      printf("INFO %d, %d, %d, %d\n", img->other->ss, img->other->se, img->other->ah, img->other->al);
       for (uint64_t i = 0; i < img->nbMCU; i++)
       {
          print_v("MCU %d, %d, %d, %d\n", i, img->nbmcuH, img->nbmcuV, img->nbMCU);
@@ -504,38 +498,21 @@ void decode_progressive_image(FILE *infile, img_t *img)
                      print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
                      uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
                      uint64_t blocY = mcuY * img->comps->comps[indice_comp]->vsampling + by;
-                     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, &stop);
-                     printf("%ld, %ld, %u\n", mcuX, mcuY, skip_bloc);
-                     if (stop)
-                        break;
+                     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
                      skip_blocs[indice_comp] = skip_bloc;
                   }
                   else
                   {
                      skip_blocs[indice_comp]--;
                   }
-                  if (stop)
-                     break;
                }
-               if (stop)
-                  break;
             }
-            if (stop)
-               break;
          }
-         if (stop)
-            break;
-      }
-      if (stop)
-      {
-         while (fgetc(infile) != 0xff)
-            fseek(infile, -2, SEEK_CUR);
-         fseek(infile, -2, SEEK_CUR);
       }
       free(skip_blocs);
       fseek(infile, 1, SEEK_CUR);
 
-      printf("Fin sos : %x\n", (int)ftell(infile));
+      print_v("Fin données sos : %x\n", (int)ftell(infile));
 
       FILE *outputfile = ouverture_fichier_out(nbcomp, nb_passage_sos);
 
