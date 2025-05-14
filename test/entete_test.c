@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include <utils.h>
 #include <entete.h>
@@ -24,6 +26,14 @@ static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts);
 // test de décodage de l'entête sur shaun_the_sheep.
 static void test_shaun(char *nom_fichier, char *argv[]);
 
+// test de décodage de l'entête sur les fichiers <noms_fichiers>.
+// La fonction <decode_entete> est censée échouer sur ces fichiers.
+// Dans le cas où <decode_entete> finit, le test échoue et on affiche les
+// résultats des test sur chaque fichier.
+// Sinon on affiche juste <test_name>.
+static void test_fail(char *noms_fichiers[], int nb_fichiers, char *test_name, char *argv[]);
+
+   
 
 static void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t idq, uint8_t idhdc, uint8_t idhac) {
    char chemin_fichier[80] = "test/test_file/";
@@ -326,6 +336,41 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
    free_img(img);
 }
 
+static void test_fail(char *noms_fichiers[], int nb_fichiers, char *test_name, char *argv[]) {
+   bool *res = (bool *) malloc(sizeof(bool)*nb_fichiers);
+   for (int i=0; i<nb_fichiers; i++) {
+      int my_stdout[2]; // Pour récupérer les sorties (standard et d'erreur) du process enfant
+      pipe(my_stdout);
+      int pid = fork();
+      if (pid == 0) { // processus enfant
+	 dup2(my_stdout[1], STDOUT_FILENO);
+	 dup2(my_stdout[1], STDERR_FILENO);
+	 char chemin_fichier[80] = "test/test_file/";
+	 FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
+	 img_t *img = init_img();
+	 decode_entete(fichier, true, img);
+	 close(my_stdout[0]);
+	 close(my_stdout[1]);
+	 exit(EXIT_SUCCESS);
+      }
+      int status;
+      waitpid(pid, &status, 0);
+      res[i] = (WEXITSTATUS(status)== EXIT_FAILURE);
+   }
+   bool test_all = true;
+   for (int i=0; i<nb_fichiers; i++) {
+      if (!res[i]) test_all = false;
+   }
+   if (test_all) {
+      test_res(test_all, argv, "%s", test_name);
+   } else {
+      for (int i=0; i<nb_fichiers; i++) {
+	 test_res(res[i], argv, "entete invalide : %s", noms_fichiers[i]);
+      }
+   }
+   free(res);
+}
+
 
 int main(int argc, char *argv[]) {
    (void) argc; // Pour ne pas avoir un warning unused variable à la compilation
@@ -333,5 +378,21 @@ int main(int argc, char *argv[]) {
    test_invader("invader_melange.jpeg", argv, 1, 0, 0, 0);
    test_invader("invader_indice_diff.jpeg", argv, 250, 3, 0, 1);
    test_shaun("shaun_the_sheep.jpeg", argv);
+
+   // formatage de l'entête non supporté par la norme
+   char *noms_fichiers_jfif[] = {"invader_bad_entete_jfif.jpeg",
+				 "invader_bad_entete_vjfif0.jpeg",
+				 "invader_bad_entete_vjfif1.jpeg"};
+   char *noms_fichiers_sof0[] = {"invader_bad_entete_sof0_p.jpeg"};
+   char *noms_fichiers_dqt[]  = {"invader_bad_entete_dqt_p.jpeg"};
+   char *noms_fichiers_dht[]  = {"invader_bad_entete_dht_dc2.jpeg",
+				 "invader_bad_entete_dht_dc3.jpeg",
+				 "invader_bad_entete_dht_ac2.jpeg",
+				 "invader_bad_entete_dht_ac3.jpeg"};
+   
+   test_fail(noms_fichiers_jfif, 3, "entête invalide : jfif", argv);
+   test_fail(noms_fichiers_sof0, 1, "entête invalide : précision SOF0", argv);
+   test_fail(noms_fichiers_dqt,  1, "entête invalide : précision DQT", argv);
+   test_fail(noms_fichiers_dht,  4, "entête invalide : précision DHT", argv);
    return 0;
 }

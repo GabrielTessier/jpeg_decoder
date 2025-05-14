@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
    for (int test=0; test<nb_test; test++) {
       int fd_out[2];	       	// Pour envoyer le tableau out au process enfant
       pipe(fd_out);
-      int my_stdout[2];		// Pour récupérer le sortie (standard et d'erreur) du process enfant
+      int my_stdout[2];		// Pour récupérer les sorties (standard et d'erreur) du process enfant
       pipe(my_stdout);
 
       // On stocke le bloc dans un fichier temporaire pour le lire dans le décodage des blocs
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
       // On décode le bloc dans un process enfant à cause des exit(EXIT_FAILURE)
       int pid = fork();
       if (pid == 0) {
-	 // On redirige stdour et stderr vers le pipe my_stdout
+	 // On redirige stdout et stderr vers le pipe my_stdout
 	 dup2(my_stdout[1], STDOUT_FILENO);
 	 dup2(my_stdout[1], STDERR_FILENO);
       
