@@ -250,8 +250,6 @@ void decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
       // On effectue les calculs et les vérifications nécessaires si c'est le premier passage dans decode_entete
       if (premier_passage) {
          calcul_image_information(img);
-         // Si on a atteint un EOI avant un SOS
-         if (img->section->eoi_done) erreur("Image sans image");
 
          // Vérification des valeurs de l'entête
          verif_entete_app0(img);
@@ -262,7 +260,11 @@ void decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
       if (img->section->num_sof == 2) verif_entete_progressif(img);
    }
    else {
-      if (!img->section->eoi_done) {
+      if (img->section->eoi_done) {
+         // Si on a atteint un EOI avant un SOS dans le premier passage
+         if (premier_passage) erreur("Image sans image");
+      }
+      else {
          // On affiche une erreur si on a atteint la fin du fichier avant une section SOS ou EOI
          erreur("L'image se termine sans EOI");
       }
@@ -286,11 +288,11 @@ static void marqueur(FILE *fichier, img_t *img) {
     
    // On associe le marqueur à la bonne section
    switch (marqueur[1]) {
-      case (uint8_t) 0xc0:   // Section SOF0
+      case (uint8_t) 0xc0:   // Section SOF0 (Baseline)
          img->section->num_sof = 0;
          sof(fichier, img);
          break;
-      case (uint8_t) 0xc2:   // Section SOF2
+      case (uint8_t) 0xc2:   // Section SOF2 (Progressif)
          img->section->num_sof = 2;
          sof(fichier, img);
          break;
@@ -351,6 +353,9 @@ static void com(FILE *fichier) {
 
 
 static void sof(FILE *fichier, img_t *img) {
+   // Il ne peut y avoir qu'une seule section SOF
+   if (img->section->sof_done) erreur("[SOF] Plusieurs SOF");
+
    // On récupère les informations de la section SOF
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    img->comps->precision_comp = fgetc(fichier);
@@ -499,7 +504,7 @@ static void dht(FILE *fichier, img_t *img) {
       }
 
       // On vérifie qu'on a moins de 256 codes
-      if (nb_codes >= 256) erreur("[DHT] Plus de 256 symboles dans la table de Huffman");
+      if (nb_codes > 256) erreur("[DHT] Plus de 256 symboles dans la table de Huffman");
         
       // On ordonne les longueurs codes par ordre croissant
       uint8_t longueur_codes_formatees[nb_codes];
