@@ -194,7 +194,6 @@ uint16_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, h
    }
    if (s_start <= s_end) {
       uint16_t skip_bloc = decode_list_coef(fichier, hac, num_sof, sortie, off, AC, s_start, s_end);
-      printf("%u\n", skip_bloc);
       if (stop) return 0;
       fseek(fichier, -1, SEEK_CUR);
       return skip_bloc;

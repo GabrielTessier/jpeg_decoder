@@ -30,8 +30,7 @@ extern bool stop;
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
 // *off          : pointeur vers l'entier contenant l'offset de l'octet entrain d'être lu (on lit bit par bit)
 // timerBloc     : tableau contenant les timers pour les différentes parties du décodage
-static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off)
-{
+static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -41,16 +40,12 @@ static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sort
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
    // S'il manque une table on exit avec une erreur
-   if (s_start == 0 && hdc == NULL)
-      erreur("Pas de table de huffman DC pour la composante %d\n", comp);
-   if (s_end != 0 && hac == NULL)
-      erreur("Pas de table de huffman AC pour la composante %d\n", comp);
-   if (qtable == NULL)
-      erreur("Pas de table de quantification pour la composante %d\n", comp);
+   if (s_start == 0 && hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
+   if (s_end != 0 && hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
+   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off);
-   printf("%u\n", skip_bloc);
    if (stop) return 0;
    if (skip_bloc != 0) skip_bloc--;
    // On fait la quantification inverse (et on chronomètre le temps)
@@ -59,8 +54,7 @@ static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sort
    return skip_bloc;
 }
 
-static void verif_option(int argc, char **argv)
-{
+static void verif_option(int argc, char **argv) {
    // On set les options
    all_option.execname = argv[0];
    set_option(&all_option, argc, argv);
@@ -495,7 +489,6 @@ void decode_progressive_image(FILE *infile, img_t *img)
 		     uint64_t blocY = mcuY * vs + by;
 		     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
 		     if (stop) break;
-		     printf("%u\n", skip_bloc);
 		     skip_blocs[indice_comp] = skip_bloc;
 		  } else {
 		     skip_blocs[indice_comp]--;
