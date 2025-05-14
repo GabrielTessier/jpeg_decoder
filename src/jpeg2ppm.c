@@ -28,7 +28,7 @@ extern all_option_t all_option;
 // dc_prec       : tableau contenant les DC précédents pour chaque composante
 // *off          : pointeur vers l'entier contenant l'offset de l'octet entrain d'être lu (on lit bit par bit)
 // timerBloc     : tableau contenant les timers pour les différentes parties du décodage
-static uint8_t decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off) {
+static uint8_t decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, bool *stop) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -43,7 +43,8 @@ static uint8_t decode_bloc(FILE* fichier, img_t *img, int comp, blocl16_t *sorti
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec+comp, off);
+   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec+comp, off, stop);
+   if (*stop) return 0;
    if (skip_bloc != 0) skip_bloc--;
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, s_start, s_end, qtable->qtable);
@@ -91,9 +92,12 @@ static FILE *ouverture_fichier_out(uint8_t nbcomp, uint8_t nb) {
    char *fullfilename;
    if (all_option.outfile == NULL) {
       filename = all_option.filepath;
-      *(strrchr(filename, '.')) = 0;
+      char *point = strrchr(filename, '.');
+      char prec = *point;
+      *point = 0;
       fullfilename = (char*) malloc(sizeof(char)*(strlen(filename)+9));
       strcpy(fullfilename, filename);
+      *point = prec;
       if (nb != 0) {
 	 char nb_str[4];
 	 sprintf(nb_str, "%d", nb);
@@ -117,17 +121,23 @@ static void print_huffman_quant_table(img_t *img) {
       for (uint8_t i=0; i<img->comps->nb; i++) {
          print_v("Composante %d :\n", i);
          // Affichage tables de Huffman
-         print_v("Huffman dc\n");
-         print_hufftable(img->htables->dc[0]);
-         print_v("Huffman ac\n");
-         print_hufftable(img->htables->ac[0]);
+         if (img->htables->dc[i] != NULL) {
+	    print_v("Huffman dc\n");
+	    print_hufftable(img->htables->dc[i]);
+	 }
+	 if (img->htables->ac[i] != NULL) {
+	    print_v("Huffman ac\n");
+	    print_hufftable(img->htables->ac[i]);
+	 }
 
          // Affichage tables de quantification
-         print_v("Table de quantification : ");
-         for (uint8_t i=0; i<64; i++) {
-            print_v("%d, ", img->qtables[0]->qtable->data[i]);
-         }
-         print_v("\n");
+	 if (img->qtables[i] != NULL) {
+	    print_v("Table de quantification : ");
+	    for (uint8_t j=0; j<64; j++) {
+	       print_v("%d, ", img->qtables[i]->qtable->data[j]);
+	    }
+	    print_v("\n");
+	 }
       }
    }
 }
@@ -242,7 +252,8 @@ void decode_baseline_image(FILE* infile, img_t *img) {
 		  print_v("BLOC %d\n", by*img->comps->comps[indice_comp]->hsampling+bx);
 		  uint64_t blocX = mcuX*img->comps->comps[indice_comp]->hsampling + bx;
 		  uint64_t blocY = mcuY*img->comps->comps[indice_comp]->vsampling + by;
-		  uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
+		  bool stop = false;
+		  uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, &stop);
 		  skip_blocs[indice_comp] = skip_bloc;
 	       } else {
 		  skip_blocs[indice_comp]--;
@@ -366,10 +377,18 @@ void decode_progressive_image(FILE *infile, img_t *img) {
       int16_t *dc_prec = (int16_t*) calloc(nbcomp, sizeof(int16_t));
       uint8_t off = 0;
       uint16_t *skip_blocs = (uint16_t*) calloc(nbcomp, sizeof(uint16_t));
+      bool stop = false;
+      printf("INFO %d, %d, %d, %d\n", img->other->ss, img->other->se, img->other->ah, img->other->al);
       for (uint64_t i=0; i<img->nbMCU; i++) {
-	 print_v("MCU %d\n", i);
-	 uint64_t mcuX = i%img->nbmcuH;
-	 uint64_t mcuY = i/img->nbmcuH;
+	 print_v("MCU %d, %d, %d, %d\n", i, img->nbmcuH, img->nbmcuV, img->nbMCU);
+	 uint64_t ii = i;
+	 if (nb_passage_sos == 2) {
+	    //ii += img->nbmcuH + img->nbmcuH/3 - 1;
+	 } else if (nb_passage_sos > 2) {
+	    //ii += img->nbmcuH*9 + img->nbmcuH/4 + 7;
+	 }
+	 uint64_t mcuX = ii%img->nbmcuH;
+	 uint64_t mcuY = ii/img->nbmcuH;
 	 for (uint8_t k=0; k<nbcomp; k++) {
 	    uint8_t idcomp = img->comps->ordre[k];
 	    if (idcomp == 0) break;
@@ -380,7 +399,10 @@ void decode_progressive_image(FILE *infile, img_t *img) {
 		  break;
 	       }
 	    }
-	    print_v("COMP %d\n", indice_comp);
+	    uint8_t vs = img->comps->comps[indice_comp]->vsampling;
+	    uint8_t hs = img->comps->comps[indice_comp]->hsampling;
+	    print_v("COMP %d, %d, %d, %d, %d\n", indice_comp, hs, vs, img->max_hsampling, img->max_vsampling);
+	    print_v("INFO %d, %d, %d, %d\n", img->other->ss, img->other->se, img->other->ah, img->other->al);
 	    uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
 	    for (uint8_t by=0; by<img->comps->comps[indice_comp]->vsampling; by++) {
 	       for (uint8_t bx=0; bx<img->comps->comps[indice_comp]->hsampling; bx++) {
@@ -388,14 +410,24 @@ void decode_progressive_image(FILE *infile, img_t *img) {
 		     print_v("BLOC %d\n", by*img->comps->comps[indice_comp]->hsampling+bx);
 		     uint64_t blocX = mcuX*img->comps->comps[indice_comp]->hsampling + bx;
 		     uint64_t blocY = mcuY*img->comps->comps[indice_comp]->vsampling + by;
-		     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
+		     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY*nbH + blocX], img->other->ss, img->other->se, dc_prec, &off, &stop);
+		     if (stop) break;
+		     if (skip_bloc >= 10) printf("%ld, %ld, %d\n", mcuX, mcuY, skip_bloc); 
 		     skip_blocs[indice_comp] = skip_bloc;
 		  } else {
 		     skip_blocs[indice_comp]--;
 		  }
+		  if (stop) break;
 	       }
+	       if (stop) break;
 	    }
+	    if (stop) break;
 	 }
+	 if (stop) break;
+      }
+      if (stop) {
+	 while (fgetc(infile) != 0xff) fseek(infile, -2, SEEK_CUR);
+	 fseek(infile, -2, SEEK_CUR);
       }
       free(skip_blocs);
       fseek(infile, 1, SEEK_CUR);
@@ -422,15 +454,15 @@ void decode_progressive_image(FILE *infile, img_t *img) {
       }
 
       for (uint64_t i=0; i<img->nbMCU; i++) {
-	 print_v("MCU %d\n", i);
+	 //print_v("MCU %d\n", i);
 	 uint64_t mcuX = i%img->nbmcuH;
 	 uint64_t mcuY = i/img->nbmcuH;
 	 for (uint8_t k=0; k<nbcomp; k++) {
-	    print_v("COMP %d\n", k);
+	    //print_v("COMP %d\n", k);
 	    uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
 	    for (uint8_t by=0; by<img->comps->comps[k]->vsampling; by++) {
 	       for (uint8_t bx=0; bx<img->comps->comps[k]->hsampling; bx++) {
-		  print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
+		  //print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
 		  uint64_t blocX = mcuX*img->comps->comps[k]->hsampling + bx;
 		  uint64_t blocY = mcuY*img->comps->comps[k]->vsampling + by;
 		  bloct16_t *bloc_zz = izz(sortieq[k][blocY*nbH + blocX]);
