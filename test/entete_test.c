@@ -390,9 +390,9 @@ int main(int argc, char *argv[]) {
 				 "invader_bad_entete_dht_ac2.jpeg",
 				 "invader_bad_entete_dht_ac3.jpeg"};
    
-   test_fail(noms_fichiers_jfif, 3, "entête invalide : jfif", argv);
+   test_fail(noms_fichiers_jfif, 3, "entête invalide : jfif",		argv);
    test_fail(noms_fichiers_sof0, 1, "entête invalide : précision SOF0", argv);
-   test_fail(noms_fichiers_dqt,  1, "entête invalide : précision DQT", argv);
-   test_fail(noms_fichiers_dht,  4, "entête invalide : précision DHT", argv);
+   test_fail(noms_fichiers_dqt,  1, "entête invalide : précision DQT",  argv);
+   test_fail(noms_fichiers_dht,  4, "entête invalide : précision DHT",  argv);
    return 0;
 }
