@@ -10,8 +10,6 @@ struct all_option_s {
   int idct_fast;
   char *filepath;
   char *outfile;
-  uint64_t timer;
-  uint64_t abs_timer;
 };
 typedef struct all_option_s all_option_t;
 

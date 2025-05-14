@@ -94,12 +94,14 @@ int main(int argc, char **argv) {
       pipe(my_stdout);
 
       // On stocke le bloc dans un fichier temporaire pour le lire dans le décodage des blocs
-      FILE *f = fopen("/tmp/vld_test_d", "w+");
+      FILE *f = fopen("/tmp/vld_test_d", "w");
       fwrite(blocs[test], sizeof(uint8_t), bsize[test], f);
       fclose(f);
       // On décode le bloc dans un process enfant à cause des exit(EXIT_FAILURE)
       int pid = fork();
       if (pid == 0) {
+	 close(fd_out[1]);
+	 close(my_stdout[0]);
 	 // On redirige stdout et stderr vers le pipe my_stdout
 	 dup2(my_stdout[1], STDOUT_FILENO);
 	 dup2(my_stdout[1], STDERR_FILENO);
@@ -108,7 +110,8 @@ int main(int argc, char **argv) {
 	 int16_t dc_prec = 0;
 	 uint8_t off = 0;
 	 blocl16_t bl;
-	 decode_bloc_acdc(f, dc, ac, &bl, 0, 63, &dc_prec, &off);
+	 for (int i=0; i<64; i++) bl.data[i] = 0;
+	 decode_bloc_acdc(f, 0, dc, ac, &bl, 0, 63, &dc_prec, &off);
 	 int16_t out[64];
 	 read(fd_out[0], out, 64*sizeof(int16_t));
 	 for (int i=0; i<64; i++) {
@@ -117,10 +120,12 @@ int main(int argc, char **argv) {
 	    }
 	 }
 	 fclose(f);
-	 close(my_stdout[0]);
 	 close(my_stdout[1]);
+	 close(fd_out[0]);
 	 exit(EXIT_SUCCESS);
       }
+      close(my_stdout[1]);
+      close(fd_out[0]);
       int16_t out[64];
       for (int i=0; i<64; i++) {
 	 if (i<outsize[test]) out[i] = outs[test][i];
@@ -130,8 +135,8 @@ int main(int argc, char **argv) {
       int status;
       waitpid(pid, &status, 0);
       test_res(!((WEXITSTATUS(status) == EXIT_FAILURE && outsize[test] != 0) || WEXITSTATUS(status) == 2), argv, name[test]);
-      close(fd_out[0]);
       close(fd_out[1]);
+      close(my_stdout[0]);
    }
 
    free_huffman_tree(ac);
