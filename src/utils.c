@@ -5,8 +5,9 @@
 
 #include <vld.h>
 #include <options.h>
+#include <ycc2rgb.h>
+#include <entete.h>
 #include <utils.h>
-
 
 extern all_option_t all_option;
 
@@ -131,3 +132,45 @@ typedef struct erreur_s erreur_t;
 /*    "[SOFX] Précision composante doit valoir 8 (Baseline ou Progressive)", */
 /*    "[DQT] Précision table de quantification doit valoir 0 (8 bits) (Baseline)" */
 /* }; */
+
+
+FILE *ouverture_fichier_in() {
+   // Ouverture du fichier avec vérification de l'extension
+   char *fileext = strrchr(all_option.filepath, '.') + 1; // extension du fichier
+   if ((fileext == NULL) || !(strcmp(fileext, "jpeg") == 0 || strcmp(fileext, "jpg") == 0)) {
+      erreur("Erreur : mauvaise extension de fichier.");
+   }
+   FILE *fichier = fopen(all_option.filepath, "r");
+   if (fichier == NULL) erreur("Erreur : fichier introuvable.");
+   return fichier;
+}
+
+FILE *ouverture_fichier_out(uint8_t nbcomp, uint8_t nb) {
+   // Si pas de fichier de sortie donné on le crée en remplaçant le .jpeg par .pgm ou .ppm
+   char *filename;
+   char *fullfilename;
+   if (all_option.outfile == NULL) {
+      filename = all_option.filepath;
+      char *point = strrchr(filename, '.');
+      char prec = *point;
+      *point = 0;
+      fullfilename = (char *)malloc(sizeof(char) * (strlen(filename) + 9));
+      strcpy(fullfilename, filename);
+      *point = prec;
+      if (nb != 0) {
+         char nb_str[4];
+         sprintf(nb_str, "%d", nb);
+         size_t s = strlen(fullfilename);
+         fullfilename[s] = '-';
+         fullfilename[s + 1] = 0;
+         strcat(fullfilename, nb_str);
+      }
+      if (nbcomp == 1) strcat(fullfilename, ".pgm");
+      else if (nbcomp == 3) strcat(fullfilename, ".ppm");
+   } else {
+      fullfilename = all_option.outfile;
+   }
+   FILE *outputfile = fopen(fullfilename, "w");
+   if (all_option.outfile == NULL) free(fullfilename);
+   return outputfile;
+}
