@@ -459,22 +459,12 @@ void decode_progressive_image(FILE *infile, img_t *img)
       for (uint64_t i = 0; i < img->nbMCU; i++)
       {
          print_v("MCU %d, %d, %d, %d\n", i, img->nbmcuH, img->nbmcuV, img->nbMCU);
-         uint64_t ii = i;
-         if (nb_passage_sos == 2)
-         {
-            // ii += img->nbmcuH + img->nbmcuH/3 - 1;
-         }
-         else if (nb_passage_sos > 2)
-         {
-            // ii += img->nbmcuH*9 + img->nbmcuH/4 + 7;
-         }
-         uint64_t mcuX = ii % img->nbmcuH;
-         uint64_t mcuY = ii / img->nbmcuH;
+         uint64_t mcuX = i % img->nbmcuH;
+         uint64_t mcuY = i / img->nbmcuH;
          for (uint8_t k = 0; k < nbcomp; k++)
          {
             uint8_t idcomp = img->comps->ordre[k];
-            if (idcomp == 0)
-               break;
+            if (idcomp == 0) break;
             uint8_t indice_comp = 0;
             for (uint8_t c = 0; c < nbcomp; c++)
             {
@@ -509,8 +499,15 @@ void decode_progressive_image(FILE *infile, img_t *img)
             }
          }
       }
+      // Si termine par ff 00 puis ff marker alors skip le 00 pour aller sur le 2e ff
+      char dernier = fgetc(infile);
+      if (dernier == (char) 0xff) {
+	 char suivant_dernier = fgetc(infile);
+	 if (suivant_dernier != (char) 0x00) {
+	    erreur("Il faut un 0x00 après 0xff (%d)", ftell(infile));
+	 }
+      }
       free(skip_blocs);
-      fseek(infile, 1, SEEK_CUR);
 
       print_v("Fin données sos : %x\n", (int)ftell(infile));
 
