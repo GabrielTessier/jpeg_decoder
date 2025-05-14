@@ -3,6 +3,8 @@
 // Gestion des erreurs
 
 enum erreur_code_e {
+   PAS_ERREUR = 0,
+
    // erreurs vld
    ERR_0XFF00,
    ERR_AC_BAD,

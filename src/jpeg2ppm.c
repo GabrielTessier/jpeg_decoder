@@ -1,10 +1,12 @@
 #include <stdint.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <colors.h>
 #include <iqzz.h>
 #include <idct.h>
 #include <idct_opt.h>
@@ -17,18 +19,26 @@
 #include <timer.h>
 #include <baseline.h>
 #include <progressive.h>
+#include <erreur.h>
 #include <jpeg2ppm.h>
 
 extern all_option_t all_option;
 
-static void verif_option(int argc, char **argv) {
+static erreur_t verif_option(int argc, char **argv) {
    // On set les options
    all_option.execname = argv[0];
    set_option(&all_option, argc, argv);
 
    // Vérification qu'une image est passée en paramètre
    if (all_option.filepath == NULL) print_help(&all_option);
-   if (access(all_option.filepath, R_OK)) erreur("Pas de fichier '%s'", all_option.filepath);
+   if (access(all_option.filepath, R_OK)) {
+     char *com = (char*) calloc(18+strlen(all_option.filepath), sizeof(char));
+     strcat(com, "Pas de fichier '");
+     strcat(com, all_option.filepath);
+     strcat(com, "'");
+     erreur_t err = {.code = ERR_INVALID_FILE_PATH, .com = com};
+     return err;
+   }
    // Création du dossier contenant l'image ppm en sortie
    if (all_option.outfile != NULL) {
       char *outfile_copy = malloc(sizeof(char) * (strlen(all_option.outfile) + 1));
@@ -42,6 +52,9 @@ static void verif_option(int argc, char **argv) {
       print_v("outfile : %s\n", all_option.outfile);
       free(outfile_copy);
    }
+   
+   erreur_t err = {.code = PAS_ERREUR, .com = NULL};
+   return err;
 }
 
 static void print_huffman_quant_table(img_t *img) {
@@ -71,8 +84,16 @@ static void print_huffman_quant_table(img_t *img) {
    }
 }
 
+static void print_erreur(const erreur_t err) {
+  fprintf(stderr, RED "ERREUR %d" RESET " : %s\n", err.code, err.com);
+}
+
 int main(int argc, char *argv[]) {
-   verif_option(argc, argv);
+   erreur_t err = verif_option(argc, argv);
+   if (err.code) {
+     print_erreur(err);
+     return err.code;
+   }
 
    // Initialisation du timer
    my_timer_t global_timer;
