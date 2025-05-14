@@ -112,6 +112,7 @@ static uint16_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb
 	       uint16_t indice = read_indice(file, alpha, off, c, stop);
 	       if (*stop) return 0;
 	       uint16_t skip_bloc = indice + (1<<alpha);
+          printf("%u, %u, %u\n", indice, alpha, skip_bloc);
 	       return skip_bloc;
 	    } else {
 	       erreur("Numéro sof invalide : %d", num_sof);
@@ -156,7 +157,8 @@ static uint16_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof
 	       resi++;
 	    } else {
 	       skip_bloc = decode_coef_AC(file, num_sof, symb_decode, sortie, &resi, &i, &c, stop);
-	       if (*stop) return 0;
+	       printf("%u\n", skip_bloc);
+          if (*stop) return 0;
 	       if (skip_bloc != 0) resi = 64;
 	    }
 	    symb_decode = ht;
@@ -173,7 +175,7 @@ static uint16_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof
    return skip_bloc;
 }
 
-int16_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, bool *stop) {
+uint16_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, bool *stop) {
    if (s_start == 0) {
       decode_list_coef(fichier, hdc, num_sof, sortie, off, DC, 0, 0, stop);
       sortie->data[0] += *dc_prec;
@@ -182,7 +184,8 @@ int16_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, hu
       s_start = 1;
    }
    if (s_start <= s_end) {
-      int32_t skip_bloc = decode_list_coef(fichier, hac, num_sof, sortie, off, AC, s_start, s_end, stop);
+      uint16_t skip_bloc = decode_list_coef(fichier, hac, num_sof, sortie, off, AC, s_start, s_end, stop);
+      printf("%u\n", skip_bloc);
       if (*stop) return 0;
       fseek(fichier, -1, SEEK_CUR);
       return skip_bloc;

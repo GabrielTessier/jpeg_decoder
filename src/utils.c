@@ -35,6 +35,7 @@ static void print_hufftable_acu(char* acu, huffman_tree_t* tree) {
 void print_hufftable(huffman_tree_t* tree) {
   if (all_option.verbose) {
     char acu[30];
+    for (int i=0; i<30; i++) acu[i] = 0;
     print_hufftable_acu(acu, tree);
   }
 }

@@ -504,7 +504,7 @@ static void dht(FILE *fichier, img_t *img) {
       }
 
       // On vérifie qu'on a moins de 256 codes
-      if (nb_codes >= 256) erreur("[DHT] Plus de 256 symboles dans la table de Huffman");
+      if (nb_codes > 256) erreur("[DHT] Plus de 256 symboles dans la table de Huffman");
         
       // On ordonne les longueurs codes par ordre croissant
       uint8_t longueur_codes_formatees[nb_codes];

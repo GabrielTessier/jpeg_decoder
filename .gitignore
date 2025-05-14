@@ -1,5 +1,10 @@
 *.blabla
+.vscode*
+images/**
 obj/**
 out/**
 bin/**
+.gitignore
+gmon.out
+jpeg2ppm
 compile_flags.txt
