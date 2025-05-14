@@ -20,6 +20,8 @@
 
 extern all_option_t all_option;
 
+extern bool stop;
+
 // Décode un bloc
 // fichier       : le fichier image
 // img           : la structure contenant toutes les données de l'image (obtenue à partir de l'entête)
@@ -48,8 +50,9 @@ static uint16_t decode_bloc(FILE *fichier, img_t *img, int comp, blocl16_t *sort
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off);
-   if (skip_bloc != 0)
-      skip_bloc--;
+   printf("%u\n", skip_bloc);
+   if (stop) return 0;
+   if (skip_bloc != 0) skip_bloc--;
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, s_start, s_end, qtable->qtable);
 
@@ -435,6 +438,9 @@ void decode_progressive_image(FILE *infile, img_t *img)
          if (img->comps->comps[2]->idc == img->comps->ordre[i])
             cr_id = i;
       }
+      y_id = 0;
+      cb_id = 1;
+      cr_id = 2;
       nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
       nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
       nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
@@ -474,40 +480,53 @@ void decode_progressive_image(FILE *infile, img_t *img)
                   break;
                }
             }
-            uint8_t vs = img->comps->comps[indice_comp]->vsampling;
             uint8_t hs = img->comps->comps[indice_comp]->hsampling;
+            uint8_t vs = img->comps->comps[indice_comp]->vsampling;
             print_v("COMP %d, %d, %d, %d, %d\n", indice_comp, hs, vs, img->max_hsampling, img->max_vsampling);
             print_v("INFO %d, %d, %d, %d\n", img->other->ss, img->other->se, img->other->ah, img->other->al);
-            uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
-            for (uint8_t by = 0; by < img->comps->comps[indice_comp]->vsampling; by++)
+            uint64_t nbH = img->nbmcuH * hs;
+            for (uint8_t by = 0; by < vs; by++)
             {
-               for (uint8_t bx = 0; bx < img->comps->comps[indice_comp]->hsampling; bx++)
+               for (uint8_t bx = 0; bx < hs; bx++)
                {
-                  if (skip_blocs[indice_comp] == 0)
-                  {
-                     print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
-                     uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
-                     uint64_t blocY = mcuY * img->comps->comps[indice_comp]->vsampling + by;
-                     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
-                     skip_blocs[indice_comp] = skip_bloc;
-                  }
-                  else
-                  {
-                     skip_blocs[indice_comp]--;
-                  }
+                  if (skip_blocs[indice_comp] == 0) {
+		     print_v("BLOC %d\n", by * hs + bx);
+		     uint64_t blocX = mcuX * hs + bx;
+		     uint64_t blocY = mcuY * vs + by;
+		     uint16_t skip_bloc = decode_bloc(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
+		     if (stop) break;
+		     printf("%u\n", skip_bloc);
+		     skip_blocs[indice_comp] = skip_bloc;
+		  } else {
+		     skip_blocs[indice_comp]--;
+		  }
+		  if (stop) break;
                }
+	       if (stop) break;
             }
+	    if (stop) break;
          }
+	 if (stop) break;
       }
       // Si termine par ff 00 puis ff marker alors skip le 00 pour aller sur le 2e ff
       char dernier = fgetc(infile);
-      if (dernier == (char) 0xff) {
+      /*if (dernier == (char) 0xff) {
 	 char suivant_dernier = fgetc(infile);
 	 if (suivant_dernier != (char) 0x00) {
 	    erreur("Il faut un 0x00 après 0xff (%d)", ftell(infile));
 	 }
+	 }*/
+      if (stop) {
+	 printf("deb : %lx\n", ftell(infile));
+	 while (fgetc(infile) != 0xff) {
+	    fseek(infile, -2, SEEK_CUR);
+	    printf("aa\n");
+	 }
+	 fseek(infile, -1, SEEK_CUR);
       }
+      printf("%lx\n", ftell(infile));
       free(skip_blocs);
+      stop = false;
 
       print_v("Fin données sos : %x\n", (int)ftell(infile));
 
@@ -557,8 +576,7 @@ void decode_progressive_image(FILE *infile, img_t *img)
                   else
                      bloc_idct = idct(bloc_zz, stockage_coef);
                   free(bloc_zz);
-                  if (ycc[k][by * nbH + blocX] != NULL)
-                     free(ycc[k][by * nbH + blocX]);
+                  if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
                   ycc[k][by * nbH + blocX] = bloc_idct;
                }
             }
