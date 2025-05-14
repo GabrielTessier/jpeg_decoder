@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdlib.h>
 
 #include <ycc2rgb.h>
 #include <jpeg2ppm.h>
