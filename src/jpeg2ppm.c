@@ -66,13 +66,13 @@ int main(int argc, char *argv[]) {
    }
 
    // Parsing de l'entête
-   my_timer_t entete_timer;
-   start_timer(&entete_timer);
+   my_timer_t timer_entete;
+   init_timer(&timer_entete);
+   start_timer(&timer_entete);
    // Initialisation de img
    img_t *img = init_img();
    decode_entete(fichier, true, img);
-   stop_timer(&entete_timer);
-   print_timer("Décodage entête", &entete_timer);
+   print_timer("Décodage entête", &timer_entete);
 
    if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);
    else if (img->section->num_sof == 2) err = decode_progressive_image(fichier, img);

@@ -89,9 +89,9 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    }
 
    // Décodage de l'image
-   my_timer_t image_timer;
-   init_timer(&image_timer);
-   start_timer(&image_timer);
+   my_timer_t timer_image;
+   init_timer(&timer_image);
+   start_timer(&timer_image);
 
    uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
    uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
@@ -121,6 +121,17 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
       ycc[i] = (bloctu8_t **)calloc(nbH * nbV, sizeof(bloctu8_t *));
    }
 
+   // Initialisation des chronomètres
+   my_timer_t timer_decode_bloc;
+   init_timer(&timer_decode_bloc);
+   my_timer_t timer_izz;
+   init_timer(&timer_izz);
+   my_timer_t timer_idct;
+   init_timer(&timer_idct);
+   my_timer_t timer_affichage;
+   init_timer(&timer_affichage);
+   
+
    // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
    uint8_t off = 0;
@@ -128,38 +139,56 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
       uint64_t mcuX = i % img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
          int16_t indice_comp = get_composante(img, k);
-	 if (indice_comp == -1) break;   // Si un scan ne comtient pas toutes les composantes
+	 if (indice_comp == -1) break;   // Si un scan ne contient pas toutes les composantes
 	 
          uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
          for (uint8_t by = 0; by < img->comps->comps[indice_comp]->vsampling; by++) {
             for (uint8_t bx = 0; bx < img->comps->comps[indice_comp]->hsampling; bx++) {
-	      print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
-	      uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
-	      blocl16_t *bloc = (blocl16_t*) calloc(1, sizeof(blocl16_t));
-	      erreur_t err = decode_bloc_baseline(infile, img, indice_comp, bloc, dc_prec, &off);
-	      if (err.code) return err;
-	      bloct16_t *bloc_zz = izz(bloc);
-	      free(bloc);
-	      bloctu8_t *bloc_idct;
-	      if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
-	      else bloc_idct = idct(bloc_zz, stockage_coef);
-	      free(bloc_zz);
-	      if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
-	      ycc[k][by * nbH + blocX] = bloc_idct;
+               print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
+               uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
+               blocl16_t *bloc = (blocl16_t*) calloc(1, sizeof(blocl16_t));
+               
+               start_timer(&timer_decode_bloc);
+               erreur_t err = decode_bloc_baseline(infile, img, indice_comp, bloc, dc_prec, &off);
+               stop_timer(&timer_decode_bloc);
+               if (err.code) return err;
+
+               start_timer(&timer_izz);
+               bloct16_t *bloc_zz = izz(bloc);
+               stop_timer(&timer_izz);
+               free(bloc);
+
+               bloctu8_t *bloc_idct;
+               start_timer(&timer_idct);
+               if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
+               else bloc_idct = idct(bloc_zz, stockage_coef);
+               stop_timer(&timer_idct);
+
+               free(bloc_zz);
+               if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
+               ycc[k][by * nbH + blocX] = bloc_idct;
             }
          }
       }
       if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
-	 if (nbcomp == 1) {
-	    save_mcu_ligne_bw(outputfile, img, ycc);
+         stop_timer(&timer_image);
+         start_timer(&timer_affichage);
+         if (nbcomp == 1) {
+            save_mcu_ligne_bw(outputfile, img, ycc);
          } else if (nbcomp == 3) {
-	    save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
-	 }
+            save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+         }
+         stop_timer(&timer_affichage);
+         start_timer(&timer_image);
       }
    }
    fseek(infile, 1, SEEK_CUR);
 
-   print_timer("Décodage complet de l'image", &image_timer);
+   print_timer("Décodage DC/AC et Quantification", &timer_decode_bloc);
+   print_timer("IZZ", &timer_izz);
+   print_timer("IDCT", &timer_idct);
+   print_timer("Décodage complet de l'image", &timer_image);
+   print_timer("Affichage image", &timer_affichage);
 
    fclose(outputfile);
    free(dc_prec);
