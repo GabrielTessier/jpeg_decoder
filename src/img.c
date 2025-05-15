@@ -3,9 +3,6 @@
 // Libère les tables de quantification
 static void free_qtables(qtable_prec_t **qtables);
 
-// Libère un noeud d'un arbre représentant une table de Huffman
-static void free_huffman_tree(huffman_tree_t *tree);
-
 // Libère les tables de Huffman
 static void free_htables(htables_t *htables);
 
@@ -29,7 +26,7 @@ static void free_qtables(qtable_prec_t **qtables) {
    }
 }
 
-static void free_huffman_tree(huffman_tree_t *tree) {
+void free_huffman_tree(huffman_tree_t *tree) {
    if (tree == NULL) return;
    free_huffman_tree(tree->fils[0]);
    free_huffman_tree(tree->fils[1]);

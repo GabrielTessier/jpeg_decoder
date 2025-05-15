@@ -85,6 +85,8 @@ struct img_s {
 };
 typedef struct img_s img_t;
 
+// Libère une table de Huffman
+void free_huffman_tree(huffman_tree_t *tree);
 
 // Libère la structure img
 void free_img(img_t *img);
