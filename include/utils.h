@@ -1,5 +1,6 @@
 #pragma once
 
+#include "erreur.h"
 #include <vld.h>
 
 // Print sur la sortie standar si option verbose
@@ -12,5 +13,5 @@ void print_hufftable(huffman_tree_t *tree);
 void erreur(const char *text, ...);
 
 
-FILE *ouverture_fichier_in();
+erreur_t ouverture_fichier_in(FILE **fichier);
 FILE *ouverture_fichier_out(uint8_t nbcomp, uint8_t nb);

@@ -15,9 +15,11 @@ enum erreur_code_e {
    ERR_PARAM,
    ERR_OPT,
 
-   // erreurs jpeg2ppm
+   // erreurs baseline/progressif
    ERR_NO_HT,
    ERR_NO_QT,
+   
+   // erreurs jpeg2ppm
    ERR_INVALID_FILE_PATH,
    ERR_INVALID_FILE_EXT,
    ERR_NB_COMP,

@@ -58,7 +58,12 @@ int main(int argc, char *argv[]) {
    init_timer(&global_timer);
    start_timer(&global_timer);
 
-   FILE *fichier = ouverture_fichier_in();
+   FILE *fichier;
+   err = ouverture_fichier_in(&fichier);
+   if (err.code) {
+      print_erreur(err);
+      return err.code;
+   }
 
    // Parsing de l'entête
    my_timer_t entete_timer;

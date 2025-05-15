@@ -24,15 +24,29 @@ static erreur_t decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl1
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
    // S'il manque une table on exit avec une erreur
-   if (hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
-   if (hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
-   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
+   if (hdc == NULL) {
+      char str[80];
+      sprintf(str, "Pas de table de huffman DC pour la composante %d", comp);
+      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+   }
+   if (hac == NULL) {
+      char str[80];
+      sprintf(str, "Pas de table de huffman AC pour la composante %d", comp);
+      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+   }
+   if (qtable == NULL) {
+      char str[80];
+      sprintf(str, "Pas de table de quantification pour la composante %d", comp);
+      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+   }
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    uint16_t skip_bloc;
    erreur_t err = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off, &skip_bloc);
    if (err.code) return err;
-   if (skip_bloc > 1) erreur("Symbole RLE interdit en baseline");
+   if (skip_bloc > 1) {
+      return (erreur_t) {.code = ERR_AC_BAD, .com = "Symbole RLE interdit en baseline"};
+   }
    
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, img->other->ss, img->other->se, qtable->qtable);
@@ -87,9 +101,13 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    FILE *outputfile = ouverture_fichier_out(nbcomp, 0);
 
    // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
-   if (nbcomp == 1) fprintf(outputfile, "P5\n");
-   else if (nbcomp == 3) fprintf(outputfile, "P6\n");
-   else erreur("Pas trois composante");
+   if (nbcomp == 1) {
+      fprintf(outputfile, "P5\n");
+   } else if (nbcomp == 3) {
+      fprintf(outputfile, "P6\n");
+   } else {
+      return (erreur_t) {.code = ERR_NB_COMP, .com = "Il faut une ou trois composante"};
+   }
    fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
    fprintf(outputfile, "255\n");
 
@@ -109,14 +127,17 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    for (uint64_t i = 0; i < img->nbMCU; i++) {
       uint64_t mcuX = i % img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
-         uint8_t indice_comp = get_composante(img, k);
+         int16_t indice_comp = get_composante(img, k);
+	 if (indice_comp == -1) break;   // Si un scan ne comtient pas toutes les composantes
+	 
          uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
          for (uint8_t by = 0; by < img->comps->comps[indice_comp]->vsampling; by++) {
             for (uint8_t bx = 0; bx < img->comps->comps[indice_comp]->hsampling; bx++) {
 	      print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
 	      uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
 	      blocl16_t *bloc = (blocl16_t*) calloc(1, sizeof(blocl16_t));
-	      decode_bloc_baseline(infile, img, indice_comp, bloc, dc_prec, &off);
+	      erreur_t err = decode_bloc_baseline(infile, img, indice_comp, bloc, dc_prec, &off);
+	      if (err.code) return err;
 	      bloct16_t *bloc_zz = izz(bloc);
 	      free(bloc);
 	      bloctu8_t *bloc_idct;

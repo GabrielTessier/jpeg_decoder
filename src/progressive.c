@@ -22,9 +22,21 @@ static erreur_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blo
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
    // S'il manque une table on exit avec une erreur
-   if (s_start == 0 && hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
-   if (s_end != 0 && hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
-   if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
+   if (s_start == 0 && hdc == NULL) {
+      char str[80];
+      sprintf(str, "Pas de table de huffman DC pour la composante %d", comp);
+      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+   }
+   if (s_end != 0 && hac == NULL) {
+      char str[80];
+      sprintf(str, "Pas de table de huffman AC pour la composante %d", comp);
+      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+   }
+   if (qtable == NULL) {
+      char str[80];
+      sprintf(str, "Pas de table de quantification pour la composante %d", comp);
+      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+   }
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    erreur_t err = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off, skip_bloc);

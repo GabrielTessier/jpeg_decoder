@@ -1,3 +1,4 @@
+#include "erreur.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -51,15 +52,17 @@ void erreur(const char* text, ...) {
     exit(EXIT_FAILURE);
 }
 
-FILE *ouverture_fichier_in() {
+erreur_t ouverture_fichier_in(FILE **fichier) {
    // Ouverture du fichier avec vérification de l'extension
    char *fileext = strrchr(all_option.filepath, '.') + 1; // extension du fichier
    if ((fileext == NULL) || !(strcmp(fileext, "jpeg") == 0 || strcmp(fileext, "jpg") == 0)) {
-      erreur("Erreur : mauvaise extension de fichier.");
+      return (erreur_t) {.code = ERR_INVALID_FILE_EXT, .com = "Mauvaise extension de fichier."};
    }
-   FILE *fichier = fopen(all_option.filepath, "r");
-   if (fichier == NULL) erreur("Erreur : fichier introuvable.");
-   return fichier;
+   *fichier = fopen(all_option.filepath, "r");
+   if (*fichier == NULL) {
+      return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = "Fichier introuvable."};
+   }
+   return (erreur_t) {.code = SUCCESS};
 }
 
 FILE *ouverture_fichier_out(uint8_t nbcomp, uint8_t nb) {
