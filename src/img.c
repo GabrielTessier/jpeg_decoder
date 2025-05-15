@@ -1,4 +1,7 @@
+#include <stdlib.h>
+
 #include <img.h>
+
 
 // Libère les tables de quantification
 static void free_qtables(qtable_prec_t **qtables);

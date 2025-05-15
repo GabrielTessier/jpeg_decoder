@@ -2,6 +2,7 @@
 
 // Gestion des erreurs
 
+// Codes d'erreur
 enum erreur_code_e {
    SUCCESS = 0,
 
@@ -79,11 +80,5 @@ struct erreur_s {
 };
 typedef struct erreur_s erreur_t;
 
+// Affiche le code et le commentaire de <err> sur la sortie d'erreur
 void print_erreur(const erreur_t err);
-
-/* char *err_com[] = { */
-/*    "[APP0] Phrase JFIF manquante dans APP0", */
-/*    "[APP0] Version JFIF doit valoir 1.1", */
-/*    "[SOFX] Précision composante doit valoir 8 (Baseline ou Progressive)", */
-/*    "[DQT] Précision table de quantification doit valoir 0 (8 bits) (Baseline)" */
-/* }; */
