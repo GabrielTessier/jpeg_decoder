@@ -7,10 +7,14 @@
 #include <utils.h>
 #include <options.h>
 
+// Variable globale contenant toutes les informations sur les différentes
+// options disponibles
 all_option_t all_option;
 
+// Énumération des types d'option disponibles
 enum option_type_e {LONGUE, COURTE};
 
+// Structure pour les options à paramètre
 struct poption_s{
    char* shortname;
    char* longname;
@@ -19,6 +23,8 @@ struct poption_s{
    char* description;
 };
 typedef struct poption_s poption_t;
+
+// Structure pour les options sans paramètre
 struct option_s{
    char* shortname;
    char* longname;
@@ -27,10 +33,17 @@ struct option_s{
 };
 typedef struct option_s option_t;
 
+// Active l'option verbose (des détails de l'exécution sont affichés sur la sortie standard)
 static erreur_t set_verbose_param(all_option_t *all_option);
+// Active l'option timer (les différentes parties de l'exécution sont chronométrées et affichées sur la sortie standard)
 static erreur_t set_timer_param(all_option_t *all_option);
+// Active l'option IDCT naïve
 static erreur_t set_idct_nofast_param(all_option_t *all_option);
+// Active l'option outfile (choix du fichier de sortie à <file>)
 static erreur_t set_outfile(all_option_t *all_option, char *file);
+// Retourne un tableau 2x1 contenant la longueur maximale des noms de paramètre,
+// et la longueur maximale des noms d'option suivi de leur paramètre
+// (pour l'affichage de l'aide avec la fonction 'print_help)
 static char **get_max_size_str();
 static bool try_apply_option(all_option_t *all_option, char *name, enum option_type_e type);
 static erreur_t try_apply_poption(all_option_t *all_option, char *name, char *next, enum option_type_e type, bool *opt_ok);
@@ -69,8 +82,8 @@ static erreur_t set_outfile(all_option_t *all_option, char* file) {
 
 static char** get_max_size_str() {
    char** res = (char**) malloc(sizeof(char*)*2);
-   int max_s = 2;
-   int max_l = 0;
+   int max_s = 2; // longueur maximale des noms de paramètre
+   int max_l = 0; // longueur maximale des noms d'option + nom de son paramètre
    for (size_t i=0; i<sizeof(OPTION_PARAMETRE)/sizeof(poption_t); i++) {
       int ps = 5+sizeof(OPTION_PARAMETRE[i].param_name);
       if (ps > max_s) max_s = ps;
