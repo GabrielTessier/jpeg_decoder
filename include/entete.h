@@ -9,5 +9,5 @@
 #include <img.h>
 #include <erreur.h>
 
-// Décode et renvoie les informations de l'entête de l'image
+// Décode les informations de l'entête de l'image jusqu'au SOS suivant
 erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img);
