@@ -7,12 +7,6 @@
 #include <stdlib.h>
 
 #include <colors.h>
-#include <iqzz.h>
-#include <idct.h>
-#include <idct_opt.h>
-#include <upsampler.h>
-#include <vld.h>
-#include <ycc2rgb.h>
 #include <entete.h>
 #include <options.h>
 #include <utils.h>
@@ -24,7 +18,7 @@
 
 extern all_option_t all_option;
 
-static erreur_t verif_option(int argc, char **argv) {
+static erreur_t verif_option_io(int argc, char **argv) {
    // On set les options
    all_option.execname = argv[0];
    set_option(&all_option, argc, argv);
@@ -33,9 +27,7 @@ static erreur_t verif_option(int argc, char **argv) {
    if (all_option.filepath == NULL) print_help(&all_option);
    if (access(all_option.filepath, R_OK)) {
      char *com = (char*) calloc(18+strlen(all_option.filepath), sizeof(char));
-     strcat(com, "Pas de fichier '");
-     strcat(com, all_option.filepath);
-     strcat(com, "'");
+     sprintf(com, "Pas de fichier '%s'", all_option.filepath);
      erreur_t err = {.code = ERR_INVALID_FILE_PATH, .com = com};
      return err;
    }
@@ -57,39 +49,12 @@ static erreur_t verif_option(int argc, char **argv) {
    return err;
 }
 
-static void print_huffman_quant_table(img_t *img) {
-   if (all_option.verbose) {
-      for (uint8_t i = 0; i < img->comps->nb; i++) {
-         print_v("Composante %d :\n", i);
-         // Affichage tables de Huffman
-         if (img->htables->dc[i] != NULL) {
-            print_v("Huffman dc\n");
-            print_hufftable(img->htables->dc[i]);
-         }
-         if (img->htables->ac[i] != NULL) {
-            print_v("Huffman ac\n");
-            print_hufftable(img->htables->ac[i]);
-         }
-
-         // Affichage tables de quantification
-         if (img->qtables[i] != NULL) {
-            print_v("Table de quantification : ");
-            for (uint8_t j = 0; j < 64; j++)
-            {
-               print_v("%d, ", img->qtables[i]->qtable->data[j]);
-            }
-            print_v("\n");
-         }
-      }
-   }
-}
-
 static void print_erreur(const erreur_t err) {
   fprintf(stderr, RED "ERREUR %d" RESET " : %s\n", err.code, err.com);
 }
 
 int main(int argc, char *argv[]) {
-   erreur_t err = verif_option(argc, argv);
+   erreur_t err = verif_option_io(argc, argv);
    if (err.code) {
      print_erreur(err);
      return err.code;
@@ -110,8 +75,6 @@ int main(int argc, char *argv[]) {
    decode_entete(fichier, true, img);
    stop_timer(&entete_timer);
    print_timer("Décodage entête", &entete_timer);
-
-   print_huffman_quant_table(img);
 
    if (img->section->num_sof == 0) decode_baseline_image(fichier, img);
    else if (img->section->num_sof == 2) decode_progressive_image(fichier, img);

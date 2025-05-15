@@ -14,7 +14,7 @@
 
 extern all_option_t all_option;
 
-static void decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off) {
+static void decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -24,19 +24,40 @@ static void decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t 
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
    // S'il manque une table on exit avec une erreur
-   if (s_start == 0 && hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
-   if (s_end != 0 && hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
+   if (hdc == NULL) erreur("Pas de table de huffman DC pour la composante %d\n", comp);
+   if (hac == NULL) erreur("Pas de table de huffman AC pour la composante %d\n", comp);
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off);
-   if (skip_bloc != 0) skip_bloc--;
-   if (skip_bloc != 0) erreur("Symbole RLE interdit en baseline");
+   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off);
+   if (skip_bloc > 1) erreur("Symbole RLE interdit en baseline");
    // On fait la quantification inverse (et on chronomètre le temps)
-   iquant(sortie, s_start, s_end, qtable->qtable);
+   iquant(sortie, img->other->ss, img->other->se, qtable->qtable);
+}
+
+static void get_ycc_info(img_t *img, uint8_t *y_id, uint8_t *cb_id, uint8_t *cr_id, uint8_t *yhf, uint8_t *yvf, uint8_t *cbhf, uint8_t *cbvf, uint8_t *crhf, uint8_t *crvf, uint64_t *nb_blocYH, uint64_t *nb_blocCbH, uint64_t *nb_blocCrH, char **rgb) {
+   if (img->comps->nb == 3) {
+      for (uint8_t i = 0; i < img->comps->nb; i++) {
+	 if (img->comps->comps[0]->idc == img->comps->ordre[i]) *y_id = i;
+	 if (img->comps->comps[1]->idc == img->comps->ordre[i]) *cb_id = i;
+	 if (img->comps->comps[2]->idc == img->comps->ordre[i]) *cr_id = i;
+      }
+      *nb_blocYH = img->nbmcuH * img->comps->comps[*y_id]->hsampling;
+      *nb_blocCbH = img->nbmcuH * img->comps->comps[*cb_id]->hsampling;
+      *nb_blocCrH = img->nbmcuH * img->comps->comps[*cr_id]->hsampling;
+      *yhf = img->max_hsampling / img->comps->comps[*y_id]->hsampling;
+      *yvf = img->max_vsampling / img->comps->comps[*y_id]->vsampling;
+      *cbhf = img->max_hsampling / img->comps->comps[*cb_id]->hsampling;
+      *cbvf = img->max_vsampling / img->comps->comps[*cb_id]->vsampling;
+      *crhf = img->max_hsampling / img->comps->comps[*cr_id]->hsampling;
+      *crvf = img->max_vsampling / img->comps->comps[*cr_id]->vsampling;
+      *rgb = (char *)malloc(sizeof(char) * img->width * 3);
+   }
 }
 
 void decode_baseline_image(FILE *infile, img_t *img) {
+   print_huffman_quant_table(img);
+   
    uint8_t nbcomp = img->comps->nb;
    // Calcul des coefficients pour la DCT inverse (lente)
    float stockage_coef[8][8][8][8];
@@ -56,23 +77,7 @@ void decode_baseline_image(FILE *infile, img_t *img) {
    uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
    uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
    char *rgb;
-   if (nbcomp == 3) {
-      for (uint8_t i = 0; i < nbcomp; i++) {
-	 if (img->comps->comps[0]->idc == img->comps->ordre[i]) y_id = i;
-	 if (img->comps->comps[1]->idc == img->comps->ordre[i]) cb_id = i;
-	 if (img->comps->comps[2]->idc == img->comps->ordre[i]) cr_id = i;
-      }
-      nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
-      nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
-      nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
-      yhf = img->max_hsampling / img->comps->comps[y_id]->hsampling;
-      yvf = img->max_vsampling / img->comps->comps[y_id]->vsampling;
-      cbhf = img->max_hsampling / img->comps->comps[cb_id]->hsampling;
-      cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
-      crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
-      crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
-      rgb = (char *)malloc(sizeof(char) * img->width * 3);
-   }
+   if (nbcomp == 3) get_ycc_info(img, &y_id, &cb_id, &cr_id, &yhf, &yvf, &cbhf, &cbvf, &crhf, &crvf, &nb_blocYH, &nb_blocCbH, &nb_blocCrH, &rgb);
 
    FILE *outputfile = ouverture_fichier_out(nbcomp, 0);
 
@@ -99,22 +104,14 @@ void decode_baseline_image(FILE *infile, img_t *img) {
    for (uint64_t i = 0; i < img->nbMCU; i++) {
       uint64_t mcuX = i % img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
-         uint8_t idcomp = img->comps->ordre[k];
-         if (idcomp == 0) break;
-         uint8_t indice_comp = 0;
-         for (uint8_t c = 0; c < nbcomp; c++) {
-            if (img->comps->comps[c]->idc == idcomp) {
-               indice_comp = c;
-               break;
-            }
-         }
+         uint8_t indice_comp = get_composante(img, k);
          uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
          for (uint8_t by = 0; by < img->comps->comps[indice_comp]->vsampling; by++) {
             for (uint8_t bx = 0; bx < img->comps->comps[indice_comp]->hsampling; bx++) {
 	      print_v("BLOC %d\n", by * img->comps->comps[indice_comp]->hsampling + bx);
 	      uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
 	      blocl16_t *bloc = (blocl16_t*) calloc(1, sizeof(blocl16_t));
-	      decode_bloc_baseline(infile, img, indice_comp, bloc, img->other->ss, img->other->se, dc_prec, &off);
+	      decode_bloc_baseline(infile, img, indice_comp, bloc, dc_prec, &off);
 	      bloct16_t *bloc_zz = izz(bloc);
 	      free(bloc);
 	      bloctu8_t *bloc_idct;
@@ -127,7 +124,11 @@ void decode_baseline_image(FILE *infile, img_t *img) {
          }
       }
       if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
-         save_mcu_ligne(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	 if (nbcomp == 1) {
+	    save_mcu_ligne_bw(outputfile, img, ycc);
+         } else if (nbcomp == 3) {
+	    save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	 }
       }
    }
    fseek(infile, 1, SEEK_CUR);

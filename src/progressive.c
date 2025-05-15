@@ -11,7 +11,9 @@
 extern all_option_t all_option;
 extern bool stop;
 
-static uint16_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off) {
+static uint16_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off) {
+   uint8_t s_start = img->other->ss;
+   uint8_t s_end = img->other->se;
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -113,7 +115,7 @@ void decode_progressive_image(FILE *infile, img_t *img) {
 		     print_v("BLOC %d\n", by * hs + bx);
 		     uint64_t blocX = mcuX * hs + bx;
 		     uint64_t blocY = mcuY * vs + by;
-		     uint16_t skip_bloc = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], img->other->ss, img->other->se, dc_prec, &off);
+		     uint16_t skip_bloc = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &off);
 		     if (stop) break;
 		     skip_blocs[indice_comp] = skip_bloc;
 		  } else {
@@ -191,7 +193,11 @@ void decode_progressive_image(FILE *infile, img_t *img) {
             }
          }
          if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
-            save_mcu_ligne(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	    if (nbcomp == 1) {
+	       save_mcu_ligne_bw(outputfile, img, ycc);
+	    } else if (nbcomp == 3) {
+	       save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	    }
          }
       }
 
