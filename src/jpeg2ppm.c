@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <colors.h>
 #include <entete.h>
 #include <options.h>
 #include <utils.h>
@@ -28,8 +27,7 @@ static erreur_t verif_option_io(int argc, char **argv) {
    if (access(all_option.filepath, R_OK)) {
      char *com = (char*) calloc(18+strlen(all_option.filepath), sizeof(char));
      sprintf(com, "Pas de fichier '%s'", all_option.filepath);
-     erreur_t err = {.code = ERR_INVALID_FILE_PATH, .com = com};
-     return err;
+     return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = com};
    }
    // Création du dossier contenant l'image ppm en sortie
    if (all_option.outfile != NULL) {
@@ -38,19 +36,14 @@ static erreur_t verif_option_io(int argc, char **argv) {
       char *folder = dirname(outfile_copy);
       struct stat sb;
       if (stat(folder, &sb) == -1) {
-         print_v("création du dosier %s\n", folder);
+         print_v("Création du dosier %s\n", folder);
          mkdir(folder, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
       }
       print_v("outfile : %s\n", all_option.outfile);
       free(outfile_copy);
    }
    
-   erreur_t err = {.code = PAS_ERREUR, .com = NULL};
-   return err;
-}
-
-static void print_erreur(const erreur_t err) {
-  fprintf(stderr, RED "ERREUR %d" RESET " : %s\n", err.code, err.com);
+   return (erreur_t) {.code = SUCCESS, .com = NULL};
 }
 
 int main(int argc, char *argv[]) {

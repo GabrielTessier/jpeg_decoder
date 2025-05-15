@@ -3,7 +3,7 @@
 // Gestion des erreurs
 
 enum erreur_code_e {
-   PAS_ERREUR = 0,
+   SUCCESS = 0,
 
    // erreurs vld
    ERR_0XFF00,
@@ -76,6 +76,8 @@ struct erreur_s {
    char *com; // commentaire sur l'erreur à remonter
 };
 typedef struct erreur_s erreur_t;
+
+void print_erreur(const erreur_t err);
 
 /* char *err_com[] = { */
 /*    "[APP0] Phrase JFIF manquante dans APP0", */
