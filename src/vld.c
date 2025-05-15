@@ -46,7 +46,7 @@ static erreur_t my_getc(FILE* file, char *c) {
    if (*c == (char) 0xff) {
       *c = fgetc(file);
       if (*c != (char) 0x00) {
-	 char str[80];
+	 char *str = malloc(80);
 	 sprintf(str, "Pas de 0x00 après un 0xff (Pas bien !!) %lx\n", ftell(file)-1);
 	 return (erreur_t) {.code = ERR_0XFF00, str};
       }
@@ -95,7 +95,7 @@ static erreur_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb
 	    return (erreur_t) {.code=SUCCESS};
 	 } else {
 	    if (num_sof == 0) {
-	       char str[80];
+	       char *str = malloc(80);
 	       sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
 	       return (erreur_t) {.code=ERR_AC_BAD, .com=str};
 	    } else if (num_sof == 2) {
@@ -105,7 +105,7 @@ static erreur_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb
 	       *skip_bloc = indice + (1<<alpha);
 	       return (erreur_t) {.code=SUCCESS};
 	    } else {
-	       char str[27];
+	       char *str = malloc(27);
 	       sprintf(str, "Numéro sof invalide : %d", num_sof);
 	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str};
 	    }
