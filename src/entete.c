@@ -628,10 +628,11 @@ static erreur_t sos(FILE *fichier, img_t *img) {
         
       // On associe chaque composante à ses tables de Huffman
       uint8_t j = 0;
-      while (img->comps->comps[j]->idc != id_comp && j <= 3) {j++;}
-      if (j >= 4) {
+      while (j < img->comps->nb && img->comps->comps[j]->idc != id_comp) {j++;}
+      if (j >= img->comps->nb) {
          return (erreur_t) {.code = ERR_SOS_COMP_ID, .com = "[SOS] Indice de composante incorrect"};
       }
+
       img->comps->comps[j]->idhdc = id_huff >> 4;
       img->comps->comps[j]->idhac = id_huff & 0b1111;
    }

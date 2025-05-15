@@ -403,11 +403,25 @@ int main(int argc, char *argv[]) {
 				"invader_bad_entete_baseline_sos_al.jpeg"};
    erreur_code_t err_codes_sos[] = {ERR_HUFF_ID, ERR_HUFF_ID, ERR_SOS_SS, ERR_SOS_SE, ERR_SOS_AH, ERR_SOS_AL};
 
+   char *noms_fichiers_sof2[] = {"invader_bad_entete_prog_sof2_p.jpg",
+				 "invader_bad_entete_prog_sof2_idcomp.jpg",
+				 "invader_bad_entete_prog_sos_ss.jpg",
+				 "invader_bad_entete_prog_sos_se.jpg",
+				 "invader_bad_entete_prog_sos_ah.jpg",
+				 "invader_bad_entete_prog_sos_al.jpg"};
+   erreur_code_t err_codes_sof2[] = {ERR_SOF_PRECISION, ERR_SOS_COMP_ID, ERR_SOS_SS, ERR_SOS_SE, ERR_SOS_AH, ERR_SOS_AL};
+
+   char *noms_fichiers_eoi[] = {"invader_bad_entete_eoi_av_sos.jpeg",
+				"invader_bad_entete_no_eoi.jpeg"};
+   erreur_code_t err_codes_eoi[] = {ERR_EOI_BEFORE_SOS, ERR_NO_EOI};
+      
    
    test_fail(noms_fichiers_jfif, err_codes_jfif, 3, "entête invalide : jfif",		argv);
    test_fail(noms_fichiers_sof0, err_codes_sof0, 1, "entête invalide : précision SOF0", argv);
    test_fail(noms_fichiers_dqt,  err_codes_dqt,  1, "entête invalide : précision DQT",  argv);
    test_fail(noms_fichiers_dht,  err_codes_dht,  4, "entête invalide : indices DHT",  	argv);
    test_fail(noms_fichiers_sos,  err_codes_sos,  6, "entête invalide : section SOS",  	argv);
+   test_fail(noms_fichiers_sof2, err_codes_sof2, 6, "entête invalide : progressif",  	argv);
+   test_fail(noms_fichiers_eoi,  err_codes_eoi,  2, "entête invalide : EOI",  		argv);
    return 0;
 }
