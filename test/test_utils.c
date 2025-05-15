@@ -11,7 +11,7 @@
 void test_res(bool test_var, char *argv[], char *format, ...) {
   va_list args;
   va_start(args, format);
-  char str[80];
+  char str[150];
   vsprintf(str, format, args);
   va_end(args);
   if (test_var) {
