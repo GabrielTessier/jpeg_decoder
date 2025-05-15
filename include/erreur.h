@@ -34,6 +34,7 @@ enum erreur_code_e {
    ERR_DHT_LEN,
    ERR_NO_DHT,
    
+   ERR_DQT_LEN,
    ERR_DQT_PRECISION,
    ERR_DQT_ID,
    ERR_NO_DQT,
@@ -51,6 +52,7 @@ enum erreur_code_e {
    ERR_MARKER_BAD,
    ERR_MARKER_UNKNOWN,
    
+   ERR_SEVERAL_SOF,
    ERR_SOF_PRECISION,
    ERR_SOF_LEN,
    ERR_NO_SOF,
@@ -58,16 +60,13 @@ enum erreur_code_e {
    ERR_SEVERAL_SOI,
    ERR_NO_SOI,
    
-   ERR_SOS_ID,
+   ERR_SOS_COMP_ID,
    ERR_SOS_SS,
    ERR_SOS_SE,
    ERR_SOS_AH,
    ERR_SOS_AL,
    ERR_SOS_NB_COMP,
    ERR_SOS_LEN,
-   
-   ERR_SQT_LEN,
-   ERR_SQT_PREC,
 };
 typedef enum erreur_code_e erreur_code_t;
 
