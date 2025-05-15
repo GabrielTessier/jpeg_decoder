@@ -41,7 +41,7 @@ static void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t i
    FILE *fichier = fopen(strcat(chemin_fichier, nom_fichier), "r");
 
    img_t *img = init_img();
-   decode_entete(fichier, true, img);
+   erreur_t err = decode_entete(fichier, true, img);
 
    // Variables de test
    int test_taille = true;
@@ -155,13 +155,13 @@ static void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t i
       test_res(true, argv, "Décodage entête : %s", nom_fichier);
    }
    else {
-      test_res(test_taille, argv, "Décodage taille : %s", nom_fichier);
-      test_res(test_qtables, argv, "Décodage qtables : %s", nom_fichier);
-      test_res(test_htables, argv, "Décodage htables : %s", nom_fichier);
-      test_res(test_comps, argv, "Décodage comps : %s", nom_fichier);
-      test_res(test_other, argv, "Décodage other : %s", nom_fichier);
-      test_res(test_sampling, argv, "Décodage sampling max : %s", nom_fichier);
-      test_res(test_mcu, argv, "Décodage nb mcu : %s", nom_fichier);
+      test_res(test_taille   , argv, "Décodage taille : %s (%d)",	nom_fichier, err.code);
+      test_res(test_qtables  , argv, "Décodage qtables : %s (%d)", 	nom_fichier, err.code);
+      test_res(test_htables  , argv, "Décodage htables : %s (%d)", 	nom_fichier, err.code);
+      test_res(test_comps    , argv, "Décodage comps : %s (%d)", 	nom_fichier, err.code);
+      test_res(test_other    , argv, "Décodage other : %s (%d)",        nom_fichier, err.code);
+      test_res(test_sampling , argv, "Décodage sampling max : %s (%d)", nom_fichier, err.code);
+      test_res(test_mcu      , argv, "Décodage nb mcu : %s (%d)",  	nom_fichier, err.code);
    }
    
    free_img(img);
@@ -338,30 +338,30 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
 }
 
 static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]) {
-   bool *res = (bool *) malloc(sizeof(bool)*nb_fichiers);
+   erreur_code_t *res_codes = (erreur_code_t *) malloc(sizeof(erreur_code_t)*nb_fichiers);
    for (int i=0; i<nb_fichiers; i++) {
       char *chemin_fichier = (char *) calloc(sizeof(char), 16+strlen(noms_fichiers[i]));
       strcat(chemin_fichier, "test/test_file/");
       FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
       img_t *img = init_img();
       erreur_t err = decode_entete(fichier, true, img);
-      res[i] = (err.code == err_codes[i]);
+      res_codes[i] = err.code;
       free(chemin_fichier);
       free_img(img);
    }
    
    bool test_all = true;
    for (int i=0; i<nb_fichiers; i++) {
-      if (!res[i]) test_all = false;
+      if (res_codes[i] != err_codes[i]) test_all = false;
    }
    if (test_all) {
       test_res(test_all, argv, "%s", test_name);
    } else {
       for (int i=0; i<nb_fichiers; i++) {
-	 test_res(res[i], argv, "entete invalide : %s", noms_fichiers[i]);
+	 test_res(res_codes[i] == err_codes[i], argv, "entete invalide : %s (%d)", noms_fichiers[i], res_codes[i]);
       }
    }
-   free(res);
+   free(res_codes);
 }
 
 
