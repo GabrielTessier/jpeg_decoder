@@ -340,12 +340,14 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
 static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]) {
    bool *res = (bool *) malloc(sizeof(bool)*nb_fichiers);
    for (int i=0; i<nb_fichiers; i++) {
-      char *chemin_fichier = (char *) malloc(sizeof(char)*(16+strlen(noms_fichiers[i])));
+      char *chemin_fichier = (char *) calloc(sizeof(char), 16+strlen(noms_fichiers[i]));
       strcat(chemin_fichier, "test/test_file/");
       FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
       img_t *img = init_img();
       erreur_t err = decode_entete(fichier, true, img);
       res[i] = (err.code == err_codes[i]);
+      free(chemin_fichier);
+      free_img(img);
    }
    
    bool test_all = true;
@@ -390,12 +392,17 @@ int main(int argc, char *argv[]) {
 
    char *noms_fichiers_sos[] = {"invader_bad_entete_baseline_sos_idht_dc.jpeg",
 				"invader_bad_entete_baseline_sos_idht_ac.jpeg",
-   				"invader_bad_entete_baseline_sos_idht_.jpeg"};
+   				"invader_bad_entete_baseline_sos_ss.jpeg",
+				"invader_bad_entete_baseline_sos_se.jpeg",
+				"invader_bad_entete_baseline_sos_ah.jpeg",
+				"invader_bad_entete_baseline_sos_al.jpeg"};
+   erreur_code_t err_codes_sos[] = {ERR_HUFF_ID, ERR_HUFF_ID, ERR_SOS_SS, ERR_SOS_SE, ERR_SOS_AH, ERR_SOS_AL};
 
    
    test_fail(noms_fichiers_jfif, err_codes_jfif, 3, "entête invalide : jfif",		argv);
    test_fail(noms_fichiers_sof0, err_codes_sof0, 1, "entête invalide : précision SOF0", argv);
    test_fail(noms_fichiers_dqt,  err_codes_dqt,  1, "entête invalide : précision DQT",  argv);
    test_fail(noms_fichiers_dht,  err_codes_dht,  4, "entête invalide : indices DHT",  	argv);
+   test_fail(noms_fichiers_sos,  err_codes_sos,  6, "entête invalide : section SOS",  	argv);
    return 0;
 }
