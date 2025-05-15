@@ -28,7 +28,8 @@ static uint16_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blo
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off);
+   uint16_t skip_bloc;
+   decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off, &skip_bloc);
    if (stop) return 0;
    if (skip_bloc != 0) skip_bloc--;
    // On fait la quantification inverse (et on chronomètre le temps)

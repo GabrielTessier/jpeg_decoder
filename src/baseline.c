@@ -29,7 +29,8 @@ static void decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t 
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off);
+   uint16_t skip_bloc;
+   decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off, &skip_bloc);
    if (skip_bloc > 1) erreur("Symbole RLE interdit en baseline");
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, img->other->ss, img->other->se, qtable->qtable);
