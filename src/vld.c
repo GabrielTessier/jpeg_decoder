@@ -5,6 +5,7 @@
 
 #include <utils.h>
 #include <vld.h>
+#include <erreur.h>
 
 // Retourne la valeur correspondant à <indice> sachant la magnitude <magnitude>.
 static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice);
@@ -26,11 +27,13 @@ static int16_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *
 // Remplit <res>[<resi>] avec la composante non constante du bloc fréquentiel à
 // l'adresse <file>+<off>, décodé grâce à l'arbre de Huffman <symb_decode>. <c>
 // est la valeur de l'octet courant.
-static uint16_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c);
+static erreur_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c, uint16_t *skip_bloc);
 
 // Retourne un tableau contenant les coefficients (AC ou DC selon <type>)
 // décodés à l'adresse <file>+<off> à l'aide de l'arbre de Huffman <ht>
-static uint16_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint8_t s_start, uint8_t s_end);
+static erreur_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint8_t s_start, uint8_t s_end, uint16_t *skip_bloc);
+
+
 
 bool stop = false;
 
@@ -108,7 +111,8 @@ static int16_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *
    return read_val_from_magnitude(file, symb_decode->symb, off, c);
 }
 
-static uint16_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c) {
+static erreur_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c, uint16_t *skip_bloc) {
+   erreur_t succ = {.code=SUCCESS};
    if (symb_decode->symb == 0xf0) {  // RLE
       *resi += 16;
    } else {
@@ -116,37 +120,44 @@ static uint16_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb
       uint8_t gamma = symb_decode->symb & 0b00001111;
       if (gamma == 0) {
 	 if (alpha == 0) {
-	    return 1;
+	    *skip_bloc = 1;
+	    return succ;
 	 } else {
 	    if (num_sof == 0) {
-	       erreur("Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
+	       char str[80];
+	       sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
+	       return (erreur_t) {.code=ERR_AC_BAD, .com=str};
 	    } else if (num_sof == 2) {
 	       uint16_t indice = read_indice(file, alpha, off, c);
-	       if (stop) return 0;
-	       uint16_t skip_bloc = indice + (1<<alpha);
-	       return skip_bloc;
+	       if (stop)  return succ;
+	       *skip_bloc = indice + (1<<alpha);
+	       return succ;
 	    } else {
-	       erreur("Numéro sof invalide : %d", num_sof);
+	       char str[26];
+	       sprintf(str, "Numéro sof invalide : %d", num_sof);
+	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str};
 	    }
 	 }
       } else {
 	 *resi += alpha;
 	 sortie->data[(*resi)] = read_val_from_magnitude(file, gamma, off, c);
-	 if (stop) return 0;
+	 if (stop) return succ;
 	 (*resi)++;
       }
    }
-   return 0;
+   *skip_bloc = 0;
+   return succ;
 }
 
-static uint16_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint8_t s_start, uint8_t s_end) {
+static erreur_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint8_t s_start, uint8_t s_end, uint16_t *skip_bloc) {
+   erreur_t succ = {.code=SUCCESS};
    uint64_t resi = s_start; // indice de où on en est dans res
    huffman_tree_t* symb_decode = ht; // où on en est dans l'arbre de huffman
    // On lit char par char mais on traite bit par bit
    uint8_t i = *off;
    char c = fgetc(file);
    bool code_que_un = true;
-   uint16_t skip_bloc = 0;
+   *skip_bloc = 0;
    while (true) {
       while (i<8) {
 	 // on regarde si le bit courant est 0 ou 1
@@ -160,14 +171,14 @@ static uint16_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof
 	 if (symb_decode->fils[1] == NULL && symb_decode->fils[0] == NULL) {
 	    if (type == DC) {
 	       if (code_que_un) {
-		  erreur("Le code de huffman avec que des 1 est utilisé\n");
+		  return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n"};
 	       }
 	       sortie->data[resi] = decode_coef_DC(file, symb_decode, &i, &c);
 	       code_que_un = true;
 	       resi++;
 	    } else {
-	       skip_bloc = decode_coef_AC(file, num_sof, symb_decode, sortie, &resi, &i, &c);
-	       if (stop) return 0;
+	       *skip_bloc = decode_coef_AC(file, num_sof, symb_decode, sortie, &resi, &i, &c);
+	       if (stop) return succ;
 	       if (skip_bloc != 0) resi = 64;
 	    }
 	    symb_decode = ht;
@@ -177,26 +188,31 @@ static uint16_t decode_list_coef(FILE* file, huffman_tree_t* ht, uint8_t num_sof
       }
       if (resi > s_end) break;
       c = my_getc(file, c);
-      if (stop) return 0;
+      if (stop) return succ;
       i = 0;
    }
    *off = i+1;
-   return skip_bloc;
+   return succ;
 }
 
-uint16_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off) {
+erreur_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc) {
+   erreur_t succ = {.code=SUCCESS};
+   erreur_t decode_ok;
    if (s_start == 0) {
-      decode_list_coef(fichier, hdc, num_sof, sortie, off, DC, 0, 0);
+      decode_ok = decode_list_coef(fichier, hdc, num_sof, sortie, off, DC, 0, 0, skip_bloc);
+      if (decode_ok.code) return decode_ok;
       sortie->data[0] += *dc_prec;
       *dc_prec = sortie->data[0];
       fseek(fichier, -1, SEEK_CUR);
       s_start = 1;
    }
    if (s_start <= s_end) {
-      uint16_t skip_bloc = decode_list_coef(fichier, hac, num_sof, sortie, off, AC, s_start, s_end);
-      if (stop) return 0;
+      decode_ok = decode_list_coef(fichier, hac, num_sof, sortie, off, AC, s_start, s_end, skip_bloc);
+      if (decode_ok.code) return decode_ok;
+      if (stop) return succ;
       fseek(fichier, -1, SEEK_CUR);
-      return skip_bloc;
+      return succ;
    }
-   return 0;
+   *skip_bloc = 0;
+   return succ;
 }

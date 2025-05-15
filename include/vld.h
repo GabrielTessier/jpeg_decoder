@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include <jpeg2ppm.h>
+#include <erreur.h>
 
 // Structure représentant un arbre de Huffman
 struct huffman_tree_s {
@@ -21,4 +22,4 @@ enum acdc_e { AC, DC };
 // décodé à l'aide des tables de Huffman <hdc> (DC) et <hac> (AC).
 // On retrouve la composante constante de ce bloc fréquentiel
 // à l'aide de <dc_prec>.
-uint16_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off);
+erreur_t decode_bloc_acdc(FILE *fichier, uint8_t num_sof, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, uint8_t s_start, uint8_t s_end, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc);

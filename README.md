@@ -49,7 +49,15 @@ src/
 |   ├──
 
 ```
-
+* point le 15 mai:
+TODO:
+	finir progressif
+	gestion d'erreur
+	refaire timer
+	refaire mode verbose
+	commenter le code
+	finir les tests
+	
 # Droit dépôt git
 
 Si vous avez besoin de droit supplémentaire sur votre dépôt git, venez voir les profs au premier étage du bâtiment E.
