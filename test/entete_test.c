@@ -31,7 +31,7 @@ static void test_shaun(char *nom_fichier, char *argv[]);
 // Dans le cas où <decode_entete> finit, le test échoue et on affiche les
 // résultats des test sur chaque fichier.
 // Sinon on affiche juste <test_name>.
-static void test_fail(char *noms_fichiers[], int nb_fichiers, char *test_name, char *argv[]);
+static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]);
 
    
 
@@ -336,27 +336,16 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
    free_img(img);
 }
 
-static void test_fail(char *noms_fichiers[], int nb_fichiers, char *test_name, char *argv[]) {
+static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]) {
    bool *res = (bool *) malloc(sizeof(bool)*nb_fichiers);
+   char chemin_fichier[80] = "test/test_file/";
    for (int i=0; i<nb_fichiers; i++) {
-      int my_stdout[2]; // Pour récupérer les sorties (standard et d'erreur) du process enfant
-      pipe(my_stdout);
-      int pid = fork();
-      if (pid == 0) { // processus enfant
-	 dup2(my_stdout[1], STDOUT_FILENO);
-	 dup2(my_stdout[1], STDERR_FILENO);
-	 char chemin_fichier[80] = "test/test_file/";
-	 FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
-	 img_t *img = init_img();
-	 decode_entete(fichier, true, img);
-	 close(my_stdout[0]);
-	 close(my_stdout[1]);
-	 exit(EXIT_SUCCESS);
-      }
-      int status;
-      waitpid(pid, &status, 0);
-      res[i] = (WEXITSTATUS(status)== EXIT_FAILURE);
+      FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
+      img_t *img = init_img();
+      erreur_t err = decode_entete(fichier, true, img);
+      res[i] = (err.code == err_codes[i]);
    }
+   
    bool test_all = true;
    for (int i=0; i<nb_fichiers; i++) {
       if (!res[i]) test_all = false;
@@ -383,16 +372,20 @@ int main(int argc, char *argv[]) {
    char *noms_fichiers_jfif[] = {"invader_bad_entete_jfif.jpeg",
 				 "invader_bad_entete_vjfif0.jpeg",
 				 "invader_bad_entete_vjfif1.jpeg"};
+   erreur_code_t err_codes_jfif[] = {ERR_NO_JFIF, ERR_JFIF_VERSION, ERR_JFIF_VERSION};
    char *noms_fichiers_sof0[] = {"invader_bad_entete_sof0_p.jpeg"};
+   erreur_code_t err_codes_sof0[] = {ERR_SOF_PRECISION};
    char *noms_fichiers_dqt[]  = {"invader_bad_entete_dqt_p.jpeg"};
+   erreur_code_t err_codes_dqt[] = {ERR_DQT_PRECISION};
    char *noms_fichiers_dht[]  = {"invader_bad_entete_dht_dc2.jpeg",
 				 "invader_bad_entete_dht_dc3.jpeg",
 				 "invader_bad_entete_dht_ac2.jpeg",
 				 "invader_bad_entete_dht_ac3.jpeg"};
+   erreur_code_t err_codes_dht[] = {ERR_DHT_LEN};
    
-   test_fail(noms_fichiers_jfif, 3, "entête invalide : jfif",		argv);
-   test_fail(noms_fichiers_sof0, 1, "entête invalide : précision SOF0", argv);
-   test_fail(noms_fichiers_dqt,  1, "entête invalide : précision DQT",  argv);
-   test_fail(noms_fichiers_dht,  4, "entête invalide : indices DHT",  	argv);
+   test_fail(noms_fichiers_jfif, err_codes_jfif, 3, "entête invalide : jfif",		argv);
+   test_fail(noms_fichiers_sof0, err_codes_sof0, 1, "entête invalide : précision SOF0", argv);
+   test_fail(noms_fichiers_dqt,  err_codes_dqt,  1, "entête invalide : précision DQT",  argv);
+   test_fail(noms_fichiers_dht,  err_codes_dht,  4, "entête invalide : indices DHT",  	argv);
    return 0;
 }

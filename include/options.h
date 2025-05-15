@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include <erreur.h>
+
 
 struct all_option_s {
   char *execname;
@@ -13,5 +15,5 @@ struct all_option_s {
 };
 typedef struct all_option_s all_option_t;
 
-void print_help(all_option_t *all_option);
-void set_option(all_option_t *all_option, const int argc, char **argv);
+erreur_t print_help(all_option_t *all_option);
+erreur_t set_option(all_option_t *all_option, const int argc, char **argv);
