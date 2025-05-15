@@ -25,17 +25,17 @@ static erreur_t decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl1
 
    // S'il manque une table on exit avec une erreur
    if (hdc == NULL) {
-      char str[80];
+      char *str = malloc(80);
       sprintf(str, "Pas de table de huffman DC pour la composante %d", comp);
       return (erreur_t) {.code = ERR_NO_HT, .com = str};
    }
    if (hac == NULL) {
-      char str[80];
+      char *str = malloc(80);
       sprintf(str, "Pas de table de huffman AC pour la composante %d", comp);
       return (erreur_t) {.code = ERR_NO_HT, .com = str};
    }
    if (qtable == NULL) {
-      char str[80];
+      char *str = malloc(80);
       sprintf(str, "Pas de table de quantification pour la composante %d", comp);
       return (erreur_t) {.code = ERR_NO_HT, .com = str};
    }

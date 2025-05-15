@@ -23,17 +23,17 @@ static erreur_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blo
 
    // S'il manque une table on exit avec une erreur
    if (s_start == 0 && hdc == NULL) {
-      char str[80];
+      char *str = malloc(80);
       sprintf(str, "Pas de table de huffman DC pour la composante %d", comp);
       return (erreur_t) {.code = ERR_NO_HT, .com = str};
    }
    if (s_end != 0 && hac == NULL) {
-      char str[80];
+      char *str = malloc(80);
       sprintf(str, "Pas de table de huffman AC pour la composante %d", comp);
       return (erreur_t) {.code = ERR_NO_HT, .com = str};
    }
    if (qtable == NULL) {
-      char str[80];
+      char *str = malloc(80);
       sprintf(str, "Pas de table de quantification pour la composante %d", comp);
       return (erreur_t) {.code = ERR_NO_HT, .com = str};
    }
@@ -108,10 +108,6 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
          for (uint8_t k = 0; k < nbcomp; k++) {
             int16_t indice_comp = get_composante(img, k);
 	    if (indice_comp == -1) break;
-	    if (skip_blocs[indice_comp] != 0) {
-	       skip_blocs[indice_comp]--;
-	       continue;
-	    }
 	    
             uint8_t hs = img->comps->comps[indice_comp]->hsampling;
             uint8_t vs = img->comps->comps[indice_comp]->vsampling;
@@ -120,14 +116,16 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
             uint64_t nbH = img->nbmcuH * hs;
             for (uint8_t by = 0; by < vs; by++) {
                for (uint8_t bx = 0; bx < hs; bx++) {
-		  print_v("BLOC %d\n", by * hs + bx);
-		  uint64_t blocX = mcuX * hs + bx;
-		  uint64_t blocY = mcuY * vs + by;
-		  erreur_t err = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &off, skip_blocs + indice_comp);
-		  if (err.code) return err;
-		  if (skip_blocs[indice_comp] != 0) break;
+		  if (skip_blocs[indice_comp] == 0) {
+		     print_v("BLOC %d\n", by * hs + bx);
+		     uint64_t blocX = mcuX * hs + bx;
+		     uint64_t blocY = mcuY * vs + by;
+		     erreur_t err = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &off, skip_blocs + indice_comp);
+		     if (err.code) return err;
+		  } else {
+		     skip_blocs[indice_comp]--;
+		  }
                }
-	       if (skip_blocs[indice_comp] != 0) break;
             }
          }
       }
