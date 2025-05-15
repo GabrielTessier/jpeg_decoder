@@ -283,7 +283,7 @@ static erreur_t marqueur(FILE *fichier, img_t *img) {
    // On vérifie que le marqueur commence par 0xff
    if (marqueur[0] != (uint8_t) 0xff) {
       char *str = malloc(sizeof(char)*80);
-      sprintf(str, "Octet %lx devrait être un marqueur : %x %x", ftell(fichier)-2, marqueur[0], marqueur[1]);
+      sprintf(str, "Octet 0x%lx devrait être un marqueur : %x %x", ftell(fichier)-2, marqueur[0], marqueur[1]);
       return (erreur_t) {.code = ERR_MARKER_BAD, .com = str};
    }
     

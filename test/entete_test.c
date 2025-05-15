@@ -338,30 +338,35 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
 }
 
 static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]) {
-   erreur_code_t *res_codes = (erreur_code_t *) malloc(sizeof(erreur_code_t)*nb_fichiers);
+   erreur_t *res_err = (erreur_t *) malloc(sizeof(erreur_t)*nb_fichiers);
    for (int i=0; i<nb_fichiers; i++) {
       char *chemin_fichier = (char *) calloc(sizeof(char), 16+strlen(noms_fichiers[i]));
       strcat(chemin_fichier, "test/test_file/");
       FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
       img_t *img = init_img();
       erreur_t err = decode_entete(fichier, true, img);
-      res_codes[i] = err.code;
+      res_err[i] = err;
       free(chemin_fichier);
       free_img(img);
    }
    
    bool test_all = true;
    for (int i=0; i<nb_fichiers; i++) {
-      if (res_codes[i] != err_codes[i]) test_all = false;
+      if (res_err[i].code != err_codes[i]) test_all = false;
    }
    if (test_all) {
       test_res(test_all, argv, "%s", test_name);
    } else {
       for (int i=0; i<nb_fichiers; i++) {
-	 test_res(res_codes[i] == err_codes[i], argv, "entete invalide : %s (%d)", noms_fichiers[i], res_codes[i]);
+	 erreur_code_t code = res_err[i].code;
+	 if (code != err_codes[i]) {
+	    test_res(res_err[i].code == err_codes[i], argv, "entete invalide : %s (%d: %s)", noms_fichiers[i], res_err[i].code, res_err[i].com);
+	 } else {
+	    test_res(res_err[i].code == err_codes[i], argv, "entete invalide : %s (%d)", noms_fichiers[i], res_err[i].code);
+	 }
       }
    }
-   free(res_codes);
+   free(res_err);
 }
 
 
