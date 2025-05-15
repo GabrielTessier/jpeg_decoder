@@ -10,6 +10,7 @@
 #include <entete.h>
 #include <options.h>
 #include <vld.h>
+#include <img.h>
 #include "test_utils.h"
 
 
@@ -338,8 +339,9 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
 
 static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]) {
    bool *res = (bool *) malloc(sizeof(bool)*nb_fichiers);
-   char chemin_fichier[80] = "test/test_file/";
    for (int i=0; i<nb_fichiers; i++) {
+      char *chemin_fichier = (char *) malloc(sizeof(char)*(16+strlen(noms_fichiers[i])));
+      strcat(chemin_fichier, "test/test_file/");
       FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
       img_t *img = init_img();
       erreur_t err = decode_entete(fichier, true, img);
@@ -373,15 +375,23 @@ int main(int argc, char *argv[]) {
 				 "invader_bad_entete_vjfif0.jpeg",
 				 "invader_bad_entete_vjfif1.jpeg"};
    erreur_code_t err_codes_jfif[] = {ERR_NO_JFIF, ERR_JFIF_VERSION, ERR_JFIF_VERSION};
+   
    char *noms_fichiers_sof0[] = {"invader_bad_entete_sof0_p.jpeg"};
    erreur_code_t err_codes_sof0[] = {ERR_SOF_PRECISION};
+   
    char *noms_fichiers_dqt[]  = {"invader_bad_entete_dqt_p.jpeg"};
    erreur_code_t err_codes_dqt[] = {ERR_DQT_PRECISION};
+   
    char *noms_fichiers_dht[]  = {"invader_bad_entete_dht_dc2.jpeg",
 				 "invader_bad_entete_dht_dc3.jpeg",
 				 "invader_bad_entete_dht_ac2.jpeg",
 				 "invader_bad_entete_dht_ac3.jpeg"};
-   erreur_code_t err_codes_dht[] = {ERR_DHT_LEN};
+   erreur_code_t err_codes_dht[] = {ERR_HUFF_ID, ERR_HUFF_ID, ERR_HUFF_ID, ERR_HUFF_ID};
+
+   char *noms_fichiers_sos[] = {"invader_bad_entete_baseline_sos_idht_dc.jpeg",
+				"invader_bad_entete_baseline_sos_idht_ac.jpeg",
+   				"invader_bad_entete_baseline_sos_idht_.jpeg"};
+
    
    test_fail(noms_fichiers_jfif, err_codes_jfif, 3, "entête invalide : jfif",		argv);
    test_fail(noms_fichiers_sof0, err_codes_sof0, 1, "entête invalide : précision SOF0", argv);
