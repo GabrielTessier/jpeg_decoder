@@ -83,9 +83,10 @@ int main(int argc, char **argv) {
    int nb_test = 6;
    int bsize[] = {1, 1, 2, 2, 1, 3};
    int outsize[] = {2, 0, 5, 20, 0, 6};
+   int errcode[] = {SUCCESS, ERR_HUFF_CODE_1, SUCCESS, SUCCESS, ERR_AC_BAD, SUCCESS};
    uint8_t *blocs[] = {bloc1, bloc2, bloc3, bloc4, bloc5, bloc6};
    int16_t *outs[] = {out1, out2, out3, out4, out5, out6};
-   char *name[] = {"Test DC normal", "Test DC symbole interdit", "Test AC 0xalpha gamma", "Test AC 0xF0", "Test AC 0x?0", "Test avec magnitude supérieure à 8"};
+   char *name[] = {"Test DC normal (%d)", "Test DC symbole interdit (%d)", "Test AC 0xalpha gamma (%d)", "Test AC 0xF0 (%d)", "Test AC 0x?0 (%d)", "Test avec magnitude supérieure à 8 (%d)"};
 
    for (int test=0; test<nb_test; test++) {
       int fd_out[2];	       	// Pour envoyer le tableau out au process enfant
@@ -111,12 +112,14 @@ int main(int argc, char **argv) {
 	 uint8_t off = 0;
 	 blocl16_t bl;
 	 for (int i=0; i<64; i++) bl.data[i] = 0;
-	 decode_bloc_acdc(f, 0, dc, ac, &bl, 0, 63, &dc_prec, &off);
+	 uint16_t skip_bloc;
+	 erreur_t err = decode_bloc_acdc(f, 0, dc, ac, &bl, 0, 63, &dc_prec, &off, &skip_bloc);
+	 if (err.code) exit(err.code);
 	 int16_t out[64];
 	 read(fd_out[0], out, 64*sizeof(int16_t));
 	 for (int i=0; i<64; i++) {
 	    if (bl.data[i] != out[i]) {
-	       exit(2);  // Code d'erreur 2 dans le cas où le bloc décodé n'est pas bon
+	       exit(-1);  // Code d'erreur -1 dans le cas où le bloc décodé n'est pas bon
 	    }
 	 }
 	 fclose(f);
@@ -134,7 +137,7 @@ int main(int argc, char **argv) {
       write(fd_out[1], out, 64*sizeof(int16_t));
       int status;
       waitpid(pid, &status, 0);
-      test_res(!((WEXITSTATUS(status) == EXIT_FAILURE && outsize[test] != 0) || WEXITSTATUS(status) == 2), argv, name[test]);
+      test_res(WEXITSTATUS(status) == errcode[test], argv, name[test], WEXITSTATUS(status));
       close(fd_out[1]);
       close(my_stdout[0]);
    }

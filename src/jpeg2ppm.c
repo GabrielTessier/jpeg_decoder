@@ -69,9 +69,13 @@ int main(int argc, char *argv[]) {
    stop_timer(&entete_timer);
    print_timer("Décodage entête", &entete_timer);
 
-   if (img->section->num_sof == 0) decode_baseline_image(fichier, img);
-   else if (img->section->num_sof == 2) decode_progressive_image(fichier, img);
+   if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);
+   else if (img->section->num_sof == 2) err = decode_progressive_image(fichier, img);
    else erreur("sof%d non supporté", img->section->num_sof);
+   if (err.code) {
+      print_erreur(err);
+      return err.code;
+   }
 
    fclose(fichier);
 

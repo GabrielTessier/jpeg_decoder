@@ -3,4 +3,4 @@
 #include <stdio.h>
 #include <entete.h>
 
-void decode_progressive_image(FILE *infile, img_t *img);
+erreur_t decode_progressive_image(FILE *infile, img_t *img);

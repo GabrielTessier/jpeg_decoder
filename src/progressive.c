@@ -9,9 +9,8 @@
 #include <progressive.h>
 
 extern all_option_t all_option;
-extern bool stop;
 
-static uint16_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off) {
+static erreur_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc) {
    uint8_t s_start = img->other->ss;
    uint8_t s_end = img->other->se;
    // On récupère les tables de Huffman et de quantification pour la composante courante
@@ -28,13 +27,13 @@ static uint16_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blo
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off);
-   if (stop) return 0;
-   if (skip_bloc != 0) skip_bloc--;
+   erreur_t err = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off, skip_bloc);
+   if (err.code) return err;
+   if (*skip_bloc != 0) (*skip_bloc)--;
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, s_start, s_end, qtable->qtable);
 
-   return skip_bloc;
+   return (erreur_t) {.code = SUCCESS};
 }
 
 static blocl16_t ***init_sortieq(img_t *img){
@@ -50,7 +49,7 @@ static blocl16_t ***init_sortieq(img_t *img){
    return sortieq;
 }
 
-void decode_progressive_image(FILE *infile, img_t *img) {
+erreur_t decode_progressive_image(FILE *infile, img_t *img) {
    uint8_t nbcomp = img->comps->nb;
    blocl16_t ***sortieq = init_sortieq(img);
    // Calcul des coefficients pour la DCT inverse (lente)
@@ -95,15 +94,13 @@ void decode_progressive_image(FILE *infile, img_t *img) {
          uint64_t mcuX = i % img->nbmcuH;
          uint64_t mcuY = i / img->nbmcuH;
          for (uint8_t k = 0; k < nbcomp; k++) {
-            uint8_t idcomp = img->comps->ordre[k];
-            if (idcomp == 0) break;
-            uint8_t indice_comp = 0;
-            for (uint8_t c = 0; c < nbcomp; c++) {
-               if (img->comps->comps[c]->idc == idcomp) {
-                  indice_comp = c;
-                  break;
-               }
-            }
+            int16_t indice_comp = get_composante(img, k);
+	    if (indice_comp == -1) break;
+	    if (skip_blocs[indice_comp] != 0) {
+	       skip_blocs[indice_comp]--;
+	       continue;
+	    }
+	    
             uint8_t hs = img->comps->comps[indice_comp]->hsampling;
             uint8_t vs = img->comps->comps[indice_comp]->vsampling;
             print_v("COMP %d, %d, %d, %d, %d\n", indice_comp, hs, vs, img->max_hsampling, img->max_vsampling);
@@ -111,43 +108,27 @@ void decode_progressive_image(FILE *infile, img_t *img) {
             uint64_t nbH = img->nbmcuH * hs;
             for (uint8_t by = 0; by < vs; by++) {
                for (uint8_t bx = 0; bx < hs; bx++) {
-                  if (skip_blocs[indice_comp] == 0) {
-		     print_v("BLOC %d\n", by * hs + bx);
-		     uint64_t blocX = mcuX * hs + bx;
-		     uint64_t blocY = mcuY * vs + by;
-		     uint16_t skip_bloc = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &off);
-		     if (stop) break;
-		     skip_blocs[indice_comp] = skip_bloc;
-		  } else {
-		     skip_blocs[indice_comp]--;
-		  }
-		  if (stop) break;
+		  print_v("BLOC %d\n", by * hs + bx);
+		  uint64_t blocX = mcuX * hs + bx;
+		  uint64_t blocY = mcuY * vs + by;
+		  erreur_t err = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &off, skip_blocs + indice_comp);
+		  if (err.code) return err;
+		  if (skip_blocs[indice_comp] != 0) break;
                }
-	       if (stop) break;
+	       if (skip_blocs[indice_comp] != 0) break;
             }
-	    if (stop) break;
          }
-	 if (stop) break;
       }
       // Si termine par ff 00 puis ff marker alors skip le 00 pour aller sur le 2e ff
       char dernier = fgetc(infile);
-      /*if (dernier == (char) 0xff) {
+      if (dernier == (char) 0xff) {
 	 char suivant_dernier = fgetc(infile);
 	 if (suivant_dernier != (char) 0x00) {
 	    erreur("Il faut un 0x00 après 0xff (%d)", ftell(infile));
 	 }
-	 }*/
-      if (stop) {
-	 printf("deb : %lx\n", ftell(infile));
-	 while (fgetc(infile) != 0xff) {
-	    fseek(infile, -2, SEEK_CUR);
-	    printf("aa\n");
-	 }
-	 fseek(infile, -1, SEEK_CUR);
       }
       printf("%lx\n", ftell(infile));
       free(skip_blocs);
-      stop = false;
 
       print_v("Fin données sos : %x\n", (int)ftell(infile));
 
@@ -230,4 +211,6 @@ void decode_progressive_image(FILE *infile, img_t *img) {
       free(sortieq[i]);
    }
    free(sortieq);
+
+   return (erreur_t) {.code = SUCCESS};
 }

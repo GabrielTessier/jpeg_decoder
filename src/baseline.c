@@ -14,7 +14,7 @@
 
 extern all_option_t all_option;
 
-static void decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off) {
+static erreur_t decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -29,10 +29,15 @@ static void decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t 
    if (qtable == NULL) erreur("Pas de table de quantification pour la composante %d\n", comp);
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   uint16_t skip_bloc = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off);
+   uint16_t skip_bloc;
+   erreur_t err = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off, &skip_bloc);
+   if (err.code) return err;
    if (skip_bloc > 1) erreur("Symbole RLE interdit en baseline");
+   
    // On fait la quantification inverse (et on chronomètre le temps)
    iquant(sortie, img->other->ss, img->other->se, qtable->qtable);
+   
+   return (erreur_t) {.code = SUCCESS};
 }
 
 static void get_ycc_info(img_t *img, uint8_t *y_id, uint8_t *cb_id, uint8_t *cr_id, uint8_t *yhf, uint8_t *yvf, uint8_t *cbhf, uint8_t *cbvf, uint8_t *crhf, uint8_t *crvf, uint64_t *nb_blocYH, uint64_t *nb_blocCbH, uint64_t *nb_blocCrH, char **rgb) {
@@ -55,7 +60,7 @@ static void get_ycc_info(img_t *img, uint8_t *y_id, uint8_t *cb_id, uint8_t *cr_
    }
 }
 
-void decode_baseline_image(FILE *infile, img_t *img) {
+erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    print_huffman_quant_table(img);
    
    uint8_t nbcomp = img->comps->nb;
@@ -149,4 +154,6 @@ void decode_baseline_image(FILE *infile, img_t *img) {
    free(ycc);
 
    if (nbcomp == 3) free(rgb);
+
+   return (erreur_t) {.code = SUCCESS};
 }

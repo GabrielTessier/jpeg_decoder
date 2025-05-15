@@ -2,5 +2,6 @@
 
 #include <stdio.h>
 #include <entete.h>
+#include <erreur.h>
 
-void decode_baseline_image(FILE *infile, img_t *img);
+erreur_t decode_baseline_image(FILE *infile, img_t *img);
