@@ -7,7 +7,6 @@
 #include <stdbool.h>
 
 #include <iqzz.h>
-#include <vld.h>
 
 
 // Structure contenant une table de quantification et sa précision
@@ -16,6 +15,14 @@ struct qtable_prec_s {
    qtable_t *qtable;   // Table de quantification
 };
 typedef struct qtable_prec_s qtable_prec_t;
+
+// Structure représentant un arbre de Huffman
+struct huffman_tree_s {
+  // fils[0] représente le fils gauche et fils[1] le fils droit
+  struct huffman_tree_s *fils[2];
+  uint8_t symb;
+};
+typedef struct huffman_tree_s huffman_tree_t;
 
 // Structure contenant les tables de Huffman de type DC et AC
 struct htables_s {

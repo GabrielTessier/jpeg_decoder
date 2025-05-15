@@ -10,6 +10,7 @@ enum erreur_code_e {
    ERR_AC_BAD,
    ERR_SOF_BAD,
    ERR_HUFF_CODE_1,
+   ERR_DIFF_AH_AL,
 
    // erreurs options
    ERR_PARAM,
