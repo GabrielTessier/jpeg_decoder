@@ -42,7 +42,7 @@ static erreur_t decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl1
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    uint16_t skip_bloc;
-   erreur_t err = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, img->other->ss, img->other->se, dc_prec + comp, off, &skip_bloc);
+   erreur_t err = decode_bloc_acdc(fichier, img, hdc, hac, sortie, dc_prec + comp, off, &skip_bloc);
    if (err.code) return err;
    if (skip_bloc > 1) {
       return (erreur_t) {.code = ERR_AC_BAD, .com = "Symbole RLE interdit en baseline"};

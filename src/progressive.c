@@ -1,4 +1,5 @@
 
+#include <stdio.h>
 #include <utils.h>
 #include <options.h>
 #include <idct.h>
@@ -39,7 +40,7 @@ static erreur_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blo
    }
 
    // On décode un bloc de l'image (et on chronomètre le temps)
-   erreur_t err = decode_bloc_acdc(fichier, img->section->num_sof, hdc, hac, sortie, s_start, s_end, dc_prec + comp, off, skip_bloc);
+   erreur_t err = decode_bloc_acdc(fichier, img, hdc, hac, sortie, dc_prec + comp, off, skip_bloc);
    if (err.code) return err;
    if (*skip_bloc != 0) (*skip_bloc)--;
    // On fait la quantification inverse (et on chronomètre le temps)
@@ -130,14 +131,17 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
          }
       }
       // Si termine par ff 00 puis ff marker alors skip le 00 pour aller sur le 2e ff
+      printf("avant dernier %lx (%d)\n", ftell(infile), off);
       char dernier = fgetc(infile);
       if (dernier == (char) 0xff) {
 	 char suivant_dernier = fgetc(infile);
 	 if (suivant_dernier != (char) 0x00) {
-	    erreur("Il faut un 0x00 après 0xff (%d)", ftell(infile));
+	    char *str = malloc(80);
+	    sprintf(str, "Pas de 0x00 après un 0xff , %lx\n", ftell(infile)-1);
+	    return (erreur_t) {.code = ERR_0XFF00, str};
 	 }
       }
-      printf("%lx\n", ftell(infile));
+      printf("après dernier %lx\n", ftell(infile));
       free(skip_blocs);
 
       print_v("Fin données sos : %x\n", (int)ftell(infile));
@@ -205,7 +209,8 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       }
       free(ycc);
 
-      decode_entete(infile, false, img);
+      erreur_t err = decode_entete(infile, false, img);
+      if (err.code) return err;
       nb_passage_sos++;
    }
 
