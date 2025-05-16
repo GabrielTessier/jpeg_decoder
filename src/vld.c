@@ -152,12 +152,12 @@ static erreur_t decode_coef_AC_first_scan(FILE *file, img_t *img, huffman_tree_t
 
 static erreur_t skip_n_coef_AC_subsequent_scan(FILE *file, img_t *img, uint8_t n, uint8_t magnitude, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c) {
    const uint8_t al = img->other->al;
-   printf("resi : %ld, n : %d\n", *resi, n);
+   printf("skip n : resi : %ld, n : %d\n", *resi, n);
    int16_t val = 0;
    erreur_t err = read_val_from_magnitude(file, magnitude, off, c, &val);
    if (err.code) return err;
    int i=0;
-   while (i<n) {
+   while (i<n || sortie->data[*resi] != 0) {
       if (sortie->data[*resi] != 0) {
 	 uint8_t bit;
 	 erreur_t err = get_bit(file, off, c, &bit);
@@ -168,6 +168,10 @@ static erreur_t skip_n_coef_AC_subsequent_scan(FILE *file, img_t *img, uint8_t n
       }
       (*resi)++;
    }
+   if (sortie->data[*resi] != 0) {
+      printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbb\n");
+      return (erreur_t) {.code = ERR_AC_BAD, "aaaaaaaaa"};
+   }
    sortie->data[*resi] = val*(1<<al);
    (*resi)++;
    return (erreur_t) {.code = SUCCESS};
@@ -175,7 +179,7 @@ static erreur_t skip_n_coef_AC_subsequent_scan(FILE *file, img_t *img, uint8_t n
 
 static erreur_t skip_16_coef_AC_subsequent_scan(FILE *file, img_t *img, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c) {
    const uint8_t al = img->other->al;
-   printf("resi : %ld, n : %d\n", *resi, 16);
+   printf("skip 16 : resi : %ld, n : %d\n", *resi, 16);
    for (int i=0; i<16; i++) {
       if (sortie->data[*resi] != 0) {
 	 uint8_t bit;
@@ -188,7 +192,7 @@ static erreur_t skip_16_coef_AC_subsequent_scan(FILE *file, img_t *img, blocl16_
    return (erreur_t) {.code = SUCCESS};
 }
 
-static erreur_t correction_eob(FILE *file, img_t *img, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c) {
+erreur_t correction_eob(FILE *file, img_t *img, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c) {
    const uint8_t al = img->other->al;
    while (*resi <= img->other->se) {
       if (sortie->data[*resi] != 0) {

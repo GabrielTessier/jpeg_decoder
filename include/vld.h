@@ -16,3 +16,5 @@ enum acdc_e { AC, DC };
 // On retrouve la composante constante de ce bloc fréquentiel
 // à l'aide de <dc_prec>.
 erreur_t decode_bloc_acdc(FILE *fichier, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc);
+
+erreur_t correction_eob(FILE *file, img_t *img, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c);
