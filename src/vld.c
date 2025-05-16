@@ -132,7 +132,7 @@ static erreur_t skip_n_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, uint
 	 uint8_t bit;
 	 erreur_t err = read_bit(bs, &bit);
 	 if (err.code) return err;
-	 if (bit == 1) sortie->data[*resi] += (int16_t)1<<al;
+	 if (bit == 1) sortie->data[*resi] -= (int16_t)1<<al;
       } else {
 	 i++;
       }
@@ -155,7 +155,7 @@ static erreur_t skip_16_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, blo
 	 uint8_t bit;
 	 erreur_t err = read_bit(bs, &bit);
 	 if (err.code) return err;
-	 if (bit == 1) sortie->data[*resi] += (int16_t)1<<al;
+	 if (bit == 1) sortie->data[*resi] -= (int16_t)1<<al;
       }
       (*resi)++;
    }
@@ -169,7 +169,7 @@ erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t
 	 uint8_t bit;
 	 erreur_t err = read_bit(bs, &bit);
 	 if (err.code) return err;
-	 if (bit == 1) sortie->data[*resi] += (int16_t)1<<al;
+	 if (bit == 1) sortie->data[*resi] -= (int16_t)1<<al;
       }
       (*resi)++;
    }
