@@ -702,7 +702,7 @@
         <mxCell id="e3jmrKQqIBXuTLJc6fM6-190" value="&lt;div align=&quot;left&quot;&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;container=0;" vertex="1" parent="e3jmrKQqIBXuTLJc6fM6-289">
           <mxGeometry width="220" height="350" as="geometry" />
         </mxCell>
-        <mxCell id="e3jmrKQqIBXuTLJc6fM6-191" value="idcomps_t" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;container=0;" vertex="1" parent="e3jmrKQqIBXuTLJc6fM6-289">
+        <mxCell id="e3jmrKQqIBXuTLJc6fM6-191" value="idcomp_t" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;container=0;" vertex="1" parent="e3jmrKQqIBXuTLJc6fM6-289">
           <mxGeometry x="10" y="10" width="160" height="30" as="geometry" />
         </mxCell>
         <mxCell id="e3jmrKQqIBXuTLJc6fM6-192" value="" style="rounded=0;whiteSpace=wrap;html=1;container=0;" vertex="1" parent="e3jmrKQqIBXuTLJc6fM6-289">
