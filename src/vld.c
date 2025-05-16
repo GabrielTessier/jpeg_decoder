@@ -62,20 +62,18 @@ static erreur_t read_val_from_magnitude(bitstream_t *bs, uint8_t magnitude, int1
 }
 
 static erreur_t decode_coef_DC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, int16_t *coef_dc) {
-   const uint8_t al = img->other->al;
    int16_t val;
    erreur_t err = read_val_from_magnitude(bs, symb_decode->symb, &val);
    if (err.code) return err;
-   *coef_dc = val*(1<<al);
+   *coef_dc = val*(1<<img->other->al);
    return (erreur_t) {.code = SUCCESS};
 }
 
 static erreur_t decode_coef_DC_subsequent_scan(bitstream_t *bs, img_t *img, int16_t *coef_dc) {
-   const uint8_t al = img->other->al;
    uint8_t bit;
    erreur_t err = read_bit(bs, &bit);
    if (err.code) return err;
-   *coef_dc |= ((int16_t)bit)<<al;
+   *coef_dc |= ((int16_t)bit)<<img->other->al;
    return (erreur_t) {.code = SUCCESS};
 }
 
@@ -120,56 +118,61 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
    return (erreur_t) {.code=SUCCESS};
 }
 
-static erreur_t skip_n_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, uint8_t n, uint8_t magnitude, blocl16_t *sortie, uint64_t *resi) {
-   const uint8_t al = img->other->al;
-   printf("skip n : resi : %ld, n : %d\n", *resi, n);
-   int16_t val = 0;
-   erreur_t err = read_val_from_magnitude(bs, magnitude, &val);
+static erreur_t correction_coef(bitstream_t *bs, img_t *img, int16_t *coef) {
+   uint8_t bit;
+   erreur_t err = read_bit(bs, &bit);
    if (err.code) return err;
+   if (bit == 1) *coef |= (int16_t)1<<img->other->al;
+   return (erreur_t) {.code = SUCCESS};
+}
+
+static erreur_t correction_n_coef(bitstream_t *bs, img_t *img, uint16_t n, int16_t *coefs, uint64_t *indice_coef) {
    int i=0;
-   while (i<n || sortie->data[*resi] != 0) {
-      if (sortie->data[*resi] != 0) {
-	 uint8_t bit;
-	 erreur_t err = read_bit(bs, &bit);
+   while (i<n) {
+      if (coefs[*indice_coef] != 0) {
+	 erreur_t err = correction_coef(bs, img, coefs + (*indice_coef));
 	 if (err.code) return err;
-	 if (bit == 1) sortie->data[*resi] -= (int16_t)1<<al;
       } else {
 	 i++;
       }
-      (*resi)++;
+      (*indice_coef)++;
    }
-   if (sortie->data[*resi] != 0) {
-      printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbb\n");
-      return (erreur_t) {.code = ERR_AC_BAD, "aaaaaaaaa"};
+   return (erreur_t) {.code = SUCCESS};
+}
+
+static erreur_t correction_n_coef_jusqua_zero(bitstream_t *bs, img_t *img, uint16_t n, int16_t *coefs, uint64_t *indice_coef) {
+   erreur_t err = correction_n_coef(bs, img, n, coefs, indice_coef);
+   if (err.code) return err;
+   while (coefs[*indice_coef] != 0) {
+      erreur_t err = correction_coef(bs, img, &(coefs[*indice_coef]));
+      if (err.code) return err;
+      (*indice_coef)++;
    }
-   sortie->data[*resi] = val*(1<<al);
+   return (erreur_t) {.code = SUCCESS};
+}
+
+static erreur_t skip_n_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, uint8_t n, blocl16_t *sortie, uint64_t *resi) {
+   int16_t val = 0;
+   erreur_t err = read_val_from_magnitude(bs, 1, &val);
+   if (err.code) return err;
+
+   err = correction_n_coef_jusqua_zero(bs, img, n, sortie->data, resi);
+   if (err.code) return err;
+   
+   sortie->data[*resi] = val*(1<<img->other->al);
    (*resi)++;
    return (erreur_t) {.code = SUCCESS};
 }
 
 static erreur_t skip_16_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *resi) {
-   const uint8_t al = img->other->al;
-   printf("skip 16 : resi : %ld, n : %d\n", *resi, 16);
-   for (int i=0; i<16; i++) {
-      if (sortie->data[*resi] != 0) {
-	 uint8_t bit;
-	 erreur_t err = read_bit(bs, &bit);
-	 if (err.code) return err;
-	 if (bit == 1) sortie->data[*resi] -= (int16_t)1<<al;
-      }
-      (*resi)++;
-   }
-   return (erreur_t) {.code = SUCCESS};
+   return correction_n_coef(bs, img, 16, sortie->data, resi);
 }
 
 erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *resi) {
-   const uint8_t al = img->other->al;
    while (*resi <= img->other->se) {
       if (sortie->data[*resi] != 0) {
-	 uint8_t bit;
-	 erreur_t err = read_bit(bs, &bit);
+	 erreur_t err = correction_coef(bs, img, &(sortie->data[*resi]));
 	 if (err.code) return err;
-	 if (bit == 1) sortie->data[*resi] -= (int16_t)1<<al;
       }
       (*resi)++;
    }
@@ -177,7 +180,6 @@ erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t
 }
 
 static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint16_t *skip_bloc) {
-   const uint8_t num_sof = img->section->num_sof;
    if (symb_decode->symb == 0xf0) {  // RLE
       erreur_t err = skip_16_coef_AC_subsequent_scan(bs, img, sortie, resi);
       if (err.code) return err;
@@ -187,30 +189,17 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
       if (gamma == 0) {
 	 if (alpha == 0) {
 	    *skip_bloc = 1;
-	    erreur_t err = correction_eob(bs, img, sortie, resi);
-	    if (err.code) return err;
-	    return (erreur_t) {.code=SUCCESS};
 	 } else {
-	    if (num_sof == 0) {
-	       char *str = malloc(80);
-	       sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
-	       return (erreur_t) {.code=ERR_AC_BAD, .com=str};
-	    } else if (num_sof == 2) {
-	       uint16_t indice;
-	       erreur_t err = read_indice(bs, alpha, &indice);
-	       if (err.code) return err;
-	       *skip_bloc = indice + (1<<alpha);
-	       err = correction_eob(bs, img, sortie, resi);
-	       if (err.code) return err;
-	       return (erreur_t) {.code=SUCCESS};
-	    } else {
-	       char *str = malloc(27);
-	       sprintf(str, "Numéro sof invalide : %d", num_sof);
-	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str};
-	    }
+	    uint16_t indice;
+	    erreur_t err = read_indice(bs, alpha, &indice);
+	    if (err.code) return err;
+	    *skip_bloc = indice + (1<<alpha);
 	 }
+	 erreur_t err = correction_eob(bs, img, sortie, resi);
+	 if (err.code) return err;
+	 return (erreur_t) {.code=SUCCESS};
       } else if (gamma == 1) {
-	 erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, gamma, sortie, resi);
+	 erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, resi);
 	 if (err.code) return err;
       } else {
 	 return (erreur_t) {.code = ERR_AC_BAD, .com = "En progressif les AC qui ne sont pas sur le premier scan doivent être 0xRRRRSSSS avec SSSS=0 ou 1"};
@@ -287,37 +276,50 @@ static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t*
 	    err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
 	 }
 	 if (err.code) return err;
-	 if (*skip_bloc != 0) resi = 64;
+	 if (*skip_bloc != 0) break;
 	 symb_decode = ht;
-	 if (resi > img->other->se) break;
       }
    }
    return (erreur_t) {.code = SUCCESS};
 }
 
-erreur_t decode_bloc_acdc(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
+static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
    uint8_t s_start = img->other->ss;
-   uint8_t s_start_tmp = s_start;
    uint8_t s_end = img->other->se;
-   if (s_start == 0) {
-      img->other->se = 0;
+   
+   img->other->se = 0;
+   erreur_t err = decode_list_coef_DC(bs, img, hdc, sortie);
+   if (err.code) return err;
+   img->other->se = s_end;
+
+   sortie->data[0] += *dc_prec;
+   *dc_prec = sortie->data[0];
+   
+   img->other->ss = 1;
+   err = decode_list_coef_AC(bs, img, hac, sortie, skip_bloc);
+   if (err.code) return err;
+   img->other->ss = s_start;
+   return (erreur_t) {.code = SUCCESS};
+}
+
+static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
+   if (img->other->ss == 0) {
       erreur_t err = decode_list_coef_DC(bs, img, hdc, sortie);
       if (err.code) return err;
-      img->other->se = s_end;
 
       if (img->other->ah == 0) {
 	 sortie->data[0] += *dc_prec;
       }
       *dc_prec = sortie->data[0];
-      s_start = 1;
-   }
-   if (s_start <= s_end) {
-      img->other->ss = s_start;
+   } else {
       erreur_t err = decode_list_coef_AC(bs, img, hac, sortie, skip_bloc);
       if (err.code) return err;
-      img->other->ss = s_start_tmp;
-      return (erreur_t) {.code = SUCCESS};
    }
-   *skip_bloc = 0;
    return (erreur_t) {.code = SUCCESS};
+}
+
+erreur_t decode_bloc_acdc(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
+   if (img->section->num_sof == 0) return decode_bloc_acdc_baseline(bs, img, hdc, hac, sortie, dc_prec, skip_bloc);
+   else if (img->section->num_sof == 2) return decode_bloc_acdc_progressif(bs, img, hdc, hac, sortie, dc_prec, skip_bloc);
+   else return (erreur_t) {.code = ERR_SOF_BAD, .com = "Seulement le baseline et le progressif sont suportés"};
 }
