@@ -12,7 +12,9 @@ Cette page d'accueil servira de base à cette discussion. En pratique, vous pouv
 
 Rajouter **régulièrement** des informations sur l'avancement de votre projet est aussi **une très bonne idée** (prendre 10 min tous les trois chaque matin pour résumer ce qui a été fait la veille, établir un plan d'action pour la journée qui commence et reporter tout ça ici, par exemple).
 
-# Planning prévisionnel 
+# Planning
+
+<u> Planning prévisionnel :</u>  
 
 | Version | Nom de code   | Caractéristiques                                         | Temps estimé |
 |:-------:|:--------------|:---------------------------------------------------------|:-------------|
@@ -21,16 +23,23 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | 3       | Couleur       | Extension à des images en couleur                        | J+8          |
 | 4       | Sous-ech      | Extension avec des images avec sous-échantionnage        | J +10        |
 
+
 # Organisation
 
-| Module    | Fonctionnalités                                                                                | Répartition |
-|:---------:|------------------------------------------------------------------------------------------------|-------------|
-| entete    | malloc la structure de sortie                                                                  | Albin       |
-| vld       |                                                                                                | Gabriel     |
-| iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                      | Philippe    |
-| idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse | Philippe    |
-| upsampler | renseigne les composantes Y, $C_b$, $C_r$ selon le sous-échantillonage effectué                | Gabriel     |
-| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                          | Gabriel     |
+| Module    | Fonctionnalités                                                                                           | Répartition |
+|:---------:|-----------------------------------------------------------------------------------------------------------|-------------|
+| entete    | parse l'entête du fichier et remplit `img`, la structure contenant toutes les informations sur le fichier | Albin       |
+| vld       |                                                                                                           | Gabriel     |
+| iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                                 | Philippe    |
+| idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse            | Philippe    |
+| idct_op   | implémentation de l'idct rapide                                                                           | Philippe    |
+| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                                     | Gabriel     |
+| jpeg2ppm  |                                                                                                           |             |
+
+**historique :**  
+* création de `upsampler.c` puis intégration dans le main  
+* séparation de `vld.c` en plusieurs modules (`vld.c`, `baseline.c`, `progressive.c`, `bitstream.c`)  
+	
 
 | Module  | Fonctions        | Entrées                                                                                                                                                                 | Sorties                                              |
 |:-------:|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
@@ -42,8 +51,19 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | idct    | calc_coef        | float stockage_coef[8][8][8][8]                                                                                                                                         | float stockage_coef[8][8][8][8]                      |
 | ycc2rgb | ycc2rgb_pixel    | uint8_t y <br> uint8_t cb <br> uint8_t cr <br> rgb_t *rgb                                                                                                               | rgb_t *rgb                                           |
 
-![alt text](./schemas/diagram_bloc.png)
-![alt text](./schemas/diagram_img.png)
+## Schéma des structures utilisées
+
+### Structures des blocs
+
+On utilise plusieurs structures pour stocker en mémoire les blocs de l'image :  
+![alt text](./schemas/diagram_bloc.png)  
+Ces structure stockent des `uint8_t`, et il existe les mêmes structures mais stockant des `uint16_t`.  
+
+Ce schéma représente l'implémentation de la structure de donnée contenant toutes les informations sur l'image à décoder, renseignée par `entete.c`.  
+![alt text](./schemas/diagram_img.png)  
+
+Ce schéma décrit quant à lui les structures utilisées pour la gestion des erreurs et des options en ligne de commande.  
+![alt text](./schemas/diagram_err_opt.png)  
 
 ```
 src/
