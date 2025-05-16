@@ -71,13 +71,19 @@ int main(int argc, char *argv[]) {
    start_timer(&timer_entete);
    // Initialisation de img
    img_t *img = init_img();
-   decode_entete(fichier, true, img);
+   err = decode_entete(fichier, true, img);
+   if (err.code) {
+      free_img(img);
+      print_erreur(err);
+      return err.code;
+   }
    print_timer("Décodage entête", &timer_entete);
 
    if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);
    else if (img->section->num_sof == 2) err = decode_progressive_image(fichier, img);
    else erreur("sof%d non supporté", img->section->num_sof);
    if (err.code) {
+      free_img(img);
       print_erreur(err);
       return err.code;
    }

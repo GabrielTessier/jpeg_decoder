@@ -9,12 +9,13 @@
 #include <idct_opt.h>
 #include <options.h>
 #include <ycc2rgb.h>
+#include <bitstream.h>
 #include <decoder_utils.h>
 #include <baseline.h>
 
 extern all_option_t all_option;
 
-static erreur_t decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off) {
+static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
    huffman_tree_t *hac = NULL;
@@ -42,7 +43,7 @@ static erreur_t decode_bloc_baseline(FILE *fichier, img_t *img, int comp, blocl1
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    uint16_t skip_bloc;
-   erreur_t err = decode_bloc_acdc(fichier, img, hdc, hac, sortie, dc_prec + comp, off, &skip_bloc);
+   erreur_t err = decode_bloc_acdc(bs, img, hdc, hac, sortie, dc_prec + comp, &skip_bloc);
    if (err.code) return err;
    if (skip_bloc > 1) {
       return (erreur_t) {.code = ERR_AC_BAD, .com = "Symbole RLE interdit en baseline"};
@@ -134,7 +135,10 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
 
    // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
-   uint8_t off = 0;
+
+   bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
+   init_bitstream(bs, infile);
+   
    for (uint64_t i = 0; i < img->nbMCU; i++) {
       uint64_t mcuX = i % img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
@@ -149,7 +153,7 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
                blocl16_t *bloc = (blocl16_t*) calloc(1, sizeof(blocl16_t));
                
                start_timer(&timer_decode_bloc);
-               erreur_t err = decode_bloc_baseline(infile, img, indice_comp, bloc, dc_prec, &off);
+               erreur_t err = decode_bloc_baseline(bs, img, indice_comp, bloc, dc_prec);
                stop_timer(&timer_decode_bloc);
                if (err.code) return err;
 
@@ -182,7 +186,11 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
          start_timer(&timer_image);
       }
    }
-   fseek(infile, 1, SEEK_CUR);
+
+   erreur_t err = finir_octet(bs);
+   if (err.code) return err;
+
+   free(bs);
 
    print_timer("Décodage DC/AC et Quantification", &timer_decode_bloc);
    print_timer("IZZ", &timer_izz);
