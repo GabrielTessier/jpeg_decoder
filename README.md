@@ -14,7 +14,7 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 
 # Planning
 
-<u> Planning prévisionnel :</u>  
+**Planning prévisionnel :**  
 
 | Version | Nom de code   | Caractéristiques                                         | Temps estimé |
 |:-------:|:--------------|:---------------------------------------------------------|:-------------|
@@ -26,15 +26,15 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 
 # Organisation
 
-| Module    | Fonctionnalités                                                                                           | Répartition |
-|:---------:|-----------------------------------------------------------------------------------------------------------|-------------|
-| entete    | parse l'entête du fichier et remplit `img`, la structure contenant toutes les informations sur le fichier | Albin       |
-| vld       |                                                                                                           | Gabriel     |
-| iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                                 | Philippe    |
-| idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse            | Philippe    |
-| idct_op   | implémentation de l'idct rapide                                                                           | Philippe    |
-| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                                     | Gabriel     |
-| jpeg2ppm  |                                                                                                           |             |
+| Module   | Fonctionnalités                                                                                           | Répartition       |
+|:--------:|-----------------------------------------------------------------------------------------------------------|-------------------|
+| entete   | parse l'entête du fichier et remplit `img`, la structure contenant toutes les informations sur le fichier | Albin             |
+| vld      |                                                                                                           | Gabriel           |
+| iqzz     | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                                 | Philippe          |
+| idct     | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse            | Philippe          |
+| idct_op  | implémentation de l'idct rapide                                                                           | Philippe          |
+| ycc2rgb  | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                                     | Gabriel           |
+| jpeg2ppm | fonction principale contenant le main, appelant les autres modules                                        | Gabriel, Philippe |
 
 **historique :**  
 * création de `upsampler.c` puis intégration dans le main  
