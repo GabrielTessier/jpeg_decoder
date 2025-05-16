@@ -42,13 +42,8 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | idct    | calc_coef        | float stockage_coef[8][8][8][8]                                                                                                                                         | float stockage_coef[8][8][8][8]                      |
 | ycc2rgb | ycc2rgb_pixel    | uint8_t y <br> uint8_t cb <br> uint8_t cr <br> rgb_t *rgb                                                                                                               | rgb_t *rgb                                           |
 
-erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img)
-erreur_t decode_bloc_acdc(FILE *fichier, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc) 
-void iquant(blocl16_t *entree, uint8_t s_start, uint8_t s_end, qtable_t *qtable)
-bloct16_t *izz(blocl16_t *entree)
-void calc_coef(float stockage_coef[8][8][8][8]) {
-bloctu8_t *idct(bloct16_t *bloc_freq, float stockage_coef[8][8][8][8]) {
-![alt text](./schemas/bloc_struct.png)
+![alt text](./schemas/diagram_bloc.png)
+![alt text](./schemas/diagram_img.png)
 
 ```
 src/
