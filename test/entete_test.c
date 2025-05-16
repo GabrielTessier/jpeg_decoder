@@ -9,7 +9,6 @@
 #include <utils.h>
 #include <entete.h>
 #include <options.h>
-#include <vld.h>
 #include <img.h>
 #include "test_utils.h"
 

@@ -8,13 +8,15 @@
 #include <stdbool.h>
 
 #include <vld.h>
+#include <entete.h>
 #include <options.h>
+#include <bitstream.h>
 #include "test_utils.h"
 
-static void free_huffman_tree(huffman_tree_t *tree) {
+static void mon_free_huffman_tree(huffman_tree_t *tree) {
    if (tree == NULL) return;
-   free_huffman_tree(tree->fils[1]);
-   free_huffman_tree(tree->fils[0]);
+   mon_free_huffman_tree(tree->fils[1]);
+   mon_free_huffman_tree(tree->fils[0]);
    free(tree);
 }
 
@@ -83,67 +85,54 @@ int main(int argc, char **argv) {
    int nb_test = 6;
    int bsize[] = {1, 1, 2, 2, 1, 3};
    int outsize[] = {2, 0, 5, 20, 0, 6};
-   int errcode[] = {SUCCESS, ERR_HUFF_CODE_1, SUCCESS, SUCCESS, ERR_AC_BAD, SUCCESS};
+   erreur_code_t errcode[] = {SUCCESS, ERR_HUFF_CODE_1, SUCCESS, SUCCESS, ERR_AC_BAD, SUCCESS};
    uint8_t *blocs[] = {bloc1, bloc2, bloc3, bloc4, bloc5, bloc6};
    int16_t *outs[] = {out1, out2, out3, out4, out5, out6};
    char *name[] = {"Test DC normal (%d)", "Test DC symbole interdit (%d)", "Test AC 0xalpha gamma (%d)", "Test AC 0xF0 (%d)", "Test AC 0x?0 (%d)", "Test avec magnitude supérieure à 8 (%d)"};
 
+   img_t *img = (img_t*) malloc(sizeof(img_t));
+   img->other = calloc(1, sizeof(other_t));
+   img->other->se = 63;
+   img->section = calloc(1, sizeof(section_done_t));
+   
    for (int test=0; test<nb_test; test++) {
-      int fd_out[2];	       	// Pour envoyer le tableau out au process enfant
-      pipe(fd_out);
-      int my_stdout[2];		// Pour récupérer les sorties (standard et d'erreur) du process enfant
-      pipe(my_stdout);
-
       // On stocke le bloc dans un fichier temporaire pour le lire dans le décodage des blocs
       FILE *f = fopen("/tmp/vld_test_d", "w");
       fwrite(blocs[test], sizeof(uint8_t), bsize[test], f);
       fclose(f);
-      // On décode le bloc dans un process enfant à cause des exit(EXIT_FAILURE)
-      int pid = fork();
-      if (pid == 0) {
-	 close(fd_out[1]);
-	 close(my_stdout[0]);
-	 // On redirige stdout et stderr vers le pipe my_stdout
-	 dup2(my_stdout[1], STDOUT_FILENO);
-	 dup2(my_stdout[1], STDERR_FILENO);
+
+      f = fopen("/tmp/vld_test_d", "r");
+      bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
+      init_bitstream(bs, f);
       
-	 FILE *f = fopen("/tmp/vld_test_d", "r");
-	 int16_t dc_prec = 0;
-	 uint8_t off = 0;
-	 blocl16_t bl;
-	 for (int i=0; i<64; i++) bl.data[i] = 0;
-	 uint16_t skip_bloc;
-	 erreur_t err = decode_bloc_acdc(f, 0, dc, ac, &bl, 0, 63, &dc_prec, &off, &skip_bloc);
-	 if (err.code) exit(err.code);
-	 int16_t out[64];
-	 read(fd_out[0], out, 64*sizeof(int16_t));
+      int16_t dc_prec = 0;
+      blocl16_t bl;
+      for (int i=0; i<64; i++) bl.data[i] = 0;
+      uint16_t skip_bloc;
+      erreur_t err = decode_bloc_acdc(bs, img, dc, ac, &bl, &dc_prec, &skip_bloc);
+      if (err.code != errcode[test]) {
+	 test_res(false, argv, name[test], err.code);
+      } else {
+	 bool fail = true;
 	 for (int i=0; i<64; i++) {
-	    if (bl.data[i] != out[i]) {
-	       exit(-1);  // Code d'erreur -1 dans le cas où le bloc décodé n'est pas bon
+	    int16_t out = (i<outsize[test]) ? outs[test][i] : 0;
+	    if (bl.data[i] != out) {
+	       fail = false;
 	    }
 	 }
-	 fclose(f);
-	 close(my_stdout[1]);
-	 close(fd_out[0]);
-	 exit(EXIT_SUCCESS);
+	 test_res(fail, argv, name[test], err.code);
       }
-      close(my_stdout[1]);
-      close(fd_out[0]);
-      int16_t out[64];
-      for (int i=0; i<64; i++) {
-	 if (i<outsize[test]) out[i] = outs[test][i];
-	 else out[i] = 0;
-      }
-      write(fd_out[1], out, 64*sizeof(int16_t));
-      int status;
-      waitpid(pid, &status, 0);
-      test_res(WEXITSTATUS(status) == errcode[test], argv, name[test], WEXITSTATUS(status));
-      close(fd_out[1]);
-      close(my_stdout[0]);
+      fclose(f);
+
+      free(bs);
    }
 
-   free_huffman_tree(ac);
-   free_huffman_tree(dc);
+   free(img->section);
+   free(img->other);
+   free(img);
+
+   mon_free_huffman_tree(ac);
+   mon_free_huffman_tree(dc);
   
    return 0;
 }
