@@ -414,6 +414,10 @@ int main(int argc, char *argv[]) {
    char *noms_fichiers_eoi[] = {"invader_bad_entete_eoi_av_sos.jpeg",
 				"invader_bad_entete_no_eoi.jpeg"};
    erreur_code_t err_codes_eoi[] = {ERR_EOI_BEFORE_SOS, ERR_NO_EOI};
+
+   char *noms_fichiers_soi[] = {"invader_bad_entete_no_soi.jpeg",
+				"invader_bad_entete_sev_soi.jpeg"};
+   erreur_code_t err_codes_soi[] = {ERR_NO_SOI, ERR_SEVERAL_SOI};
       
    
    test_fail(noms_fichiers_jfif, err_codes_jfif, 3, "entête invalide : jfif",		argv);
@@ -423,5 +427,6 @@ int main(int argc, char *argv[]) {
    test_fail(noms_fichiers_sos,  err_codes_sos,  6, "entête invalide : section SOS",  	argv);
    test_fail(noms_fichiers_sof2, err_codes_sof2, 6, "entête invalide : progressif",  	argv);
    test_fail(noms_fichiers_eoi,  err_codes_eoi,  2, "entête invalide : EOI",  		argv);
+   test_fail(noms_fichiers_soi,  err_codes_soi,  2, "entête invalide : SOI",  		argv);
    return 0;
 }
