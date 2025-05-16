@@ -8,12 +8,13 @@
 #include <idct_opt.h>
 #include <vld.h>
 #include <iqzz.h>
+#include <bitstream.h>
 #include <decoder_utils.h>
 #include <progressive.h>
 
 extern all_option_t all_option;
 
-static erreur_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc) {
+static erreur_t decode_bloc_progressive(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
    uint8_t s_start = img->other->ss;
    uint8_t s_end = img->other->se;
    // On récupère les tables de Huffman et de quantification pour la composante courante
@@ -36,7 +37,7 @@ static erreur_t decode_bloc_progressive(FILE *fichier, img_t *img, int comp, blo
 
    // On décode un bloc de l'image (et on chronomètre le temps)
    int16_t *dc_prec_comp = (dc_prec != NULL) ? dc_prec + comp : NULL;
-   erreur_t err = decode_bloc_acdc(fichier, img, hdc, hac, sortie, dc_prec_comp, off, skip_bloc);
+   erreur_t err = decode_bloc_acdc(bs, img, hdc, hac, sortie, dc_prec_comp, skip_bloc);
    if (err.code) return err;
    if (*skip_bloc != 0) (*skip_bloc)--;
 
@@ -56,7 +57,7 @@ static blocl16_t ***init_sortieq(img_t *img){
    return sortieq;
 }
 
-static erreur_t decode_progressif_dc(FILE *infile, img_t *img, blocl16_t ***sortieq, uint8_t *off) {
+static erreur_t decode_progressif_dc(bitstream_t *bs, img_t *img, blocl16_t ***sortieq) {
    const uint8_t nbcomp = img->comps->nb;
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
    for (uint64_t i = 0; i < img->nbMCU; i++) {
@@ -78,7 +79,7 @@ static erreur_t decode_progressif_dc(FILE *infile, img_t *img, blocl16_t ***sort
 	       uint64_t blocX = mcuX * hs + bx;
 	       uint64_t blocY = mcuY * vs + by;
 	       uint16_t skip_bloc;
-	       erreur_t err = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, off, &skip_bloc);
+	       erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &skip_bloc);
 	       if (err.code) return err;
 	    }
 	 }
@@ -88,7 +89,7 @@ static erreur_t decode_progressif_dc(FILE *infile, img_t *img, blocl16_t ***sort
    return (erreur_t) {.code = SUCCESS};
 }
 
-static erreur_t decode_progressif_ac(FILE *infile, img_t *img, blocl16_t ***sortieq, uint8_t *off) {
+static erreur_t decode_progressif_ac(bitstream_t *bs, img_t *img, blocl16_t ***sortieq) {
    uint16_t skip_blocs = 0;
    int16_t indice_comp = get_composante(img, 0);
    if (indice_comp == -1) return (erreur_t) {.code = ERR_COMP_ID, "Aucune composante dans le scan"};
@@ -112,16 +113,13 @@ static erreur_t decode_progressif_ac(FILE *infile, img_t *img, blocl16_t ***sort
       uint64_t blocX = i % nbH;
       uint64_t blocY = i / nbH;
       if (skip_blocs == 0) {
-	 erreur_t err = decode_bloc_progressive(infile, img, indice_comp, sortieq[indice_comp][blocY*nb_totalH + blocX], NULL, off, &skip_blocs);
+	 erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY*nb_totalH + blocX], NULL, &skip_blocs);
 	 if (err.code) return err;
       } else {
 	 if (img->other->ah != 0) {
-	    char c = fgetc(infile);
 	    uint64_t resi = img->other->ss;
-	    erreur_t err = correction_eob(infile, img, sortieq[indice_comp][blocY*nb_totalH + blocX], &resi, off, &c);
-	    off++;
+	    erreur_t err = correction_eob(bs, img, sortieq[indice_comp][blocY*nb_totalH + blocX], &resi);
 	    if (err.code) return err;
-	    fseek(infile, -1, SEEK_CUR);
 	 }
 	 skip_blocs--;
       }
@@ -165,25 +163,18 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
    uint64_t nb_passage_sos = 1;
 
    while (!img->section->eoi_done) {
-      uint8_t off = 0;
+      bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
+      init_bitstream(bs, infile);
       // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
       erreur_t err;
-      if (img->other->se == 0) err = decode_progressif_dc(infile, img, sortieq, &off);
-      else err = decode_progressif_ac(infile, img, sortieq, &off);
+      if (img->other->se == 0) err = decode_progressif_dc(bs, img, sortieq);
+      else err = decode_progressif_ac(bs, img, sortieq);
       if (err.code) return err;
-      
-      // Si termine par ff 00 puis ff marker alors skip le 00 pour aller sur le 2e ff
-      printf("avant dernier %lx (%d)\n", ftell(infile), off);
-      char dernier = fgetc(infile);
-      if (dernier == (char) 0xff) {
-	 char suivant_dernier = fgetc(infile);
-	 if (suivant_dernier != (char) 0x00) {
-	    char *str = malloc(80);
-	    sprintf(str, "Pas de 0x00 après un 0xff , %lx\n", ftell(infile)-1);
-	    return (erreur_t) {.code = ERR_0XFF00, str};
-	 }
-      }
-      printf("après dernier %lx\n", ftell(infile));
+
+      err = finir_octet(bs);
+      if (err.code) return err;
+
+      free(bs);
 
       print_v("Fin données sos : %x\n", (int)ftell(infile));
 
