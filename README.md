@@ -41,9 +41,16 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | idct    | idct             | bloct16_t *bloc_freq <br> float stockage_coef[8][8][8][8]                                                                                                               | (bloctu8_t *) bloc de sortie alloué dans izz         |
 | idct    | calc_coef        | float stockage_coef[8][8][8][8]                                                                                                                                         | float stockage_coef[8][8][8][8]                      |
 | ycc2rgb | ycc2rgb_pixel    | uint8_t y <br> uint8_t cb <br> uint8_t cr <br> rgb_t *rgb                                                                                                               | rgb_t *rgb                                           |
+## Schéma des structures utilisées
 
+### Structures des blocs
+
+On utilise plusieurs structures pour stocker en mémoire les blocs de l'image :
 ![alt text](./schemas/diagram_bloc.png)
+Ces structure stockent des `uint8_t`, et il existe les mêmes structures mais stockant des `uint16_t`.
+
 ![alt text](./schemas/diagram_img.png)
+![alt text](./schemas/diagram_err_mode.png)
 
 ```
 src/
