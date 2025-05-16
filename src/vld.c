@@ -46,7 +46,7 @@ static erreur_t read_indice(bitstream_t *bs, uint8_t nb_bit, uint16_t *indice) {
       uint8_t bit;
       erreur_t err = read_bit(bs, &bit);
       if (err.code) return err;
-      *indice = *indice << 1;
+      *indice = (*indice) << 1;
       *indice += bit;
       nb_bit--;
    }
@@ -93,7 +93,7 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
 	    if (num_sof == 0) {
 	       char *str = malloc(80);
 	       sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
-	       return (erreur_t) {.code=ERR_AC_BAD, .com=str};
+	       return (erreur_t) {.code=ERR_AC_BAD, .com=str, .must_free = true};
 	    } else if (num_sof == 2) {
 	       uint16_t indice;
 	       erreur_t err = read_indice(bs, alpha, &indice);
@@ -103,7 +103,7 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
 	    } else {
 	       char *str = malloc(27);
 	       sprintf(str, "Numéro sof invalide : %d", num_sof);
-	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str};
+	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str, .must_free = true};
 	    }
 	 }
       } else {
@@ -284,21 +284,18 @@ static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t*
 }
 
 static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
-   uint8_t s_start = img->other->ss;
-   uint8_t s_end = img->other->se;
-   
    img->other->se = 0;
    erreur_t err = decode_list_coef_DC(bs, img, hdc, sortie);
+   img->other->se = 63;
    if (err.code) return err;
-   img->other->se = s_end;
 
    sortie->data[0] += *dc_prec;
    *dc_prec = sortie->data[0];
    
    img->other->ss = 1;
    err = decode_list_coef_AC(bs, img, hac, sortie, skip_bloc);
+   img->other->ss = 0;
    if (err.code) return err;
-   img->other->ss = s_start;
    return (erreur_t) {.code = SUCCESS};
 }
 

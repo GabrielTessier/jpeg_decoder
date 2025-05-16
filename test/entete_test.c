@@ -339,7 +339,7 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
 static void test_fail(char *noms_fichiers[], erreur_code_t err_codes[], int nb_fichiers, char *test_name, char *argv[]) {
    erreur_t *res_err = (erreur_t *) malloc(sizeof(erreur_t)*nb_fichiers);
    for (int i=0; i<nb_fichiers; i++) {
-      char *chemin_fichier = (char *) calloc(sizeof(char), 16+strlen(noms_fichiers[i]));
+     char *chemin_fichier = (char *) calloc(16+strlen(noms_fichiers[i]), sizeof(char));
       strcat(chemin_fichier, "test/test_file/");
       FILE *fichier = fopen(strcat(chemin_fichier, noms_fichiers[i]), "r");
       img_t *img = init_img();
