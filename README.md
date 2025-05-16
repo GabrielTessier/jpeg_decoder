@@ -45,12 +45,15 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 
 ### Structures des blocs
 
-On utilise plusieurs structures pour stocker en mémoire les blocs de l'image :
-![alt text](./schemas/diagram_bloc.png)
-Ces structure stockent des `uint8_t`, et il existe les mêmes structures mais stockant des `uint16_t`.
+On utilise plusieurs structures pour stocker en mémoire les blocs de l'image :  
+![alt text](./schemas/diagram_bloc.png)  
+Ces structure stockent des `uint8_t`, et il existe les mêmes structures mais stockant des `uint16_t`.  
 
-![alt text](./schemas/diagram_img.png)
-![alt text](./schemas/diagram_err_mode.png)
+Ce schéma représente l'implémentation de la structure de donnée contenant toutes les informations sur l'image à décoder, renseignée par `entete.c`.  
+![alt text](./schemas/diagram_img.png)  
+
+Ce schéma décrit quant à lui les structures utilisées pour la gestion des erreurs et des options en ligne de commande.  
+![alt text](./schemas/diagram_err_opt.png)  
 
 ```
 src/
