@@ -177,8 +177,10 @@ static uint8_t parcours_hufftree(huffman_tree_t ht, char *path) {
 static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts) {
    char str[100];
    sprintf(str, ". /builds/formationc/projet/jpeg/2025/team7/bin/jpeg2blabla %s > /tmp/blabla_output.txt", nom_fichier);
-   printf("%s\n", str);
-   //system(str);
+   char sss[100];
+   sprintf(sss, "echo %s", str);
+   system(sss);
+   system(str);
    FILE *file = fopen("/tmp/blabla_output.txt", "r");
    size_t line_size_max = 100;
    char *line = (char *) malloc(sizeof(char)*line_size_max);
