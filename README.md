@@ -48,7 +48,7 @@ void iquant(blocl16_t *entree, uint8_t s_start, uint8_t s_end, qtable_t *qtable)
 bloct16_t *izz(blocl16_t *entree)
 void calc_coef(float stockage_coef[8][8][8][8]) {
 bloctu8_t *idct(bloct16_t *bloc_freq, float stockage_coef[8][8][8][8]) {
-![alt text](./schemas/blocl16_t.png)
+![alt text](./schemas/diagrams.png)
 
 ```
 src/
