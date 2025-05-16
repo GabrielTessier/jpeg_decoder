@@ -30,17 +30,25 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | iqzz      | inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                      | Philippe    |
 | idct      | passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse | Philippe    |
 | upsampler | renseigne les composantes Y, $C_b$, $C_r$ selon le sous-échantillonage effectué                | Gabriel     |
-| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                           | Gabriel     |
+| ycc2rgb   | transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                          | Gabriel     |
 
-| Module    | Fonctions | Entrées                                                                                                                        | Sorties                                                            |
-|:---------:|-----------|--------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| entete    |           | (FILE*) fichier JPEG                                                                                                           | (img_t*) structure contenant les différents champs du fichier JPEG |
-| vld       | decodeDC  | (huffman_tree_dc_t*) table de huffman sous forme d'arbre <br> (FILE*) fichier JPEG <br> (uint8_t) nombre de blocs DC à décoder | (uint8_t*) tableau contenant les blocs DC décodés                  |
-| vld       | decodeAC  | (huffman_tree_ac_t*) table de huffman sous forme d'arbre <br> (FILE*) fichier JPEG                                             | (uint8_t*) tableau contenant le bloc AC décodé                     |
-| iqzz      | iqzz      | (mcul_t*) MCU 1x64 quantifié et ordonné en zigzag <br> (qtable*) table de quantification                                       | (mcut_t*) MCU 8x8 déquantifié                                      |
-| idct      | idct      | (mcut_t*) MCU 8x8, domaine spectral                                                                                            | (mcut_t*) MCU 8X8, domaine spatial                                 |
-| upsampler |           |                                                                                                                                |                                                                    |
-| ycc2rgb   | ycc2rgb   | (mcut_t*) luminance <br> (mcut_t*) chrominance bleue <br> (mcut_t*) chrominance rouge                                          | (mcurgb_t*) MCU 8x8, tableau des composantes RGB                   |
+| Module  | Fonctions        | Entrées                                                                                                                                                                 | Sorties                                              |
+|:-------:|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| entete  | decode_entete    | FILE *fichier <br> bool premier_passage <br> img_t *img                                                                                                                 | (img_t*) img                                         |
+| vld     | decode_bloc_acdc | FILE *fichier <br> img_t *img <br> huffman_tree_t *hdc <br> huffman_tree_t *hac <br> blocl16_t *sortie <br> int16_t *dc_prec <br> uint8_t *off <br> uint16_t *skip_bloc | blocl16_t *sortie (tableau contenant le bloc décodé) |
+| iqzz    | iquant           | blocl16_t *entree <br> uint8_t s_start <br> uint8_t s_end <br> qtable_t *qtable                                                                                         | blocl16_t *entree (déquantification en place)        |
+| iqzz    | izz              | blocl16_t *entree                                                                                                                                                       | (bloct16_t *) bloc de sortie alloué dans iquant      |
+| idct    | idct             | bloct16_t *bloc_freq <br> float stockage_coef[8][8][8][8]                                                                                                               | (bloctu8_t *) bloc de sortie alloué dans izz         |
+| idct    | calc_coef        | float stockage_coef[8][8][8][8]                                                                                                                                         | float stockage_coef[8][8][8][8]                      |
+| ycc2rgb | ycc2rgb_pixel    | uint8_t y <br> uint8_t cb <br> uint8_t cr <br> rgb_t *rgb                                                                                                               | rgb_t *rgb                                           |
+
+erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img)
+erreur_t decode_bloc_acdc(FILE *fichier, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint8_t *off, uint16_t *skip_bloc) 
+void iquant(blocl16_t *entree, uint8_t s_start, uint8_t s_end, qtable_t *qtable)
+bloct16_t *izz(blocl16_t *entree)
+void calc_coef(float stockage_coef[8][8][8][8]) {
+bloctu8_t *idct(bloct16_t *bloc_freq, float stockage_coef[8][8][8][8]) {
+![alt text](./schemas/blocl16_t.png)
 
 ```
 src/
