@@ -80,7 +80,7 @@ static erreur_t decode_coef_DC_subsequent_scan(bitstream_t *bs, img_t *img, int1
 static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint16_t *skip_bloc) {
    const uint8_t num_sof = img->section->num_sof;
    const uint8_t al = img->other->al;
-   if (symb_decode->symb == 0xf0) {  // RLE
+   if (symb_decode->symb == 0xf0) {  // ZRL
       *resi += 16;
    } else {
       uint8_t alpha = symb_decode->symb >> 4;
@@ -181,7 +181,7 @@ erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t
 }
 
 static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint16_t *skip_bloc) {
-   if (symb_decode->symb == 0xf0) {  // RLE
+   if (symb_decode->symb == 0xf0) {  // ZRL
       erreur_t err = skip_16_coef_AC_subsequent_scan(bs, img, sortie, resi);
       if (err.code) return err;
    } else {
