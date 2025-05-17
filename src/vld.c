@@ -86,10 +86,11 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
       uint8_t alpha = symb_decode->symb >> 4;
       uint8_t gamma = symb_decode->symb & 0b00001111;
       if (gamma == 0) {
-	 if (alpha == 0) {
+	 if (alpha == 0) {   // 0x00 EOB_0
 	    *skip_bloc = 1;
 	    return (erreur_t) {.code=SUCCESS};
 	 } else {
+	    // EOB_alpha (valide seulement en mode progressif)
 	    if (num_sof == 0) {
 	       char *str = malloc(80);
 	       sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
@@ -106,7 +107,7 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
 	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str, .must_free = true};
 	    }
 	 }
-      } else {
+      } else {  // 0xalpha gamma  (alpha coef nul puis coef de magnitude gamma)
 	 *resi += alpha;
 	 erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*resi));
 	 if (err.code) return err;
@@ -209,84 +210,67 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
    return (erreur_t) {.code=SUCCESS};
 }
 
-static erreur_t decode_list_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie) {
-   uint64_t resi = img->other->ss; // indice de où on en est dans res
-   huffman_tree_t* symb_decode = ht; // où on en est dans l'arbre de huffman
-   // On lit char par char mais on traite bit par bit
-   bool code_que_un = true;
-   while (resi <= img->other->se) {
-      if (img->other->ah != 0) {
-	 if (img->other->ah - img->other->al != 1) {
-	    return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1"};
-	 }
-	 erreur_t err = decode_coef_DC_subsequent_scan(bs, img, sortie->data + resi);
-	 if (err.code) return err;
-	 resi++;
-      } else {
-	 uint8_t bit;
-	 erreur_t err = read_bit(bs, &bit);
-	 if (err.code) return err;
-	 // on regarde si le bit courant est 0 ou 1
-	 if (bit == 1) {
-	    symb_decode = symb_decode->fils[1];
-	 } else {
-	    symb_decode = symb_decode->fils[0];
-	    code_que_un = false;
-	 }
-	 // Si on a atteint une feuille
-	 if (symb_decode->fils[1] == NULL && symb_decode->fils[0] == NULL) {
-	    if (code_que_un) {
-	       return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n"};
-	    }
-	    erreur_t err = decode_coef_DC_first_scan(bs, img, symb_decode, sortie->data + resi);
-	    if (err.code) return err;
-	    code_que_un = true;
-	    resi++;
-	    symb_decode = ht;
-	 }
+static erreur_t get_huffman_symbole(bitstream_t *bs, huffman_tree_t **ht, bool *code_que_un) {
+   if (code_que_un != NULL) *code_que_un = true;
+   while (true) {
+      uint8_t bit;
+      erreur_t err = read_bit(bs, &bit);
+      if (err.code) return err;
+      // on regarde si le bit courant est 0 ou 1
+      *ht = (*ht)->fils[bit];
+      if (code_que_un != NULL && bit == 0) *code_que_un = false;
+      // Si on a atteint une feuille
+      if ((*ht)->fils[1] == NULL && (*ht)->fils[0] == NULL) {
+	 return (erreur_t) {.code = SUCCESS};
       }
+   }
+}
+
+static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie) {
+   if (img->other->ah != 0) {
+      if (img->other->ah - img->other->al != 1) {
+	 return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1"};
+      }
+      erreur_t err = decode_coef_DC_subsequent_scan(bs, img, sortie->data);
+      if (err.code) return err;
+   } else {
+      huffman_tree_t *symb_decode = ht;
+      bool code_que_un = true;
+      erreur_t err = get_huffman_symbole(bs, &symb_decode, &code_que_un);
+      if (code_que_un) {
+	 return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n"};
+      }
+      err = decode_coef_DC_first_scan(bs, img, symb_decode, sortie->data);
+      if (err.code) return err;
    }
    return (erreur_t) {.code = SUCCESS};
 }
 
 static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie, uint16_t *skip_bloc) {
    uint64_t resi = img->other->ss; // indice de où on en est dans res
-   huffman_tree_t* symb_decode = ht; // où on en est dans l'arbre de huffman
-   // On lit char par char mais on traite bit par bit
    *skip_bloc = 0;
    while (resi <= img->other->se) {
-      uint8_t bit;
-      erreur_t err = read_bit(bs, &bit);
+      huffman_tree_t *symb_decode = ht;
+      erreur_t err = get_huffman_symbole(bs, &symb_decode, NULL);
       if (err.code) return err;
-      // on regarde si le bit courant est 0 ou 1
-      if (bit == 1) {
-	 symb_decode = symb_decode->fils[1];
+      
+      if (img->other->ah == 0) {
+	 err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
       } else {
-	 symb_decode = symb_decode->fils[0];
-      }
-      // Si on a atteint une feuille
-      if (symb_decode->fils[1] == NULL && symb_decode->fils[0] == NULL) {
-	 erreur_t err;
-	 if (img->other->ah == 0) {
-	    err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
-	 } else {
-	    if (img->other->ah - img->other->al != 1) {
-	       return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1"};
-	    }
-	    err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
+	 if (img->other->ah - img->other->al != 1) {
+	    return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1"};
 	 }
-	 if (err.code) return err;
-	 if (*skip_bloc != 0) break;
-	 symb_decode = ht;
+	 err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
       }
+      if (err.code) return err;
+      if (*skip_bloc != 0) break;
+      symb_decode = ht;
    }
    return (erreur_t) {.code = SUCCESS};
 }
 
 static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
-   img->other->se = 0;
-   erreur_t err = decode_list_coef_DC(bs, img, hdc, sortie);
-   img->other->se = 63;
+   erreur_t err = decode_coef_DC(bs, img, hdc, sortie);
    if (err.code) return err;
 
    sortie->data[0] += *dc_prec;
@@ -301,7 +285,7 @@ static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_t
 
 static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
    if (img->other->ss == 0) {
-      erreur_t err = decode_list_coef_DC(bs, img, hdc, sortie);
+      erreur_t err = decode_coef_DC(bs, img, hdc, sortie);
       if (err.code) return err;
 
       if (img->other->ah == 0) {
