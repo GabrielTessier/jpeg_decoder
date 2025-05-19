@@ -357,7 +357,7 @@ static erreur_t com(FILE *fichier, img_t *img) {
    }
 
    // On récupère le commentaire 
-   char *comment = malloc(sizeof(char) * (length-2));
+   char *comment = calloc(length-1, sizeof(char));
    (void) !fread(comment, length-2, 1, fichier);
 
    // On stocke le commentaire dans img
