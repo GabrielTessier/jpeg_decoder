@@ -7,7 +7,6 @@
 
 #include <entete.h>
 #include <file.h>
-#include <vld.h>
 #include <utils.h>
 #include <erreur.h>
 

@@ -3,6 +3,7 @@
 
 #include <iqzz.h>
 #include <jpeg2ppm.h>
+#include <img.h>
 
 
 void iquant(blocl16_t *entree, uint8_t s_start, uint8_t s_end, qtable_t *qtable) {

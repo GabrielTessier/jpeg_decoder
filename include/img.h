@@ -3,8 +3,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <iqzz.h>
 
+// Structure contenant une table de quantification dans un tableau 1x64 
+struct qtable_s {
+   uint16_t data[64];
+};
+typedef struct qtable_s qtable_t;
 
 // Structure contenant une table de quantification et sa précision
 struct qtable_prec_s {
@@ -72,9 +76,10 @@ struct other_s {
 };
 typedef struct other_s other_t;
 
+// Structure contenant les commentaires de l'image
 struct com_s {
-   int nb;
-   char **com;
+   int nb;     // Nombre de commentaires
+   char **com; // Tableau contenant les commentaires
 };
 typedef struct com_s com_t;
 
@@ -88,7 +93,7 @@ struct img_s {
    comps_t *comps;             // Composantes de l'image
    section_done_t *section;    // Avancement des sections 
    other_t *other;             // Autres informations à vérifier
-   com_t *com;
+   com_t *com;                 // Commentaires de l'image
    uint8_t max_hsampling;	    // Sampling horizontale maximal
    uint8_t max_vsampling;	    // Sampling verticale maximal
    uint64_t nbmcuH;		       // Nombre de mcu horizontalement
