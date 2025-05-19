@@ -131,8 +131,8 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    init_timer(&timer_izz);
    my_timer_t timer_idct;
    init_timer(&timer_idct);
-   my_timer_t timer_affichage;
-   init_timer(&timer_affichage);
+   my_timer_t timer_ecriture;
+   init_timer(&timer_ecriture);
    
 
    // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
@@ -179,18 +179,18 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
       }
       if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
          stop_timer(&timer_image);
-         start_timer(&timer_affichage);
-	 erreur_t err;
+         start_timer(&timer_ecriture);
+	      erreur_t err;
          if (nbcomp == 1) {
             err = save_mcu_ligne_bw(outputfile, img, ycc);
          } else if (nbcomp == 3) {
             err = save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
          }
-	 if (err.code) {
-	    baseline_free(img, outputfile, ycc, dc_prec, rgb, bs);
-	    return err;
-	 }
-         stop_timer(&timer_affichage);
+         if (err.code) {
+            baseline_free(img, outputfile, ycc, dc_prec, rgb, bs);
+            return err;
+         }
+         stop_timer(&timer_ecriture);
          start_timer(&timer_image);
       }
    }
@@ -203,7 +203,7 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    print_timer("IZZ", &timer_izz);
    print_timer("IDCT", &timer_idct);
    print_timer("Décodage complet de l'image", &timer_image);
-   print_timer("Affichage image", &timer_affichage);
+   print_timer("Ecriture de l'image", &timer_ecriture);
 
    return (erreur_t) {.code = SUCCESS};
 }

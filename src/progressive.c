@@ -11,6 +11,7 @@
 #include <bitstream.h>
 #include <decoder_utils.h>
 #include <progressive.h>
+#include <timer.h>
 
 extern all_option_t all_option;
 
@@ -160,7 +161,15 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
 
    uint64_t nb_passage_sos = 1;
 
+   my_timer_t timer_image;
+   my_timer_t timer_ecriture;
+
    while (!img->section->eoi_done) {
+      // Initialisation du chronomètre
+      init_timer(&timer_image);
+      start_timer(&timer_image);
+      init_timer(&timer_ecriture);
+
       bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
       init_bitstream(bs, infile);
       // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
@@ -168,16 +177,16 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       if (img->other->se == 0) err = decode_progressif_dc(bs, img, sortie);
       else err = decode_progressif_ac(bs, img, sortie);
       if (err.code) {
-	 free(bs);
-	 free_sortie(img, sortie);
-	 return err;
+         free(bs);
+         free_sortie(img, sortie);
+         return err;
       }
 
       err = finir_octet(bs);
       if (err.code) {
-	 free(bs);
-	 free_sortie(img, sortie);
-	 return err;
+         free(bs);
+         free_sortie(img, sortie);
+	      return err;
       }
 
       free(bs);
@@ -208,57 +217,69 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
          uint64_t mcuY = i / img->nbmcuH;
          for (uint8_t k = 0; k < nbcomp; k++) {
             // print_v("COMP %d\n", k);
-	    qtable_prec_t *qtable = NULL;
-	    qtable = img->qtables[img->comps->comps[k]->idq];
-	    if (qtable == NULL) {
-	       char *str = malloc(80);
-	       sprintf(str, "Pas de table de quantification pour la composante %d", k);
-	       return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
-	    }
+         qtable_prec_t *qtable = NULL;
+         qtable = img->qtables[img->comps->comps[k]->idq];
+         if (qtable == NULL) {
+            char *str = malloc(80);
+            sprintf(str, "Pas de table de quantification pour la composante %d", k);
+            return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
+	      }
 	    
-            uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
-            for (uint8_t by = 0; by < img->comps->comps[k]->vsampling; by++) {
-               for (uint8_t bx = 0; bx < img->comps->comps[k]->hsampling; bx++) {
-                  // print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-                  uint64_t blocX = mcuX * img->comps->comps[k]->hsampling + bx;
-                  uint64_t blocY = mcuY * img->comps->comps[k]->vsampling + by;
-		  blocl16_t *quant = (blocl16_t*) calloc(1, sizeof(blocl16_t));
-		  for (int i=0; i<64; i++) quant->data[i] = sortie[k][blocY * nbH + blocX]->data[i];
-		  iquant(quant, 0, 63, qtable->qtable);
-                  bloct16_t *bloc_zz = izz(quant);
-		  free(quant);
-                  bloctu8_t *bloc_idct;
-                  if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
-                  else bloc_idct = idct(bloc_zz, stockage_coef);
-                  free(bloc_zz);
-                  if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
-                  ycc[k][by * nbH + blocX] = bloc_idct;
+         uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+         for (uint8_t by = 0; by < img->comps->comps[k]->vsampling; by++) {
+            for (uint8_t bx = 0; bx < img->comps->comps[k]->hsampling; bx++) {
+               // print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
+               uint64_t blocX = mcuX * img->comps->comps[k]->hsampling + bx;
+               uint64_t blocY = mcuY * img->comps->comps[k]->vsampling + by;
+               blocl16_t *quant = (blocl16_t*) calloc(1, sizeof(blocl16_t));
+               for (int i=0; i<64; i++) quant->data[i] = sortie[k][blocY * nbH + blocX]->data[i];
+               iquant(quant, 0, 63, qtable->qtable);
+               bloct16_t *bloc_zz = izz(quant);
+               free(quant);
+
+               bloctu8_t *bloc_idct;
+               if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
+               else bloc_idct = idct(bloc_zz, stockage_coef);
+               free(bloc_zz);
+
+               if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
+               ycc[k][by * nbH + blocX] = bloc_idct;
                }
             }
          }
          if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
-	    erreur_t err;
-	    if (nbcomp == 1) {
-	       err = save_mcu_ligne_bw(outputfile, img, ycc);
-	    } else if (nbcomp == 3) {
-	       err = save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
-	    }
-	    if (err.code) {
-	       free_sortie(img, sortie);
-	       free_ycc(img, ycc);
-	       if (nbcomp == 3) free(rgb);
-	    }
+            stop_timer(&timer_image);
+            start_timer(&timer_ecriture);
+            erreur_t err;
+            if (nbcomp == 1) {
+               err = save_mcu_ligne_bw(outputfile, img, ycc);
+            } else if (nbcomp == 3) {
+               err = save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+            }
+            if (err.code) {
+               free_sortie(img, sortie);
+               free_ycc(img, ycc);
+               if (nbcomp == 3) free(rgb);
+            }
+            stop_timer(&timer_ecriture);
+            start_timer(&timer_image);
          }
       }
 
       fclose(outputfile);
       free_ycc(img, ycc);
 
+      char str[40];
+      sprintf(str, "Décodage de l'image n°%ld", nb_passage_sos);
+      print_timer(str, &timer_image);
+      sprintf(str, "Ecriture de l'image n°%ld", nb_passage_sos);
+      print_timer(str, &timer_ecriture);
+
       err = decode_entete(infile, false, img);
       if (err.code) {
-	 free_sortie(img, sortie);
-	 if (nbcomp == 3) free(rgb);
-	 return err;
+         free_sortie(img, sortie);
+         if (nbcomp == 3) free(rgb);
+         return err;
       }
       nb_passage_sos++;
    }
