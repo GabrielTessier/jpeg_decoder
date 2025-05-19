@@ -53,16 +53,16 @@ static erreur_t verif_option_io(int argc, char **argv) {
 }
 
 int main(int argc, char *argv[]) {
+   // Initialisation du timer
+   my_timer_t global_timer;
+   init_timer(&global_timer);
+   start_timer(&global_timer);
+   
    erreur_t err = verif_option_io(argc, argv);
    if (err.code) {
      print_erreur(err);
      return err.code;
    }
-
-   // Initialisation du timer
-   my_timer_t global_timer;
-   init_timer(&global_timer);
-   start_timer(&global_timer);
 
    FILE *fichier;
    err = ouverture_fichier_in(&fichier);
