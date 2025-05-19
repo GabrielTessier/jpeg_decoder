@@ -19,9 +19,9 @@ typedef struct qtable_prec_s qtable_prec_t;
 
 // Structure représentant un arbre de Huffman
 struct huffman_tree_s {
-  // fils[0] représente le fils gauche et fils[1] le fils droit
-  struct huffman_tree_s *fils[2];
-  uint8_t symb;
+   // fils[0] représente le fils gauche et fils[1] le fils droit
+   struct huffman_tree_s *fils[2];
+   uint8_t symb;
 };
 typedef struct huffman_tree_s huffman_tree_t;
 
@@ -35,8 +35,8 @@ typedef struct htables_s htables_t;
 // Structure contenant les informations d'une seule composante de l'image
 struct idcomp_s {
    uint8_t idc;        // Indice de la composante
-   uint8_t hsampling;  // Facteur d'échantillonnage horizontale
-   uint8_t vsampling;  // Facteur d'échantillonnage verticale
+   uint8_t hsampling;  // Facteur d'échantillonnage horizontal
+   uint8_t vsampling;  // Facteur d'échantillonnage vertical
    uint8_t idhdc;      // Indice de la table de Huffman pour les coefficients DC
    uint8_t idhac;      // Indice de la table de Huffman pour les coefficients AC
    uint8_t idq;        // Indice de la table de quantification
@@ -94,11 +94,11 @@ struct img_s {
    section_done_t *section;    // Avancement des sections 
    other_t *other;             // Autres informations à vérifier
    com_t *com;                 // Commentaires de l'image
-   uint8_t max_hsampling;	    // Sampling horizontale maximal
-   uint8_t max_vsampling;	    // Sampling verticale maximal
-   uint64_t nbmcuH;		       // Nombre de mcu horizontalement
-   uint64_t nbmcuV;		       // Nombre de mcu verticalement
-   uint64_t nbMCU;		       // Nombre total de mcu
+   uint8_t max_hsampling;      // Sampling horizontale maximal
+   uint8_t max_vsampling;      // Sampling verticale maximal
+   uint64_t nbmcuH;            // Nombre de mcu horizontalement
+   uint64_t nbmcuV;            // Nombre de mcu verticalement
+   uint64_t nbMCU;             // Nombre total de mcu
 };
 typedef struct img_s img_t;
 

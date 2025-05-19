@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+
 // Tableau 1x64 représentant un bloc 8x8 d'entiers 8 bits signés
 struct blocl8_s {
   int8_t data[64];

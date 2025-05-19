@@ -12,6 +12,7 @@
 #include <bitstream.h>
 #include <decoder_utils.h>
 #include <iqzz.h>
+#include <vld.h>
 #include <baseline.h>
 
 extern all_option_t all_option;

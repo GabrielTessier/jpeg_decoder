@@ -1,18 +1,19 @@
 #pragma once
 
-#include <stdint.h>
+#include <stdbool.h>
 
 #include <erreur.h>
 
+
 // Structure contenant les informations sur les différentes options disponibles
 struct all_option_s {
-  char *execname;
-  int verbose;
-  int print_time;
-  int idct_fast;
-  char *filepath;
-  char *outfile;
-  bool print_tables;
+   char *execname;
+   bool verbose;
+   bool  print_time;
+   bool idct_fast;
+   char *filepath;
+   char *outfile;
+   bool print_tables;
 };
 typedef struct all_option_s all_option_t;
 
