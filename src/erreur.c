@@ -5,6 +5,6 @@
 #include <erreur.h>
 
 void print_erreur(const erreur_t err) {
-  fprintf(stderr, RED "ERREUR %d" RESET " : %s\n", err.code, err.com);
-  if (err.must_free) free(err.com);
+   fprintf(stderr, RED "ERREUR %d" RESET " : %s\n", err.code, err.com);
+   if (err.must_free) free(err.com);
 }

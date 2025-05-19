@@ -1,14 +1,14 @@
-#include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
 
 #include <options.h>
 #include <timer.h>
 
+
 extern all_option_t all_option;
 
 static uint64_t cast_time(struct timeval time) {
-  return time.tv_sec*1000000 + time.tv_usec;
+   return time.tv_sec*1000000 + time.tv_usec;
 }
 
 void init_timer(my_timer_t *timer) {
