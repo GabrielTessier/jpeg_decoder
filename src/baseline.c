@@ -77,7 +77,7 @@ void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_p
 }
 
 erreur_t decode_baseline_image(FILE *infile, img_t *img) {
-   print_huffman_quant_table(img);
+   if (all_option.print_tables) print_huffman_quant_table(img);
    
    uint8_t nbcomp = img->comps->nb;
    // Calcul des coefficients pour la DCT inverse (lente)

@@ -1,4 +1,5 @@
 
+#include <stdio.h>
 #include <ycc2rgb.h>
 #include <utils.h>
 #include <options.h>
@@ -55,7 +56,7 @@ erreur_t save_mcu_ligne_bw(FILE *outputfile, img_t *img, bloctu8_t ***ycc) {
             uint64_t bx = x / 8; // bx-ieme bloc horizontalement
             uint64_t px = x % 8;
             uint64_t py = y % 8; // le pixel est à la coordonnée (px,py) du blob (bx,by)
-            fprintf(outputfile, "%c", ycc[0][bx]->data[px][py]);
+	    fwrite(&(ycc[0][bx]->data[px][py]), sizeof(char), 1, outputfile);
          }
       }
    }

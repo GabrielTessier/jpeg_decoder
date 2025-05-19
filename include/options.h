@@ -12,6 +12,7 @@ struct all_option_s {
   int idct_fast;
   char *filepath;
   char *outfile;
+  bool print_tables;
 };
 typedef struct all_option_s all_option_t;
 

@@ -41,6 +41,8 @@ static erreur_t set_timer_param(all_option_t *all_option);
 static erreur_t set_idct_nofast_param(all_option_t *all_option);
 // Active l'option outfile (choix du fichier de sortie à <file>)
 static erreur_t set_outfile(all_option_t *all_option, char *file);
+// Affiche les tables de huffman et de quantification
+static erreur_t print_tables(all_option_t *all_option);
 // Retourne un tableau 2x1 contenant la longueur maximale des noms de paramètre,
 // et la longueur maximale des noms d'option suivi de leur paramètre
 // (pour l'affichage de l'aide avec la fonction 'print_help)
@@ -50,11 +52,12 @@ static erreur_t try_apply_poption(all_option_t *all_option, char *name, char *ne
 
 
 
-static const option_t OPTION[4] = {
+static const option_t OPTION[5] = {
    {"v", "verbose", set_verbose_param, "Affiche des informations suplémentaire durant l'exécution."},
    {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
    {"h", "help", print_help, "Affiche cette aide."},
-   {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas la fast IDCT."}};
+   {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas la fast IDCT."},
+   {"", "tables", print_tables, "Affiche les tables de huffman et de quantification"}};
 
 static const poption_t OPTION_PARAMETRE[1] = {
    {"o", "outfile", set_outfile, "fichier", "Placer la sortie dans le fichier."}};
@@ -78,6 +81,11 @@ static erreur_t set_outfile(all_option_t *all_option, char* file) {
    if (all_option->outfile != NULL) return (erreur_t) {.code=ERR_PARAM, .com="Maximum une image en output."};
    all_option->outfile = file;
    return (erreur_t) {.code=SUCCESS};
+}
+
+static erreur_t print_tables(all_option_t *all_option) {
+   all_option->print_tables = true;
+   return (erreur_t) {.code = SUCCESS};
 }
 
 static char** get_max_size_str() {
