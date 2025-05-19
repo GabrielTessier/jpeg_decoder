@@ -23,7 +23,7 @@ void print_v(const char* format, ...) {
 
 static void print_hufftable_acu(char* acu, huffman_tree_t* tree) {
   if (tree->fils[0] == NULL && tree->fils[1] == NULL) {
-    print_v("path : %s symbol : %x\n", acu, tree->symb);
+    printf("path : %s symbol : %x\n", acu, tree->symb);
     return;
   }
   int i = strlen(acu);
@@ -35,7 +35,7 @@ static void print_hufftable_acu(char* acu, huffman_tree_t* tree) {
 }
 
 void print_hufftable(huffman_tree_t* tree) {
-  if (all_option.verbose) {
+  if (all_option.print_tables) {
     char acu[30];
     for (int i=0; i<30; i++) acu[i] = 0;
     print_hufftable_acu(acu, tree);
@@ -81,7 +81,7 @@ char *out_file_name(uint8_t nbcomp, uint8_t nb) {
 
    *point = '.';
 
-   if (strlen(ext) == 0) {
+   if (all_option.outfile == NULL) {
       if (nbcomp == 1) strcat(fullfilename, ".pgm");
       else if (nbcomp == 3) strcat(fullfilename, ".ppm");
    } else {

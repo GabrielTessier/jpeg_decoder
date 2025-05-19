@@ -192,8 +192,6 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
 
       free(bs);
 
-      print_v("Fin données sos : %x\n", (int)ftell(infile));
-
       FILE *outputfile = ouverture_fichier_out(nbcomp, nb_passage_sos);
 
       // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
