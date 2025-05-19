@@ -44,6 +44,6 @@ int main(int argc, char *argv[]) {
     r++;
   }
   free(mcu);
-  test_res(test_idct_opt, argv, "idct fast comparée à idct 'classique' (%d MCUs 8x8 aléatoires)", ncomp);
+  test_res(test_idct_opt, argv, "idct fast comparée à idct 'classique' (%d blocs 8x8 aléatoires)", ncomp);
   return 0;
 }

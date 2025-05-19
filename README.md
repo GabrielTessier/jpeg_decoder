@@ -65,15 +65,16 @@ Ce schéma représente l'implémentation de la structure de donnée contenant to
 Ce schéma décrit quant à lui les structures utilisées pour la gestion des erreurs et des options en ligne de commande.  
 ![alt text](./schemas/diagram_err_opt.png)  
 
+Structure du code permettant le décodage des coefficients DC et AC, mode *baseline* uniquement
 ![alt text](./schemas/diagram_vld_baseline.svg)  
 
+Structure du code permettant le décodage des coefficients DC et AC, mode *baseline* et *progressive*.
 ![alt text](./schemas/diagram_vld_full.svg)  
 
 
 
 * point le 15 mai:
 TODO:
-	gestion d'erreur
 	refaire timer
 	commenter le code
 	finir les tests
