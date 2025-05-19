@@ -1,3 +1,4 @@
+#include "erreur.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,7 +48,7 @@ static erreur_t print_tables(all_option_t *all_option);
 // et la longueur maximale des noms d'option suivi de leur paramètre
 // (pour l'affichage de l'aide avec la fonction 'print_help)
 static char **get_max_size_str();
-static bool try_apply_option(all_option_t *all_option, char *name, enum option_type_e type);
+static erreur_t try_apply_option(all_option_t *all_option, char *name, enum option_type_e type, bool *success);
 static erreur_t try_apply_poption(all_option_t *all_option, char *name, char *next, enum option_type_e type, bool *opt_ok);
 
 
@@ -57,7 +58,7 @@ static const option_t OPTION[5] = {
    {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
    {"h", "help", print_help, "Affiche cette aide."},
    {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas la fast IDCT."},
-   {"", "tables", print_tables, "Affiche les tables de huffman et de quantification"}};
+   {NULL, "tables", print_tables, "Affiche les tables de Huffman et de quantification"}};
 
 static const poption_t OPTION_PARAMETRE[1] = {
    {"o", "outfile", set_outfile, "fichier", "Placer la sortie dans le fichier."}};
@@ -78,7 +79,7 @@ static erreur_t set_idct_nofast_param(all_option_t *all_option) {
 }
 
 static erreur_t set_outfile(all_option_t *all_option, char* file) {
-   if (all_option->outfile != NULL) return (erreur_t) {.code=ERR_PARAM, .com="Maximum une image en output."};
+  if (all_option->outfile != NULL) return (erreur_t) {.code=ERR_PARAM, .com="Maximum une image en output.", .must_free = false};
    all_option->outfile = file;
    return (erreur_t) {.code=SUCCESS};
 }
@@ -137,49 +138,50 @@ erreur_t print_help(all_option_t *all_option) {
    return (erreur_t) {.code=SUCCESS};
 }
 
-static bool try_apply_option(all_option_t *all_option, char* name, enum option_type_e type) {
+static erreur_t try_apply_option(all_option_t *all_option, char* name, enum option_type_e type, bool *success) {
    for (size_t p=0; p<sizeof(OPTION)/sizeof(option_t); p++) {
-      bool ok = (type == LONGUE && strcmp(name, OPTION[p].longname) == 0) || (type == COURTE && name[0] == OPTION[p].shortname[0]);
+      bool ok = (type == LONGUE && OPTION[p].longname != NULL && strcmp(name, OPTION[p].longname) == 0) || (type == COURTE && OPTION[p].shortname != NULL && name[0] == OPTION[p].shortname[0]);
       if (ok) {
-	 OPTION[p].fnc(all_option);
-	 return true;
+	 erreur_t err = OPTION[p].fnc(all_option);
+	 *success = true;
+	 return err;
       }
    }
-   return false;
+   *success = false;
+   return (erreur_t) {.code = SUCCESS};
 }
 
 static erreur_t try_apply_poption(all_option_t *all_option, char* name, char* next, enum option_type_e type, bool *opt_ok) {
-   erreur_t succ = {.code=SUCCESS};
    for (size_t p=0; p<sizeof(OPTION_PARAMETRE)/sizeof(poption_t); p++) {
-      if (type == COURTE) {
+      if (type == COURTE && OPTION_PARAMETRE[p].shortname != NULL) {
 	 if (name[0] == OPTION_PARAMETRE[p].shortname[0]) {
 	    if (next == NULL) {
-	       char str[80];
+	       char *str = (char*) malloc(sizeof(char) * 40);
 	       sprintf(str, "Manque la valeur pour le paramètre '%c'", name[0]);	       
-	       return (erreur_t) {.code=ERR_OPT, .com=str};
+	       return (erreur_t) {.code=ERR_OPT, .com=str, .must_free = true};
 	    }
-	    OPTION_PARAMETRE[p].fnc(all_option, next);
+	    erreur_t err = OPTION_PARAMETRE[p].fnc(all_option, next);
 	    *opt_ok = true;
-	    return succ;
+	    return err;
 	 }
-      } else {
+      } else if (OPTION_PARAMETRE[p].longname != NULL) {
 	 size_t size = strlen(OPTION_PARAMETRE[p].longname);
 	 if (strncmp(name, OPTION_PARAMETRE[p].longname, size) == 0) {
 	    if (name[size] == '=') {
 	       if (strlen(name+size+1) == 0) {
-		  char str[80];
+		  char *str = malloc(sizeof(char) * (39 + strlen(OPTION_PARAMETRE[p].longname)));
 		  sprintf(str, "Manque la valeur pour le paramètre '%s'", OPTION_PARAMETRE[p].longname);
-		  return (erreur_t) {.code=ERR_PARAM, .com=str};
+		  return (erreur_t) {.code=ERR_PARAM, .com=str, .must_free = true};
 	       }
-	       OPTION_PARAMETRE[p].fnc(all_option, name+size+1);
+	       erreur_t err = OPTION_PARAMETRE[p].fnc(all_option, name+size+1);
 	       *opt_ok = true;
-	       return succ;
+	       return err;
 	    }
 	 }
       }
    }
    *opt_ok = false;
-   return succ;
+   return (erreur_t) {.code = SUCCESS};
 }
 
 erreur_t set_option(all_option_t *all_option, const int argc, char **argv) {
@@ -187,19 +189,22 @@ erreur_t set_option(all_option_t *all_option, const int argc, char **argv) {
    for (int i=1; i<argc; i++) {
       char* str = argv[i];
       if (str[0] != '-') {
-	 if (all_option->filepath != NULL) return (erreur_t) {.code=ERR_PARAM, .com="Deux images passées en paramètre."};
+	 if (all_option->filepath != NULL) return (erreur_t) {.code=ERR_PARAM, .com="Deux images passées en paramètre.", .must_free = false};
 	 all_option->filepath = str;
       } else {
-	 if (strlen(str) == 1) return (erreur_t) {.code=ERR_OPT, .com="Pas d'option \"-\"."};
+	 if (strlen(str) == 1) return (erreur_t) {.code=ERR_OPT, .com="Pas d'option \"-\".", .must_free = false};
 	 if (str[1] == '-') {	// option longue
 	    char* op = str+2;
-	    bool find;
-	    try_apply_poption(all_option, op, NULL, LONGUE, &find);
-	    find = find || try_apply_option(all_option, op, LONGUE);
+	    bool find, find2;
+	    erreur_t err = try_apply_poption(all_option, op, NULL, LONGUE, &find);
+	    if (err.code) return err;
+	    err = try_apply_option(all_option, op, LONGUE, &find2);
+	    if (err.code) return err;
+	    find = find || find2;
 	    if (!find) {
-	       char str[80];
+	       char *str = (char*) malloc(sizeof(char) * (20 + strlen(op)));
 	       sprintf(str, "Pas de paramètre '%s'", op);
-	       return (erreur_t) {.code=ERR_PARAM, .com=str};
+	       return (erreur_t) {.code=ERR_PARAM, .com=str, .must_free = true};
 	    }
 	 } else {		// option courte
 	    char* oplist = str+1;
@@ -207,22 +212,25 @@ erreur_t set_option(all_option_t *all_option, const int argc, char **argv) {
 	    for (size_t j=0; j<nbparam; j++) {
 	       char op[2] = {oplist[j], 0};
 	       char* next = (i+1 < argc)?argv[i+1]:NULL;
-	       bool find = try_apply_option(all_option, op, COURTE);
+	       bool find;
+	       erreur_t err = try_apply_option(all_option, op, COURTE, &find);
+	       if (err.code) return err;
 	       if (!find) {
-		  try_apply_poption(all_option, op, next, COURTE, &find);
+		  erreur_t err = try_apply_poption(all_option, op, next, COURTE, &find);
+		  if (err.code) return err;
 		  if (find) {
 		     if (j == nbparam-1) i++;
 		     else {
-			char str[100];
+			char *str = (char*) malloc(sizeof(char) * 67);
 			sprintf(str, "Le paramètre '%c' ne peut pas avoir un paramètre collé derrière", op[0]);
-			return (erreur_t) {.code=ERR_PARAM, .com=str};
+			return (erreur_t) {.code=ERR_PARAM, .com=str, .must_free = true};
 		     }
 		  }
 	       }
 	       if (!find) {
-		  char str[80];
+		  char *str = (char*) malloc(sizeof(char) * 22);
 		  sprintf(str, "Pas de paramètre '%c'", op[0]);
-		  return (erreur_t) {.code=ERR_PARAM, .com=str};
+		  return (erreur_t) {.code=ERR_PARAM, .com=str, .must_free = true};
 	       }
 	    }
 	 }
