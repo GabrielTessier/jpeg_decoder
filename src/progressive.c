@@ -269,7 +269,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       fclose(outputfile);
       free_ycc(img, ycc);
 
-      char str[40];
+      char str[43];
       sprintf(str, "Décodage de l'image n°%ld", nb_passage_sos);
       print_timer(str, &timer_image);
       sprintf(str, "Ecriture de l'image n°%ld", nb_passage_sos);
