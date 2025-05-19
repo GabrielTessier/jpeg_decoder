@@ -284,6 +284,16 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       nb_passage_sos++;
    }
 
+   char *out_name = out_file_name(nbcomp, nb_passage_sos-1);
+   char *sl = strrchr(out_name, '/');
+   *sl = 0;
+   char *cmd = malloc(sizeof(char)*(11+strlen(sl+1)+strlen(all_option.outfile)));
+   sprintf(cmd, "ln -f -s %s %s", sl+1, all_option.outfile);
+   system(cmd);
+   *sl = '/';
+   free(out_name);
+   free(cmd);
+
    if (nbcomp == 3) free(rgb);
 
    free_sortie(img, sortie);

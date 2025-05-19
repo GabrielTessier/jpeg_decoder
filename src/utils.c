@@ -55,32 +55,45 @@ erreur_t ouverture_fichier_in(FILE **fichier) {
    return (erreur_t) {.code = SUCCESS};
 }
 
-FILE *ouverture_fichier_out(uint8_t nbcomp, uint8_t nb) {
+char *out_file_name(uint8_t nbcomp, uint8_t nb) {
    // Si pas de fichier de sortie donné on le crée en remplaçant le .jpeg par .pgm ou .ppm
    char *filename;
-   char *fullfilename;
-   if (all_option.outfile == NULL) {
+   if (all_option.outfile != NULL) {
+      filename = all_option.outfile;
+   } else {
       filename = all_option.filepath;
-      char *point = strrchr(filename, '.');
-      char prec = *point;
-      *point = 0;
-      fullfilename = (char *)malloc(sizeof(char) * (strlen(filename) + 9));
-      strcpy(fullfilename, filename);
-      *point = prec;
-      if (nb != 0) {
-         char nb_str[4];
-         sprintf(nb_str, "%d", nb);
-         size_t s = strlen(fullfilename);
-         fullfilename[s] = '-';
-         fullfilename[s + 1] = 0;
-         strcat(fullfilename, nb_str);
-      }
+   }
+   char *point = strrchr(filename, '.');
+   *point = 0;
+   char *ext = point;
+   
+   char *fullfilename = (char *)malloc(sizeof(char) * (strlen(filename) + 9));;
+   strcpy(fullfilename, filename);
+
+   if (nb != 0) {
+      char nb_str[4];
+      sprintf(nb_str, "%d", nb);
+      size_t s = strlen(fullfilename);
+      fullfilename[s] = '-';
+      fullfilename[s + 1] = 0;
+      strcat(fullfilename, nb_str);
+   }
+
+   *point = '.';
+
+   if (strlen(ext) == 0) {
       if (nbcomp == 1) strcat(fullfilename, ".pgm");
       else if (nbcomp == 3) strcat(fullfilename, ".ppm");
    } else {
-      fullfilename = all_option.outfile;
+      strcat(fullfilename, ext);
    }
+   
+   return fullfilename;
+}
+
+FILE *ouverture_fichier_out(uint8_t nbcomp, uint8_t nb) {
+   char *fullfilename = out_file_name(nbcomp, nb);
    FILE *outputfile = fopen(fullfilename, "w");
-   if (all_option.outfile == NULL) free(fullfilename);
+   free(fullfilename);
    return outputfile;
 }
