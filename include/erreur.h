@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 
+
 // Gestion des erreurs
 
 // Codes d'erreur
@@ -77,9 +78,9 @@ enum erreur_code_e {
 typedef enum erreur_code_e erreur_code_t;
 
 struct erreur_s {
-   erreur_code_t code;
-   char *com;        // commentaire sur l'erreur à remonter
-   bool must_free;   // si le commentaire a été malloc
+   erreur_code_t code; // code d'erreur
+   char *com;	       // commentaire sur l'erreur à remonter
+   bool must_free;     // si le commentaire a été malloc
 };
 typedef struct erreur_s erreur_t;
 

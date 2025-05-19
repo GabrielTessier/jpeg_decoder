@@ -12,6 +12,7 @@
 #include <bitstream.h>
 #include <decoder_utils.h>
 #include <progressive.h>
+#include <entete.h>
 #include <timer.h>
 
 extern all_option_t all_option;
