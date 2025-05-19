@@ -121,7 +121,9 @@ erreur_t print_help(all_option_t *all_option) {
    for (size_t i=0; i<sizeof(OPTION)/sizeof(option_t); i++) {
       printf("  ");
       if (OPTION[i].shortname != NULL) printf("-%c%s  ", OPTION[i].shortname[0], max_size_short+2);
+      else printf("%s  ", max_size_short);
       if (OPTION[i].longname != NULL) printf("--%s%s  ", OPTION[i].longname, max_size_long+2+strlen(OPTION[i].longname));
+      else printf("%s  ", max_size_long);
       if (OPTION[i].description != NULL) printf("%s", OPTION[i].description);
       printf("\n");
    }

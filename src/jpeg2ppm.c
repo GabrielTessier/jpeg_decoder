@@ -29,11 +29,14 @@ static erreur_t verif_option_io(int argc, char **argv) {
    if (err.code) return err;
 
    // Vérification qu'une image est passée en paramètre
-   if (all_option.filepath == NULL) print_help(&all_option);
+   if (all_option.filepath == NULL) {
+      print_help(&all_option);
+      return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = "Pas de fichier jpeg/jpg", .must_free = false};
+   }
    if (access(all_option.filepath, R_OK)) {
       char *com = (char*) calloc(18+strlen(all_option.filepath), sizeof(char));
       sprintf(com, "Pas de fichier '%s'", all_option.filepath);
-      return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = com};
+      return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = com, .must_free = true};
    }
    // Création du dossier contenant l'image ppm en sortie
    if (all_option.outfile != NULL) {
@@ -48,7 +51,7 @@ static erreur_t verif_option_io(int argc, char **argv) {
       free(outfile_copy);
    }
    
-   return (erreur_t) {.code = SUCCESS, .com = NULL};
+   return (erreur_t) {.code = SUCCESS};
 }
 
 int main(int argc, char *argv[]) {
