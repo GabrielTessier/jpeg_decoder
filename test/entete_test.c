@@ -21,7 +21,7 @@ static uint8_t parcours_hufftree(huffman_tree_t ht, char *path);
 
 // parse le décodage des arbres Huffman par l'exécutable de référence
 // jpeg2blabla et les compare avec les tables de <hts>
-static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts);
+static erreur_t parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts, bool *test_hufftable);
 
 // test de décodage de l'entête sur shaun_the_sheep.
 static void test_shaun(char *nom_fichier, char *argv[]);
@@ -174,14 +174,14 @@ static uint8_t parcours_hufftree(huffman_tree_t ht, char *path) {
    return ht.symb;
 }
 
-static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts) {
+static erreur_t parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts, bool *test_hufftable) {
    char str[200];
    sprintf(str, "./bin/jpeg2blabla %s > /tmp/blabla_output.txt", nom_fichier);
    system(str);
    FILE *file = fopen("/tmp/blabla_output.txt", "r");
    size_t line_size_max = 100;
    char *line = (char *) malloc(sizeof(char)*line_size_max);
-   bool test_hufftable = true;
+   *test_hufftable = true;
    while (fgets(line, line_size_max, file)) {
       if (strstr(line, "Huffman table type ") != NULL) {
          // type de table
@@ -202,20 +202,20 @@ static bool parse_comp_hufftables_blabla(char *nom_fichier, htables_t hts) {
          } else if (strcmp(acdc, "DC") == 0) {
             ht = *hts.dc;
          } else {
-            erreur("table de huffman ni AC ni DC");
+	    return (erreur_t) {.code=ERR_HUFF_ID, .com="table de huffman ni AC ni DC", .must_free=false};
          }
          for (int i=0; i<nb_symb; i++) {
             char code[80];
             uint8_t symb;
             sscanf(line, "path: %s symbol: %c\n", code, &symb);
             if (symb != parcours_hufftree(ht[id], code)) {
-               test_hufftable = false;
+               *test_hufftable = false;
             }
          }
       }
    }
    free(line);
-   return test_hufftable;
+   return (erreur_t) {.code=SUCCESS, .must_free=false};
 }
 
 static void test_shaun(char *nom_fichier, char *argv[]) {
@@ -225,13 +225,13 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
    decode_entete(fichier, true, img);
 
    // Variables de test
-   int test_taille   = true;
-   int test_qtables  = true;
-   int test_htables  = true;
-   int test_comps    = true;
-   int test_other    = true;
-   int test_sampling = true;
-   int test_mcu      = true;
+   bool test_taille   = true;
+   bool test_qtables  = true;
+   bool test_htables  = true;
+   bool test_comps    = true;
+   bool test_other    = true;
+   bool test_sampling = true;
+   bool test_mcu      = true;
 
    // TAILLE
    if (img->height != 225) test_taille = false;
@@ -272,7 +272,7 @@ static void test_shaun(char *nom_fichier, char *argv[]) {
    }
 
    // HTABLES
-   test_htables = parse_comp_hufftables_blabla(nom_fichier, *img->htables);
+   erreur_t err = parse_comp_hufftables_blabla(nom_fichier, *img->htables, &test_htables);
 
    // COMPS
    if (img->comps->nb != 3)                  test_comps = false;
