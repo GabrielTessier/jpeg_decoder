@@ -19,6 +19,9 @@ extern all_option_t all_option;
 // Renvoie un bloc décodé en baseline après quantification inverse
 static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec);
 
+// Libère la mémoire allouer par decode_baseline_image
+static void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_prec, char *rgb, bitstream_t *bs);
+
 static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
    huffman_tree_t *hdc = NULL;
@@ -59,7 +62,7 @@ static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, bloc
    return (erreur_t) {.code = SUCCESS};
 }
 
-void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_prec, char *rgb, bitstream_t *bs) {
+static void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_prec, char *rgb, bitstream_t *bs) {
    const uint8_t nbcomp = img->comps->nb;
    free(bs);
    fclose(outputfile);
@@ -78,9 +81,10 @@ void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_p
 }
 
 erreur_t decode_baseline_image(FILE *infile, img_t *img) {
+   // Affiche les tables de huffman et de quantification (si option print_tables)
    if (all_option.print_tables) print_huffman_quant_table(img);
    
-   uint8_t nbcomp = img->comps->nb;
+   const uint8_t nbcomp = img->comps->nb;
    // Calcul des coefficients pour la DCT inverse (lente)
    float stockage_coef[8][8][8][8];
    if (!all_option.idct_fast) {
@@ -96,6 +100,9 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    init_timer(&timer_image);
    start_timer(&timer_image);
 
+   // id, facteur horizontal, facteur vertical pour y, cb, et cr
+   // nombre de bloc horizontalement pour y, cb, cr
+   // et un tableau rgb utiliser pour l'écriture dans le fichier ppm
    uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
    uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
    char *rgb;
@@ -103,7 +110,8 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
 
    FILE *outputfile = ouverture_fichier_out(nbcomp, 0);
 
-   // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
+   // P5 : noir et blanc
+   // P6 : couleur rgb
    if (nbcomp == 1) {
       fprintf(outputfile, "P5\n");
    } else if (nbcomp == 3) {
@@ -117,7 +125,7 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
 
    // Initialisation du tableau ycc :
    // ycc contient un tableau par composante
-   // Chaque sous-tableau est de taille le nombre de bloc dans la composante (et stocke des blocs 8x8)
+   // Chaque sous-tableau est de taille le nombre de bloc pour une ligne de mcu dans la composante (et stocke des blocs 8x8)
    bloctu8_t ***ycc = (bloctu8_t ***)malloc(sizeof(bloctu8_t **) * nbcomp);
    for (uint8_t i = 0; i < nbcomp; i++) {
       uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
@@ -136,18 +144,20 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    init_timer(&timer_ecriture);
    
 
-   // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
+   // Tableau contenant les dc précédent le bloc en cours de traitement (initialement 0 pour toutes les composantes)
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
 
    bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
    init_bitstream(bs, infile);
-   
+
+   // Pour chaque MCU, on la décode
    for (uint64_t i = 0; i < img->nbMCU; i++) {
       uint64_t mcuX = i % img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
          int16_t indice_comp = get_composante(img, k);
 	 if (indice_comp == -1) break;   // Si un scan ne contient pas toutes les composantes
          uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
+	 // On itère sur chaque bloc de la MCU
          for (uint8_t by = 0; by < img->comps->comps[indice_comp]->vsampling; by++) {
             for (uint8_t bx = 0; bx < img->comps->comps[indice_comp]->hsampling; bx++) {
                uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
@@ -178,10 +188,11 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
             }
          }
       }
-      if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
+      // Ecrit une ligne de mcu
+      if (i % img->nbmcuH == img->nbmcuH - 1) {
          stop_timer(&timer_image);
          start_timer(&timer_ecriture);
-	      erreur_t err;
+	 erreur_t err;
          if (nbcomp == 1) {
             err = save_mcu_ligne_bw(outputfile, img, ycc);
          } else if (nbcomp == 3) {

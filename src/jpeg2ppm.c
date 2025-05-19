@@ -26,7 +26,8 @@ static erreur_t verif_option_io(int argc, char **argv);
 static erreur_t verif_option_io(int argc, char **argv) {
    // On set les options
    all_option.execname = argv[0];
-   set_option(&all_option, argc, argv);
+   erreur_t err = set_option(&all_option, argc, argv);
+   if (err.code) return err;
 
    // Vérification qu'une image est passée en paramètre
    if (all_option.filepath == NULL) print_help(&all_option);
