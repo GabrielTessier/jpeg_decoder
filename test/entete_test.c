@@ -76,46 +76,7 @@ static void test_invader(char *nom_fichier, char *argv[], uint8_t idc, uint8_t i
    }
 
    // HTABLES
-   // DC
-   for (int i=0; i<4; i++) {
-      if (i == idhdc) {
-         if (img->htables->dc[i] == NULL) {
-            test_htables = false;
-         }
-         else {
-            if (img->htables->dc[i]->fils[0]->symb != 7) test_htables = false;
-         }
-      }
-      else {
-         if (img->htables->dc[i] != NULL) test_htables = false;
-      }
-   }
-   // AC
-   for (int i=1; i<4; i++) {
-      if (i == idhac) {
-         if (img->htables->ac[i] == NULL) {
-            test_htables = false;
-         }
-         else {
-            huffman_tree_t *tree = img->htables->ac[i];
-            if (tree->fils[0]->fils[0]->symb != 0x17) test_htables = false;
-            if (tree->fils[0]->fils[1]->symb != 0x18) test_htables = false;
-            if (tree->fils[1]->fils[0]->fils[0]->symb != 0x15) test_htables = false;
-            if (tree->fils[1]->fils[0]->fils[1]->fils[0]->symb != 0x8) test_htables = false;
-            if (tree->fils[1]->fils[0]->fils[1]->fils[1]->symb != 0x19) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[0]->fils[0]->fils[0]->symb != 0x0) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[0]->fils[0]->fils[1]->symb != 0x9) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[0]->fils[1]->fils[0]->symb != 0x13) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[0]->fils[1]->fils[1]->symb != 0x23) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[1]->fils[0]->fils[0]->symb != 0x28) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[1]->fils[0]->fils[1]->symb != 0x29) test_htables = false;
-            if (tree->fils[1]->fils[1]->fils[1]->fils[1]->fils[0]->symb != 0x37) test_htables = false;
-         }
-      }
-      else {
-         if (img->htables->ac[i] != NULL) test_htables = false;
-      }
-   }
+   test_htables = parse_comp_hufftables_blabla(nom_fichier, *img->htables);
 
    // COMPS
    if (img->comps->nb != 1)                  test_comps = false;
