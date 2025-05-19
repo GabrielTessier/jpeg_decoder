@@ -1,14 +1,12 @@
-#include "jpeg2ppm.h"
+#include <jpeg2ppm.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <utils.h>
-#include <entete.h>
 #include <timer.h>
 #include <idct.h>
 #include <idct_opt.h>
 #include <options.h>
-#include <ycc2rgb.h>
 #include <bitstream.h>
 #include <decoder_utils.h>
 #include <iqzz.h>
@@ -22,6 +20,7 @@ static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, bloc
 
 // Libère la mémoire allouer par decode_baseline_image
 static void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_prec, char *rgb, bitstream_t *bs);
+
 
 static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec) {
    // On récupère les tables de Huffman et de quantification pour la composante courante
