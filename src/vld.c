@@ -10,26 +10,65 @@
 #include <bitstream.h>
 
 // Retourne la valeur correspondant à <indice> sachant la magnitude <magnitude>.
-//static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice);
+static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice);
 
-// Retourne la valeur obtenue en lisant <magnitude> bits à l'adresse
-// <file>+<off>. <c> est la valeur de l'octet courant.
-//static erreur_t read_val_from_magnitude(FILE* file, uint8_t magnitude, uint8_t *off, char *c, int16_t *val);
-//static erreur_t read_indice(FILE* file, uint8_t nb_bit, uint8_t *off, char *c, uint16_t *indice);
+// Place la valeur obtenue en lisant <magnitude> bits de <bs> dans <*val>.
+static erreur_t read_val_from_magnitude(bitstream_t *bs, uint8_t magnitude, int16_t *val);
+// Lit <nb_bit> bits et place l'entier lut dans <*indice>
+static erreur_t read_indice(bitstream_t *bs, uint8_t nb_bit, uint16_t *indice);
 
-// Retourne la valeur de la composante constante du bloc fréquentiel à l'adresse
-// <file>+<off>, décodé grâce à l'arbre de Huffman <symb_decode>. <c> est la
-// valeur de l'octet courant.
-//static erreur_t decode_coef_DC(FILE *file, huffman_tree_t *symb_decode, uint8_t *off, char *c, int16_t *coef_dc);
+// Décode un coefficient (DC) dans le premier scan (de la bande spectrale en cours) et le place dans <*coef_dc>
+// symb_decode : une feuille de l'arbre de huffman (correspond à la magnitude)
+static erreur_t decode_coef_DC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, int16_t *coef_dc);
 
-// Remplit <res>[<resi>] avec la composante non constante du bloc fréquentiel à
-// l'adresse <file>+<off>, décodé grâce à l'arbre de Huffman <symb_decode>. <c>
-// est la valeur de l'octet courant.
-//static erreur_t decode_coef_AC(FILE *file, uint8_t num_sof, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint8_t *off, char *c, uint16_t *skip_bloc);
+// Décode un coefficient (DC) dans un scan ultérieur au premier et le place dans <*coef_dc>
+static erreur_t decode_coef_DC_subsequent_scan(bitstream_t *bs, img_t *img, int16_t *coef_dc);
 
-// Retourne un tableau contenant les coefficients (AC ou DC selon <type>)
-// décodés à l'adresse <file>+<off> à l'aide de l'arbre de Huffman <ht>
-//static erreur_t decode_list_coef(FILE* file, img_t *img, huffman_tree_t* ht, blocl16_t *sortie, uint8_t *off, enum acdc_e type, uint16_t *skip_bloc);
+// Décode un coefficient (AC) dans le premier scan (de la bande spectrale en cours) et le place dans <sortie[<*sortie_id>]>
+// symb_decode : une feuille de l'arbre de huffman (correspond à la magnitude)
+// skip_bloc : pointeur vers la variable qui contient le nombre de blocs à skip
+static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *sortie_id, uint16_t *skip_bloc);
+
+// Corrige le coefficient <*coef>
+static erreur_t correction_coef(bitstream_t *bs, img_t *img, int16_t *coef);
+
+// Skip <n> coefficients nuls et corrige les coefficients non nuls sur le chemin
+// <*indice_coef> est l'indice du coefficient en cours de traitement
+static erreur_t correction_n_coef(bitstream_t *bs, img_t *img, uint16_t n, int16_t *coefs, uint64_t *indice_coef);
+
+// Skip <n> coefficients nuls et corrige les coefficients non nuls sur le chemin puis corrige les coefficients non nuls jusqu'au prochain 0
+// <*indice_coef> est l'indice du coefficient en cours de traitement
+static erreur_t correction_n_coef_jusqua_zero(bitstream_t *bs, img_t *img, uint16_t n, int16_t *coefs, uint64_t *indice_coef);
+
+// Assigne une valeur à un coefficient nul en suivant les règles a et b de la norme annexe G.1.2.3
+static erreur_t skip_n_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, uint8_t n, blocl16_t *sortie, uint64_t *sortie_id);
+
+// Skip 16 coefficients nul en corrigeant les coefficients non nuls
+static erreur_t skip_16_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *sortie_id);
+
+// Décode un coefficient (AC) dans un scan ultérieur au premier (de la bande spectrale en cours) et le place dans <sortie[<*sortie_id>]>
+// symb_decode : une feuille de l'arbre de huffman (correspond à la magnitude)
+// skip_bloc : pointeur vers la variable qui contient le nombre de blocs à skip et corriger
+static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *sortie_id, uint16_t *skip_bloc);
+
+// Lit des bits jusqu'à atteindre une feuille dans l'arbre de huffman <ht>
+static erreur_t get_huffman_symbole(bitstream_t *bs, huffman_tree_t **ht, bool *code_que_un);
+
+// Décode un coefficient DC et le place dans sortie->data[0]
+static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie);
+
+// décode les coefficients d'une bande spectrale de AC et les place dans <sortie>
+static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie, uint16_t *skip_bloc);
+
+// Décode un bloc de DC/AC en baseline
+// dc_prec : pointeur vers la valeur du DC précédant
+static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc);
+
+// Décode un bloc de DC/AC en progressif
+// dc_prec : pointeur vers la valeur du DC précédant
+static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc);
+
+
 
 
 static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice) {
@@ -77,11 +116,11 @@ static erreur_t decode_coef_DC_subsequent_scan(bitstream_t *bs, img_t *img, int1
    return (erreur_t) {.code = SUCCESS};
 }
 
-static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint16_t *skip_bloc) {
+static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *sortie_id, uint16_t *skip_bloc) {
    const uint8_t num_sof = img->section->num_sof;
    const uint8_t al = img->other->al;
    if (symb_decode->symb == 0xf0) {  // ZRL
-      *resi += 16;
+      *sortie_id += 16;
    } else {
       uint8_t alpha = symb_decode->symb >> 4;
       uint8_t gamma = symb_decode->symb & 0b00001111;
@@ -108,11 +147,11 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
 	    }
 	 }
       } else {  // 0xalpha gamma  (alpha coef nul puis coef de magnitude gamma)
-	 *resi += alpha;
-	 erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*resi));
+	 *sortie_id += alpha;
+	 erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*sortie_id));
 	 if (err.code) return err;
-	 sortie->data[*resi] = sortie->data[*resi]*(1<<al);
-	 (*resi)++;
+	 sortie->data[*sortie_id] = sortie->data[*sortie_id]*(1<<al);
+	 (*sortie_id)++;
       }
    }
    *skip_bloc = 0;
@@ -152,37 +191,37 @@ static erreur_t correction_n_coef_jusqua_zero(bitstream_t *bs, img_t *img, uint1
    return (erreur_t) {.code = SUCCESS};
 }
 
-static erreur_t skip_n_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, uint8_t n, blocl16_t *sortie, uint64_t *resi) {
+static erreur_t skip_n_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, uint8_t n, blocl16_t *sortie, uint64_t *sortie_id) {
    int16_t val = 0;
    erreur_t err = read_val_from_magnitude(bs, 1, &val);
    if (err.code) return err;
 
-   err = correction_n_coef_jusqua_zero(bs, img, n, sortie->data, resi);
+   err = correction_n_coef_jusqua_zero(bs, img, n, sortie->data, sortie_id);
    if (err.code) return err;
    
-   sortie->data[*resi] = val*(1<<img->other->al);
-   (*resi)++;
+   sortie->data[*sortie_id] = val*(1<<img->other->al);
+   (*sortie_id)++;
    return (erreur_t) {.code = SUCCESS};
 }
 
-static erreur_t skip_16_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *resi) {
-   return correction_n_coef(bs, img, 16, sortie->data, resi);
+static erreur_t skip_16_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *sortie_id) {
+   return correction_n_coef(bs, img, 16, sortie->data, sortie_id);
 }
 
-erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *resi) {
-   while (*resi <= img->other->se) {
-      if (sortie->data[*resi] != 0) {
-	 erreur_t err = correction_coef(bs, img, &(sortie->data[*resi]));
+erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *sortie_id) {
+   while (*sortie_id <= img->other->se) {
+      if (sortie->data[*sortie_id] != 0) {
+	 erreur_t err = correction_coef(bs, img, &(sortie->data[*sortie_id]));
 	 if (err.code) return err;
       }
-      (*resi)++;
+      (*sortie_id)++;
    }
    return (erreur_t) {.code = SUCCESS};
 }
 
-static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *resi, uint16_t *skip_bloc) {
+static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *sortie_id, uint16_t *skip_bloc) {
    if (symb_decode->symb == 0xf0) {  // ZRL
-      erreur_t err = skip_16_coef_AC_subsequent_scan(bs, img, sortie, resi);
+      erreur_t err = skip_16_coef_AC_subsequent_scan(bs, img, sortie, sortie_id);
       if (err.code) return err;
    } else {
       uint8_t alpha = symb_decode->symb >> 4;
@@ -196,11 +235,11 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
 	    if (err.code) return err;
 	    *skip_bloc = indice + (1<<alpha);
 	 }
-	 erreur_t err = correction_eob(bs, img, sortie, resi);
+	 erreur_t err = correction_eob(bs, img, sortie, sortie_id);
 	 if (err.code) return err;
 	 return (erreur_t) {.code=SUCCESS};
       } else if (gamma == 1) {
-	 erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, resi);
+	 erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, sortie_id);
 	 if (err.code) return err;
       } else {
 	 return (erreur_t) {.code = ERR_AC_BAD, .com = "En progressif les AC qui ne sont pas sur le premier scan doivent être 0xRRRRSSSS avec SSSS=0 ou 1", .must_free = false};
@@ -247,20 +286,20 @@ static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, 
 }
 
 static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie, uint16_t *skip_bloc) {
-   uint64_t resi = img->other->ss; // indice de où on en est dans res
+   uint64_t sortie_id = img->other->ss; // indice de où on en est dans res
    *skip_bloc = 0;
-   while (resi <= img->other->se) {
+   while (sortie_id <= img->other->se) {
       huffman_tree_t *symb_decode = ht;
       erreur_t err = get_huffman_symbole(bs, &symb_decode, NULL);
       if (err.code) return err;
       
       if (img->other->ah == 0) {
-	 err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
+	 err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &sortie_id, skip_bloc);
       } else {
 	 if (img->other->ah - img->other->al != 1) {
 	    return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
 	 }
-	 err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
+	 err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &sortie_id, skip_bloc);
       }
       if (err.code) return err;
       if (*skip_bloc != 0) break;
