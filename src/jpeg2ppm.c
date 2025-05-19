@@ -96,15 +96,15 @@ int main(int argc, char *argv[]) {
    }
 
    if (all_option.verbose) {
-      printf("Taille de l'image : %d x %d\n", img->width, img->height);
-      if (img->section->num_sof == 0) printf("Décodage baseline\n");
-      if (img->section->num_sof == 2) printf("Décodage progressif\n");
-   }
-   if (img->com->nb != 0) {
-      printf("Commentaire : \n");
-      for (int i=0; i<img->com->nb; i++) {
+     printf("Taille de l'image : %d x %d\n", img->width, img->height);
+     if (img->section->num_sof == 0) printf("Décodage baseline\n");
+     if (img->section->num_sof == 2) printf("Décodage progressif\n");
+     if (img->com->nb != 0) {
+       printf("Commentaire : \n");
+       for (int i=0; i<img->com->nb; i++) {
 	 printf("%s\n", img->com->com[i]);
-      }
+       }
+     }
    }
 
    if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);

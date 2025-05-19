@@ -9,27 +9,26 @@
 extern all_option_t all_option;
 
 void print_huffman_quant_table(img_t *img) {
-   if (all_option.verbose) {
-      for (uint8_t i = 0; i < img->comps->nb; i++) {
-         print_v("Composante %d :\n", i);
+   if (all_option.print_tables) {
+      for (uint8_t i = 0; i < 4; i++) {
          // Affichage tables de Huffman
-         if (img->htables->dc[i] != NULL) {
-            print_v("Huffman dc\n");
+	 if (img->htables->dc[i] != NULL) {
+	    printf("Huffman dc %d\n", i);
             print_hufftable(img->htables->dc[i]);
          }
          if (img->htables->ac[i] != NULL) {
-            print_v("Huffman ac\n");
+            printf("Huffman ac %d\n", i);
             print_hufftable(img->htables->ac[i]);
          }
-
+      }
+      for (uint8_t i = 0; i < 4; i++) {
          // Affichage tables de quantification
          if (img->qtables[i] != NULL) {
-            print_v("Table de quantification : ");
-            for (uint8_t j = 0; j < 64; j++)
-            {
-               print_v("%d, ", img->qtables[i]->qtable->data[j]);
+            printf("Table de quantification %d : ", i);
+            for (uint8_t j = 0; j < 64; j++) {
+               printf("%d, ", img->qtables[i]->qtable->data[j]);
             }
-            print_v("\n");
+            printf("\n");
          }
       }
    }
