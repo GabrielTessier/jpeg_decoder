@@ -27,12 +27,12 @@ static erreur_t decode_bloc_progressive(bitstream_t *bs, img_t *img, int comp, b
    if (s_start == 0 && hdc == NULL) {
       char *str = malloc(80);
       sprintf(str, "Pas de table de huffman DC pour la composante %d", comp);
-      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+      return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
    }
    if (s_end != 0 && hac == NULL) {
       char *str = malloc(80);
       sprintf(str, "Pas de table de huffman AC pour la composante %d", comp);
-      return (erreur_t) {.code = ERR_NO_HT, .com = str};
+      return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
    }
 
    // On décode un bloc de l'image (et on chronomètre le temps)
@@ -44,38 +44,45 @@ static erreur_t decode_bloc_progressive(bitstream_t *bs, img_t *img, int comp, b
    return (erreur_t) {.code = SUCCESS};
 }
 
-static blocl16_t ***init_sortieq(img_t *img){
-   blocl16_t ***sortieq = (blocl16_t ***)malloc(sizeof(blocl16_t **) * img->comps->nb);
+static blocl16_t ***init_sortie(img_t *img){
+   blocl16_t ***sortie = (blocl16_t ***)malloc(sizeof(blocl16_t **) * img->comps->nb);
    for (uint8_t i = 0; i < img->comps->nb; i++) {
       uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
       uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
-      sortieq[i] = (blocl16_t **)malloc(nbH * nbV * sizeof(blocl16_t));
+      sortie[i] = (blocl16_t **)malloc(nbH * nbV * sizeof(blocl16_t));
       for (uint64_t j = 0; j < nbH * nbV; j++) {
-         sortieq[i][j] = (blocl16_t *)calloc(1, sizeof(blocl16_t));
+         sortie[i][j] = (blocl16_t *)calloc(1, sizeof(blocl16_t));
       }
    }
-   return sortieq;
+   return sortie;
+}
+
+static void free_sortie(img_t *img, blocl16_t ***sortie) {
+   for (uint8_t i = 0; i < img->comps->nb; i++) {
+      uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
+      uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
+      for (uint64_t j = 0; j < nbH * nbV; j++) {
+         free(sortie[i][j]);
+      }
+      free(sortie[i]);
+   }
+   free(sortie);
 }
 
 static erreur_t decode_progressif_dc(bitstream_t *bs, img_t *img, blocl16_t ***sortieq) {
    const uint8_t nbcomp = img->comps->nb;
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
    for (uint64_t i = 0; i < img->nbMCU; i++) {
-      print_v("MCU %d, %d, %d, %d\n", i, img->nbmcuH, img->nbmcuV, img->nbMCU);
       uint64_t mcuX = i % img->nbmcuH;
       uint64_t mcuY = i / img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
 	 int16_t indice_comp = get_composante(img, k);
 	 if (indice_comp == -1) break;
-	    
 	 uint8_t hs = img->comps->comps[indice_comp]->hsampling;
 	 uint8_t vs = img->comps->comps[indice_comp]->vsampling;
-	 print_v("COMP %d, %d, %d, %d, %d\n", indice_comp, hs, vs, img->max_hsampling, img->max_vsampling);
-	 print_v("INFO %d, %d, %d, %d\n", img->other->ss, img->other->se, img->other->ah, img->other->al);
 	 uint64_t nbH = img->nbmcuH * hs;
 	 for (uint8_t by = 0; by < vs; by++) {
 	    for (uint8_t bx = 0; bx < hs; bx++) {
-	       print_v("BLOC %d\n", by * hs + bx);
 	       uint64_t blocX = mcuX * hs + bx;
 	       uint64_t blocY = mcuY * vs + by;
 	       uint16_t skip_bloc;
@@ -92,24 +99,21 @@ static erreur_t decode_progressif_dc(bitstream_t *bs, img_t *img, blocl16_t ***s
 static erreur_t decode_progressif_ac(bitstream_t *bs, img_t *img, blocl16_t ***sortieq) {
    uint16_t skip_blocs = 0;
    int16_t indice_comp = get_composante(img, 0);
-   if (indice_comp == -1) return (erreur_t) {.code = ERR_COMP_ID, "Aucune composante dans le scan"};
+   if (indice_comp == -1) return (erreur_t) {.code = ERR_COMP_ID, "Aucune composante dans le scan", .must_free = false};
 
-   uint64_t nb_blocH = ceil((double)img->width / 8);
-   uint64_t nb_blocV = ceil((double)img->height / 8);
+   const uint64_t nb_blocH = ceil((double)img->width / 8);
+   const uint64_t nb_blocV = ceil((double)img->height / 8);
    
-   uint8_t hs = img->comps->comps[indice_comp]->hsampling;
-   uint8_t vs = img->comps->comps[indice_comp]->vsampling;
-   uint8_t hf = img->max_hsampling / hs;
-   uint8_t vf = img->max_vsampling / vs;
+   const uint8_t hs = img->comps->comps[indice_comp]->hsampling;
+   const uint8_t vs = img->comps->comps[indice_comp]->vsampling;
+   const uint8_t hf = img->max_hsampling / hs;
+   const uint8_t vf = img->max_vsampling / vs;
    
-   uint64_t nb_totalH = img->nbmcuH * hs;
-   uint64_t nbH = ceil((double)nb_blocH / hf);
-   uint64_t nbV = ceil((double)nb_blocV / vf);
+   const uint64_t nb_totalH = img->nbmcuH * hs;
+   const uint64_t nbH = ceil((double)nb_blocH / hf);
+   const uint64_t nbV = ceil((double)nb_blocV / vf);
    
    for (uint64_t i = 0; i < nbH*nbV; i++) {
-      print_v("BLOC %d, %d, %d, %d\n", i, nbH*nbV, img->nbmcuH, img->nbmcuV);
-      print_v("COMP %d, %d, %d, %d, %d\n", indice_comp, hs, vs, img->max_hsampling, img->max_vsampling);
-      print_v("INFO %d, %d, %d, %d\n", img->other->ss, img->other->se, img->other->ah, img->other->al);
       uint64_t blocX = i % nbH;
       uint64_t blocY = i / nbH;
       if (skip_blocs == 0) {
@@ -127,9 +131,22 @@ static erreur_t decode_progressif_ac(bitstream_t *bs, img_t *img, blocl16_t ***s
    return (erreur_t) {.code = SUCCESS};
 }
 
+static void free_ycc(img_t *img, bloctu8_t ***ycc) {
+   // Free ycc
+   for (uint8_t i = 0; i < img->comps->nb; i++) {
+      uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
+      uint64_t nbV = img->comps->comps[i]->vsampling;
+      for (uint64_t j = 0; j < nbH * nbV; j++) {
+         free(ycc[i][j]);
+      }
+      free(ycc[i]);
+   }
+   free(ycc);
+}
+
 erreur_t decode_progressive_image(FILE *infile, img_t *img) {
-   uint8_t nbcomp = img->comps->nb;
-   blocl16_t ***sortieq = init_sortieq(img);
+   const uint8_t nbcomp = img->comps->nb;
+   blocl16_t ***sortie = init_sortie(img);
    // Calcul des coefficients pour la DCT inverse (lente)
    float stockage_coef[8][8][8][8];
    if (!all_option.idct_fast) {
@@ -139,26 +156,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
    uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
    uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
    char *rgb;
-   if (nbcomp == 3) {
-      for (uint8_t i = 0; i < nbcomp; i++) {
-         if (img->comps->comps[0]->idc == img->comps->ordre[i]) y_id = i;
-         if (img->comps->comps[1]->idc == img->comps->ordre[i]) cb_id = i;
-         if (img->comps->comps[2]->idc == img->comps->ordre[i]) cr_id = i;
-      }
-      y_id = 0;
-      cb_id = 1;
-      cr_id = 2;
-      nb_blocYH = img->nbmcuH * img->comps->comps[y_id]->hsampling;
-      nb_blocCbH = img->nbmcuH * img->comps->comps[cb_id]->hsampling;
-      nb_blocCrH = img->nbmcuH * img->comps->comps[cr_id]->hsampling;
-      yhf = img->max_hsampling / img->comps->comps[y_id]->hsampling;
-      yvf = img->max_vsampling / img->comps->comps[y_id]->vsampling;
-      cbhf = img->max_hsampling / img->comps->comps[cb_id]->hsampling;
-      cbvf = img->max_vsampling / img->comps->comps[cb_id]->vsampling;
-      crhf = img->max_hsampling / img->comps->comps[cr_id]->hsampling;
-      crvf = img->max_vsampling / img->comps->comps[cr_id]->vsampling;
-      rgb = (char *)malloc(sizeof(char) * img->width * 3);
-   }
+   if (nbcomp == 3) get_ycc_info(img, &y_id, &cb_id, &cr_id, &yhf, &yvf, &cbhf, &cbvf, &crhf, &crvf, &nb_blocYH, &nb_blocCbH, &nb_blocCrH, &rgb);
 
    uint64_t nb_passage_sos = 1;
 
@@ -167,12 +165,20 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       init_bitstream(bs, infile);
       // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
       erreur_t err;
-      if (img->other->se == 0) err = decode_progressif_dc(bs, img, sortieq);
-      else err = decode_progressif_ac(bs, img, sortieq);
-      if (err.code) return err;
+      if (img->other->se == 0) err = decode_progressif_dc(bs, img, sortie);
+      else err = decode_progressif_ac(bs, img, sortie);
+      if (err.code) {
+	 free(bs);
+	 free_sortie(img, sortie);
+	 return err;
+      }
 
       err = finir_octet(bs);
-      if (err.code) return err;
+      if (err.code) {
+	 free(bs);
+	 free_sortie(img, sortie);
+	 return err;
+      }
 
       free(bs);
 
@@ -183,7 +189,6 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
       if (nbcomp == 1) fprintf(outputfile, "P5\n");
       else if (nbcomp == 3) fprintf(outputfile, "P6\n");
-      else erreur("Pas trois composante");
       fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
       fprintf(outputfile, "255\n");
 
@@ -208,7 +213,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
 	    if (qtable == NULL) {
 	       char *str = malloc(80);
 	       sprintf(str, "Pas de table de quantification pour la composante %d", k);
-	       return (erreur_t) {.code = ERR_NO_HT, .com = str};
+	       return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
 	    }
 	    
             uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
@@ -218,7 +223,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
                   uint64_t blocX = mcuX * img->comps->comps[k]->hsampling + bx;
                   uint64_t blocY = mcuY * img->comps->comps[k]->vsampling + by;
 		  blocl16_t *quant = (blocl16_t*) calloc(1, sizeof(blocl16_t));
-		  for (int i=0; i<64; i++) quant->data[i] = sortieq[k][blocY * nbH + blocX]->data[i];
+		  for (int i=0; i<64; i++) quant->data[i] = sortie[k][blocY * nbH + blocX]->data[i];
 		  iquant(quant, 0, 63, qtable->qtable);
                   bloct16_t *bloc_zz = izz(quant);
 		  free(quant);
@@ -232,43 +237,35 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
             }
          }
          if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
+	    erreur_t err;
 	    if (nbcomp == 1) {
-	       save_mcu_ligne_bw(outputfile, img, ycc);
+	       err = save_mcu_ligne_bw(outputfile, img, ycc);
 	    } else if (nbcomp == 3) {
-	       save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	       err = save_mcu_ligne_color(outputfile, img, ycc, rgb, yhf, yvf, y_id, nb_blocYH, cbhf, cbvf, cb_id, nb_blocCbH, crhf, crvf, cr_id, nb_blocCrH);
+	    }
+	    if (err.code) {
+	       free_sortie(img, sortie);
+	       free_ycc(img, ycc);
+	       if (nbcomp == 3) free(rgb);
 	    }
          }
       }
 
       fclose(outputfile);
-      // Free ycc
-      for (uint8_t i = 0; i < nbcomp; i++) {
-         uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
-         uint64_t nbV = img->comps->comps[i]->vsampling;
-         for (uint64_t j = 0; j < nbH * nbV; j++) {
-            free(ycc[i][j]);
-         }
-         free(ycc[i]);
-      }
-      free(ycc);
+      free_ycc(img, ycc);
 
       err = decode_entete(infile, false, img);
-      if (err.code) return err;
+      if (err.code) {
+	 free_sortie(img, sortie);
+	 if (nbcomp == 3) free(rgb);
+	 return err;
+      }
       nb_passage_sos++;
    }
 
    if (nbcomp == 3) free(rgb);
 
-   // Free sortieq
-   for (uint8_t i = 0; i < nbcomp; i++) {
-      uint64_t nbH = img->nbmcuH * img->comps->comps[i]->hsampling;
-      uint64_t nbV = img->nbmcuV * img->comps->comps[i]->vsampling;
-      for (uint64_t j = 0; j < nbH * nbV; j++) {
-         free(sortieq[i][j]);
-      }
-      free(sortieq[i]);
-   }
-   free(sortieq);
+   free_sortie(img, sortie);
 
    return (erreur_t) {.code = SUCCESS};
 }

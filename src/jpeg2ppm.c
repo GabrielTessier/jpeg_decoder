@@ -17,6 +17,12 @@
 
 extern all_option_t all_option;
 
+// Fonction pour :
+// - initialiser les options
+// - vérifier l'existance de l'image en entrée
+// - créer le dossier contenant l'image de sortie
+static erreur_t verif_option_io(int argc, char **argv);
+
 static erreur_t verif_option_io(int argc, char **argv) {
    // On set les options
    all_option.execname = argv[0];
@@ -79,9 +85,24 @@ int main(int argc, char *argv[]) {
    }
    print_timer("Décodage entête", &timer_entete);
 
+   if (img->section->num_sof != 0 && img->section->num_sof != 2) {
+      char *str = (char*) malloc(sizeof(char)*21);
+      sprintf(str, "sof%d non supporté", img->section->num_sof);
+      erreur_t err = {.code = ERR_SOF_BAD, .com = str, .must_free = true};
+      print_erreur(err);
+      free_img(img);
+      fclose(fichier);
+      return err.code;
+   }
+
+   if (all_option.verbose) {
+      printf("Taille de l'image : %d x %d\n", img->width, img->height);
+      if (img->section->num_sof == 0) printf("Décodage baseline\n");
+      if (img->section->num_sof == 2) printf("Décodage baseline\n");
+   }
+
    if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);
    else if (img->section->num_sof == 2) err = decode_progressive_image(fichier, img);
-   else erreur("sof%d non supporté", img->section->num_sof);
    if (err.code) {
       free_img(img);
       print_erreur(err);

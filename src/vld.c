@@ -203,7 +203,7 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
 	 erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, resi);
 	 if (err.code) return err;
       } else {
-	 return (erreur_t) {.code = ERR_AC_BAD, .com = "En progressif les AC qui ne sont pas sur le premier scan doivent être 0xRRRRSSSS avec SSSS=0 ou 1"};
+	 return (erreur_t) {.code = ERR_AC_BAD, .com = "En progressif les AC qui ne sont pas sur le premier scan doivent être 0xRRRRSSSS avec SSSS=0 ou 1", .must_free = false};
       }
    }
    *skip_bloc = 0;
@@ -229,7 +229,7 @@ static erreur_t get_huffman_symbole(bitstream_t *bs, huffman_tree_t **ht, bool *
 static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie) {
    if (img->other->ah != 0) {
       if (img->other->ah - img->other->al != 1) {
-	 return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1"};
+	 return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
       }
       erreur_t err = decode_coef_DC_subsequent_scan(bs, img, sortie->data);
       if (err.code) return err;
@@ -238,7 +238,7 @@ static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, 
       bool code_que_un = true;
       erreur_t err = get_huffman_symbole(bs, &symb_decode, &code_que_un);
       if (code_que_un) {
-	 return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n"};
+	 return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n", .must_free = false};
       }
       err = decode_coef_DC_first_scan(bs, img, symb_decode, sortie->data);
       if (err.code) return err;
@@ -258,7 +258,7 @@ static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t*
 	 err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
       } else {
 	 if (img->other->ah - img->other->al != 1) {
-	    return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1"};
+	    return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
 	 }
 	 err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &resi, skip_bloc);
       }
@@ -302,5 +302,5 @@ static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman
 erreur_t decode_bloc_acdc(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
    if (img->section->num_sof == 0) return decode_bloc_acdc_baseline(bs, img, hdc, hac, sortie, dc_prec, skip_bloc);
    else if (img->section->num_sof == 2) return decode_bloc_acdc_progressif(bs, img, hdc, hac, sortie, dc_prec, skip_bloc);
-   else return (erreur_t) {.code = ERR_SOF_BAD, .com = "Seulement le baseline et le progressif sont suportés"};
+   else return (erreur_t) {.code = ERR_SOF_BAD, .com = "Seulement le baseline et le progressif sont suportés", .must_free = false};
 }

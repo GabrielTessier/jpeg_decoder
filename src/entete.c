@@ -73,13 +73,13 @@ static bool fichier_fini(FILE *fichier) {
 static erreur_t verif_entete_app0(img_t *img) {
    // Section APP0
    if (strcmp(img->other->jfif,"JFIF") != 0) {
-      return (erreur_t) {.code = ERR_NO_JFIF, .com = "[APP0] Phrase JFIF manquante dans APP0"};
+      return (erreur_t) {.code = ERR_NO_JFIF, .com = "[APP0] Phrase JFIF manquante dans APP0", .must_free = false};
    }
    if (img->other->version_jfif_x != 1) {
-      return (erreur_t) {.code = ERR_JFIF_VERSION, .com ="[APP0] Version JFIF X doit valoir 1"};
+      return (erreur_t) {.code = ERR_JFIF_VERSION, .com ="[APP0] Version JFIF X doit valoir 1", .must_free = false};
    }
    if (img->other->version_jfif_y != 1) {
-      return (erreur_t) {.code = ERR_JFIF_VERSION, .com ="[APP0] Version JFIF Y doit valoir 1"};
+      return (erreur_t) {.code = ERR_JFIF_VERSION, .com ="[APP0] Version JFIF Y doit valoir 1", .must_free = false};
    }
    return (erreur_t) {.code = SUCCESS};
 }
@@ -88,14 +88,14 @@ static erreur_t verif_entete_app0(img_t *img) {
 static erreur_t verif_entete_baseline(img_t *img) {
    // Section SOF0
    if (img->comps->precision_comp != 8) {
-      return (erreur_t) {.code = ERR_SOF_PRECISION, .com = "[SOF0] Précision composante doit valoir 8 (Baseline)"};
+      return (erreur_t) {.code = ERR_SOF_PRECISION, .com = "[SOF0] Précision composante doit valoir 8 (Baseline)", .must_free = false};
    }   
    
    // Section DQT
    for (int i=0; i<4; i++) {
       if (img->qtables[i] != NULL) {
          if (img->qtables[i]->precision != 0) {
-            return (erreur_t) {.code = ERR_DQT_PRECISION, .com = "[DQT] Précision table de quantification doit valoir 0 (8 bits) (Baseline)"};
+            return (erreur_t) {.code = ERR_DQT_PRECISION, .com = "[DQT] Précision table de quantification doit valoir 0 (8 bits) (Baseline)", .must_free = false};
          }
       }
    }
@@ -104,16 +104,16 @@ static erreur_t verif_entete_baseline(img_t *img) {
    // En baseline, les indices des tables de Huffman doivent être 0 ou 1
    // On vérifie dans la définition des tables
    if (img->htables->dc[2] != NULL) {
-      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman DC doit valoir 0 ou 1"};
+      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman DC doit valoir 0 ou 1", .must_free = false};
    }
    if (img->htables->dc[3] != NULL) {
-      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman DC doit valoir 0 ou 1"};
+      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman DC doit valoir 0 ou 1", .must_free = false};
    }
    if (img->htables->ac[2] != NULL) {
-      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman AC doit valoir 0 ou 1"};
+      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman AC doit valoir 0 ou 1", .must_free = false};
    }
    if (img->htables->ac[3] != NULL) {
-      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman AC doit valoir 0 ou 1"};
+      return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman AC doit valoir 0 ou 1", .must_free = false};
    }
 
    // Section SOS
@@ -122,24 +122,24 @@ static erreur_t verif_entete_baseline(img_t *img) {
          // En baseline, les indices des tables de Huffman doivent être 0 ou 1
          // On vérifie dans l'affectation des tables de Huffman aux composantes dans le SOS
          if (img->comps->comps[i]->idhdc > 1) {
-            return (erreur_t) {.code = ERR_HUFF_ID, .com = "[SOS] Indice table de Huffman DC doit valoir 0 ou 1 (Baseline)"};
+            return (erreur_t) {.code = ERR_HUFF_ID, .com = "[SOS] Indice table de Huffman DC doit valoir 0 ou 1 (Baseline)", .must_free = false};
          }
          if (img->comps->comps[i]->idhac > 1) {
-            return (erreur_t) {.code = ERR_HUFF_ID, .com = "[SOS] Indice table de Huffman AC doit valoir 0 ou 1 (Baseline)"};
+            return (erreur_t) {.code = ERR_HUFF_ID, .com = "[SOS] Indice table de Huffman AC doit valoir 0 ou 1 (Baseline)", .must_free = false};
          }
       }
    }
    if (img->other->ss != 0) {
-      return (erreur_t) {.code = ERR_SOS_SS, .com = "[SOS] Ss doit valoir 0 (Baseline)"};
+      return (erreur_t) {.code = ERR_SOS_SS, .com = "[SOS] Ss doit valoir 0 (Baseline)", .must_free = false};
    }
    if (img->other->se != 63) {
-      return (erreur_t) {.code = ERR_SOS_SE, .com = "[SOS] Se doit valoir 63 (Baseline)"};
+      return (erreur_t) {.code = ERR_SOS_SE, .com = "[SOS] Se doit valoir 63 (Baseline)", .must_free = false};
    }
    if (img->other->ah != 0) {
-      return (erreur_t) {.code = ERR_SOS_AH, .com = "[SOS] Ah doit valoir 0 (Baseline)"};
+      return (erreur_t) {.code = ERR_SOS_AH, .com = "[SOS] Ah doit valoir 0 (Baseline)", .must_free = false};
    }
    if (img->other->al != 0) {
-      return (erreur_t) {.code = ERR_SOS_AL, .com = "[SOS] Al doit valoir 0 (Baseline)"};
+      return (erreur_t) {.code = ERR_SOS_AL, .com = "[SOS] Al doit valoir 0 (Baseline)", .must_free = false};
    }
 
    return (erreur_t) {.code = SUCCESS};
@@ -151,33 +151,33 @@ static erreur_t verif_entete_progressif(img_t *img) {
    // Précision 12 non traitée
    if (img->comps->precision_comp != 8) {
       if (img->comps->precision_comp == 12) {
-         return (erreur_t) {.code = ERR_SOF_PRECISION, .com = "[SOF2] Précision composante 12 non pris charge (Progressif)"};
+         return (erreur_t) {.code = ERR_SOF_PRECISION, .com = "[SOF2] Précision composante 12 non pris charge (Progressif)", .must_free = false};
       }
       else {
-         return (erreur_t) {.code = ERR_SOF_PRECISION, .com = "[SOF2] Précision composante invalide (Progressif)"};
+         return (erreur_t) {.code = ERR_SOF_PRECISION, .com = "[SOF2] Précision composante invalide (Progressif)", .must_free = false};
       }
    }
    for (int i=0; i<3; i++) {
       if (img->comps->comps[i] != NULL) {
          // En progressif, les indices des composantes doivent être entre 1 et 4
          if (img->comps->comps[i]->idc > 4) {
-            return (erreur_t) {.code = ERR_COMP_ID, .com = "[SOF2] Indice composante doit valoir entre 1 et 4 (Progressif)"};
+            return (erreur_t) {.code = ERR_COMP_ID, .com = "[SOF2] Indice composante doit valoir entre 1 et 4 (Progressif)", .must_free = false};
          }
       }
    }
 
    // Section SOS
    if (img->other->ss > 63) {
-      return (erreur_t) {.code = ERR_SOS_SS, .com = "[SOS] Ss doit valoir entre 0 et 63 (Progressif)"};
+      return (erreur_t) {.code = ERR_SOS_SS, .com = "[SOS] Ss doit valoir entre 0 et 63 (Progressif)", .must_free = false};
    }
    if (img->other->se < img->other->ss || img->other->se > 63) {
-      return (erreur_t) {.code = ERR_SOS_SE, .com = "[SOS] Se doit valoir entre Ss et 63 (Progressif)"};
+      return (erreur_t) {.code = ERR_SOS_SE, .com = "[SOS] Se doit valoir entre Ss et 63 (Progressif)", .must_free = false};
    }
    if (img->other->ah > 13) {
-      return (erreur_t) {.code = ERR_SOS_AH, .com = "[SOS] Ah doit valoir entre 0 et 13 (Progressif)"};
+      return (erreur_t) {.code = ERR_SOS_AH, .com = "[SOS] Ah doit valoir entre 0 et 13 (Progressif)", .must_free = false};
    }
    if (img->other->al > 13) {
-      return (erreur_t) {.code = ERR_SOS_AL, .com = "[SOS] Al doit valoir entre 0 et 13 (Progressif)"};
+      return (erreur_t) {.code = ERR_SOS_AL, .com = "[SOS] Al doit valoir entre 0 et 13 (Progressif)", .must_free = false};
    }
 
    return (erreur_t) {.code = SUCCESS};
@@ -253,12 +253,12 @@ erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
       if (img->section->eoi_done) {
          // Si on a atteint un EOI avant un SOS dans le premier passage
          if (premier_passage) {
-            return (erreur_t) {.code = ERR_EOI_BEFORE_SOS, .com = "Image sans image"};
+            return (erreur_t) {.code = ERR_EOI_BEFORE_SOS, .com = "Image sans image", .must_free = false};
          }
       }
       else {
          // On affiche une erreur si on a atteint la fin du fichier sans section EOI
-         return (erreur_t) {.code = ERR_NO_EOI, .com = "L'image se termine sans EOI"};
+         return (erreur_t) {.code = ERR_NO_EOI, .com = "L'image se termine sans EOI", .must_free = false};
       }
    }
 
@@ -269,7 +269,7 @@ erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
 static erreur_t soi(FILE *fichier) {
    uint16_t marqueur = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    if (marqueur != (uint16_t) 0xffd8) {
-      return (erreur_t) {.code = ERR_NO_SOI, .com = "L'image doit commencer par 0xffd8 (SOI)"};
+      return (erreur_t) {.code = ERR_NO_SOI, .com = "L'image doit commencer par 0xffd8 (SOI)", .must_free = false};
    }
    return (erreur_t) {.code = SUCCESS};
 }
@@ -284,7 +284,7 @@ static erreur_t marqueur(FILE *fichier, img_t *img) {
    if (marqueur[0] != (uint8_t) 0xff) {
       char *str = malloc(sizeof(char)*80);
       sprintf(str, "Octet 0x%lx devrait être un marqueur : %x %x", ftell(fichier)-2, marqueur[0], marqueur[1]);
-      return (erreur_t) {.code = ERR_MARKER_BAD, .com = str};
+      return (erreur_t) {.code = ERR_MARKER_BAD, .com = str, .must_free = true};
    }
     
    // On associe le marqueur à la bonne section
@@ -304,7 +304,7 @@ static erreur_t marqueur(FILE *fichier, img_t *img) {
       case (uint8_t) 0xd8:   // Section SOI
          // On a déja décodé une section SOI au début du fichier
          // Si on trouve une section SOI ici, on retourne une erreur
-         return (erreur_t) {.code = ERR_SEVERAL_SOI, .com = "Plusieurs SOI"};
+         return (erreur_t) {.code = ERR_SEVERAL_SOI, .com = "Plusieurs SOI", .must_free = false};
       case (uint8_t) 0xd9:   // Section EOI
          img->section->eoi_done = true;
          break;
@@ -323,7 +323,7 @@ static erreur_t marqueur(FILE *fichier, img_t *img) {
       default: 
          char *str = malloc(sizeof(char)*80);
          sprintf(str, "Marqueur inconnu : %x", marqueur[1]);
-         return (erreur_t) {.code = ERR_MARKER_UNKNOWN, .com = str};
+         return (erreur_t) {.code = ERR_MARKER_UNKNOWN, .com = str, .must_free = true};
    }
    if (err.code) return err;
    return (erreur_t) {.code = SUCCESS};
@@ -335,7 +335,7 @@ static erreur_t app0(FILE *fichier, img_t *img) {
    // La section APP0 est obligatoirement de longueur 16
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    if (length != 16) {
-      return (erreur_t) {.code = ERR_APP0_LEN, .com = "[APP0] Longueur section APP0 incorrecte"};
+      return (erreur_t) {.code = ERR_APP0_LEN, .com = "[APP0] Longueur section APP0 incorrecte", .must_free = false};
    }
 
    // On récupère les informations pour les vérifier après
@@ -354,7 +354,7 @@ static erreur_t com(FILE *fichier) {
    // Vérification de la longueur de la section COM
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    if (length < 2) {
-      return (erreur_t) {.code = ERR_COM_LEN, .com = "[COM] Longueur section COM incorrecte"};
+      return (erreur_t) {.code = ERR_COM_LEN, .com = "[COM] Longueur section COM incorrecte", .must_free = false};
    }
 
    // On ignore les commentaires
@@ -366,7 +366,7 @@ static erreur_t com(FILE *fichier) {
 static erreur_t sof(FILE *fichier, img_t *img) {
    // Il ne peut y avoir qu'une seule section SOF
    if (img->section->sof_done) {
-      return (erreur_t) {.code = ERR_SEVERAL_SOF, .com = "[SOF] Plusieurs SOF"};
+      return (erreur_t) {.code = ERR_SEVERAL_SOF, .com = "[SOF] Plusieurs SOF", .must_free = false};
    }
 
    // On récupère les informations de la section SOF
@@ -378,7 +378,7 @@ static erreur_t sof(FILE *fichier, img_t *img) {
 
    // Vérification de la longueur de la section SOF
    if (length != 8+3*nb_comp) {
-      return (erreur_t) {.code = ERR_SOF_LEN, .com = "[SOF] Longueur section SOF incorrecte"};
+      return (erreur_t) {.code = ERR_SOF_LEN, .com = "[SOF] Longueur section SOF incorrecte", .must_free = false};
    }
 
    // On associe chaque composante à ses facteurs d'échantillonnage et à sa table de quantification
@@ -386,7 +386,7 @@ static erreur_t sof(FILE *fichier, img_t *img) {
    for (int i=0; i<=nb_comp-1; i++) {
       uint8_t id_comp = fgetc(fichier);
       if (id_comp == 0) {
-         return (erreur_t) {.code = ERR_COMP_ID, .com = "[SOF] Indice composante doit être différent de 0"};
+         return (erreur_t) {.code = ERR_COMP_ID, .com = "[SOF] Indice composante doit être différent de 0", .must_free = false};
       }
       uint8_t sampling = fgetc(fichier);
       uint8_t id_quant = fgetc(fichier);
@@ -406,7 +406,7 @@ static erreur_t dqt(FILE *fichier, img_t *img) {
    // Vérification de la longueur de la section DQT
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    if ((length-2) % 65 != 0) {
-      return (erreur_t) {.code = ERR_DQT_LEN, .com = "[DQT] Longueur section DQT incorrecte"};
+      return (erreur_t) {.code = ERR_DQT_LEN, .com = "[DQT] Longueur section DQT incorrecte", .must_free = false};
    }
 
    // On boucle s'il y a plusieurs tables de quantification définies dans la section
@@ -417,13 +417,13 @@ static erreur_t dqt(FILE *fichier, img_t *img) {
       // En mode baseline, il faut une précision de 8 bits
       uint8_t precision = octet >> 4;
       if (precision != 0 && precision != 1) {
-         return (erreur_t) {.code = ERR_DQT_PRECISION, .com = "[DQT] Précision table de quantification doit valoir 0 ou 1 (8 bits ou 16 bits)"};
+         return (erreur_t) {.code = ERR_DQT_PRECISION, .com = "[DQT] Précision table de quantification doit valoir 0 ou 1 (8 bits ou 16 bits)", .must_free = false};
       }
         
       uint8_t id_quant = octet & 0b1111;
       // On vérifie que l'indice de la table est entre 0 et 3
       if (id_quant > 3) {
-         return (erreur_t) {.code = ERR_DQT_ID, .com = "[DQT] Indice table de quantification doit être entre 0 et 3"};
+         return (erreur_t) {.code = ERR_DQT_ID, .com = "[DQT] Indice table de quantification doit être entre 0 et 3", .must_free = false};
       }
         
       // Si la table n'existe pas, on la crée, sinon on la redéfinit
@@ -492,7 +492,7 @@ static erreur_t remplir_huffman(huffman_tree_t *htable, uint16_t nb_symb, uint8_
    }
    // Si la file ne doit pas être vide car le code avec uniquement des 1 n'est pas valide
    if (file_vide(file)) {
-      return (erreur_t) {.code = ERR_HUFF_BAD, .com = "[DHT] Table Huffman incorrecte"};
+      return (erreur_t) {.code = ERR_HUFF_BAD, .com = "[DHT] Table Huffman incorrecte", .must_free = false};
    }
    // On libère la file
    while (!file_vide(file)) {
@@ -515,7 +515,7 @@ static erreur_t dht(FILE *fichier, img_t *img) {
 
       // On vérifie que les 3 bits premiers sont 0
       if ((octet & 0b11100000) != 0) {
-         return (erreur_t) {.code = ERR_DHT_START_0, .com = "[DHT] 3 premiers bits de la section DHT doivent valoir 0"};
+         return (erreur_t) {.code = ERR_DHT_START_0, .com = "[DHT] 3 premiers bits de la section DHT doivent valoir 0", .must_free = false};
       }
 	    
       // On récupère le type de la table (true pour DC, false pour AC)
@@ -524,7 +524,7 @@ static erreur_t dht(FILE *fichier, img_t *img) {
       // On vérifie que l'indice de la table est entre 0 et 3
       uint8_t id_huff = octet & 0b1111;
       if (id_huff > 3) {
-         return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman doit être entre 0 et 3"};
+         return (erreur_t) {.code = ERR_HUFF_ID, .com = "[DHT] Indice table de Huffman doit être entre 0 et 3", .must_free = false};
       }
         
       // On récupère les longueurs des codes
@@ -539,7 +539,7 @@ static erreur_t dht(FILE *fichier, img_t *img) {
 
       // On vérifie qu'on a moins de 256 codes
       if (nb_codes > 256) {
-         return (erreur_t) {.code = ERR_HUFF_MORE_256, .com = "[DHT] Plus de 256 symboles dans la table de Huffman"};
+         return (erreur_t) {.code = ERR_HUFF_MORE_256, .com = "[DHT] Plus de 256 symboles dans la table de Huffman", .must_free = false};
       }
         
       // On ordonne les longueurs codes par ordre croissant
@@ -569,7 +569,7 @@ static erreur_t dht(FILE *fichier, img_t *img) {
    }
    // On vérifie que la longueur de la section DHT correspond bien à ce qu'on a lu
    if ((uint64_t) ftell(fichier) != debut+length) {
-      return (erreur_t) {.code = ERR_DHT_LEN, .com = "[DHT] Longueur section DHT incorrecte"};
+      return (erreur_t) {.code = ERR_DHT_LEN, .com = "[DHT] Longueur section DHT incorrecte", .must_free = false};
    }
 
    // On indique qu'on a traité la section DHT
@@ -581,16 +581,16 @@ static erreur_t dht(FILE *fichier, img_t *img) {
 static erreur_t verif_sos(img_t *img) {
    // On vérifie que chaque section a été traité avant de décoder SOS
    if (!img->section->app0_done) {
-      return (erreur_t) {.code = ERR_NO_APP0, .com = "Image sans APP0 (ou SOS avant APP0)"};
+      return (erreur_t) {.code = ERR_NO_APP0, .com = "Image sans APP0 (ou SOS avant APP0)", .must_free = false};
    }
    if (!img->section->sof_done) {
-      return (erreur_t) {.code = ERR_NO_SOF, .com = "Image sans SOF (ou SOS avant SOF)"};
+      return (erreur_t) {.code = ERR_NO_SOF, .com = "Image sans SOF (ou SOS avant SOF)", .must_free = false};
    }
    if (!img->section->dqt_done) {
-      return (erreur_t) {.code = ERR_NO_DQT, .com = "Image sans DQT (ou SOS avant DQT)"};
+      return (erreur_t) {.code = ERR_NO_DQT, .com = "Image sans DQT (ou SOS avant DQT)", .must_free = false};
    }
    if (!img->section->dht_done) {
-      return (erreur_t) {.code = ERR_NO_DHT, .com = "Image sans DHT (ou SOS avant DHT)"};
+      return (erreur_t) {.code = ERR_NO_DHT, .com = "Image sans DHT (ou SOS avant DHT)", .must_free = false};
    }
    return (erreur_t) {.code = SUCCESS};
 }
@@ -606,12 +606,12 @@ static erreur_t sos(FILE *fichier, img_t *img) {
    // On vérifie que le nombre de composantes dans le SOS n'est pas supérieur au nombre total de composantes
    uint8_t nb_comp = fgetc(fichier);
    if (nb_comp > img->comps->nb) {
-      return (erreur_t) {.code = ERR_SOS_NB_COMP, .com = "[SOS] Nombre de composantes dans le SOS supérieur au nombre total"};
+      return (erreur_t) {.code = ERR_SOS_NB_COMP, .com = "[SOS] Nombre de composantes dans le SOS supérieur au nombre total", .must_free = false};
    }
     
    // Vérification de la longueur de la section SOS
    if (length != 6+2*nb_comp) {
-      return (erreur_t) {.code = ERR_SOS_LEN, .com = "[SOS] Longueur section SOS incorrecte"};
+      return (erreur_t) {.code = ERR_SOS_LEN, .com = "[SOS] Longueur section SOS incorrecte", .must_free = false};
    }
 
    // Réinitialise l'ordre des composantes
@@ -630,7 +630,7 @@ static erreur_t sos(FILE *fichier, img_t *img) {
       uint8_t j = 0;
       while (j < img->comps->nb && img->comps->comps[j]->idc != id_comp) {j++;}
       if (j >= img->comps->nb) {
-         return (erreur_t) {.code = ERR_SOS_COMP_ID, .com = "[SOS] Indice de composante incorrect"};
+         return (erreur_t) {.code = ERR_SOS_COMP_ID, .com = "[SOS] Indice de composante incorrect", .must_free = false};
       }
 
       img->comps->comps[j]->idhdc = id_huff >> 4;

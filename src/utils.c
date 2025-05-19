@@ -42,16 +42,6 @@ void print_hufftable(huffman_tree_t* tree) {
   }
 }
 
-void erreur(const char* text, ...) {
-    fprintf(stderr, "ERREUR : ");
-    va_list args;
-    va_start(args, text);
-    vfprintf(stderr, text, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-    exit(EXIT_FAILURE);
-}
-
 erreur_t ouverture_fichier_in(FILE **fichier) {
    // Ouverture du fichier avec vérification de l'extension
    char *fileext = strrchr(all_option.filepath, '.') + 1; // extension du fichier

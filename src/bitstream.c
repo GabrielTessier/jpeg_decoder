@@ -11,7 +11,7 @@ static erreur_t my_getc(FILE* file, char *c) {
       if (*c != (char) 0x00) {
 	 char *str = malloc(80);
 	 sprintf(str, "Pas de 0x00 après un 0xff (Pas bien !!) %lx\n", ftell(file)-1);
-	 return (erreur_t) {.code = ERR_0XFF00, str};
+	 return (erreur_t) {.code = ERR_0XFF00, str, .must_free = true};
       }
    }
    *c = fgetc(file);
@@ -44,7 +44,7 @@ erreur_t finir_octet(bitstream_t *bs) {
 	 if (c != 0x00) {
 	    char *str = malloc(80);
 	    sprintf(str, "Pas de 0x00 après un 0xff (Pas bien !!) %lx\n", ftell(bs->file)-1);
-	    return (erreur_t) {.code = ERR_0XFF00, str};
+	    return (erreur_t) {.code = ERR_0XFF00, str, .must_free = true};
 	 }
       }
    }
