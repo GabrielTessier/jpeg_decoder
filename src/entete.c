@@ -20,9 +20,6 @@ struct couple_tree_depth_s {
 typedef struct couple_tree_depth_s couple_tree_depth_t;
 
 
-// Indique si on a atteint la fin du fichier
-static bool fichier_fini(FILE *fichier);
-
 // Vérifie si les informations de l'entête dans la section APP0 sont conformes
 static erreur_t verif_entete_app0(img_t *img);
 
@@ -36,7 +33,10 @@ static erreur_t verif_entete_progressif(img_t *img);
 static void calcul_image_information(img_t *img);
 
 // Vérifie la section SOI est présente
-static erreur_t soi(FILE *fichier);
+static erreur_t verif_soi(FILE *fichier);
+
+// Vérifie la section EOI est présente
+static erreur_t verif_eoi(FILE *fichier);
 
 // Appelle le décodage de la bonne section en fonction du marqueur 
 static erreur_t marqueur(FILE *fichier, img_t *img);
@@ -45,7 +45,7 @@ static erreur_t marqueur(FILE *fichier, img_t *img);
 static erreur_t app0(FILE *fichier, img_t *img);
 
 // Décode la section COM
-static erreur_t com(FILE *fichier);
+static erreur_t com(FILE *fichier, img_t *img);
 
 // Décode la section SOF
 static erreur_t sof(FILE *fichier, img_t *img);
@@ -59,15 +59,6 @@ static erreur_t dht(FILE *fichier, img_t *img);
 // Décode la section SOS
 static erreur_t sos(FILE *fichier, img_t *img);
 
-
-
-static bool fichier_fini(FILE *fichier) {
-   char c1 = fgetc(fichier);
-   char c2 = fgetc(fichier);
-   fseek(fichier, -2, SEEK_CUR);
-   if (c1 == EOF && c2 == EOF) return true;
-   return false;
-}
 
 
 static erreur_t verif_entete_app0(img_t *img) {
@@ -213,8 +204,14 @@ erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
    // On passe plusieurs fois dans cette fonction s'il y a plusieurs sections SOS dans l'image (Progressif)
    if (premier_passage) {
       // On vérifie que la section SOI est présente au début du fichier
-      err = soi(fichier);
+      err = verif_soi(fichier);
       if (err.code) return err;
+
+      // On vérifie que la section EOI est présente à la fin du fichier
+      fseek(fichier, -2, SEEK_END);
+      err = verif_eoi(fichier);
+      if (err.code) return err;
+      fseek(fichier, 2, SEEK_SET);
    }
    else {
       // On remet sos_done à faux dans le cas où il y a plusieurs sections SOS (mode progressif)
@@ -222,7 +219,7 @@ erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
    }
 
    // On boucle sur les marqueurs tant qu'on a pas atteint un SOS ou la fin de l'image
-   while (!img->section->sos_done && !img->section->eoi_done && !fichier_fini(fichier)) {
+   while (!img->section->sos_done && !img->section->eoi_done) {
       // Décodage des marqueurs
       err = marqueur(fichier, img);
       if (err.code) return err;
@@ -250,15 +247,9 @@ erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
       }
    }
    else {
-      if (img->section->eoi_done) {
-         // Si on a atteint un EOI avant un SOS dans le premier passage
-         if (premier_passage) {
-            return (erreur_t) {.code = ERR_EOI_BEFORE_SOS, .com = "Image sans image", .must_free = false};
-         }
-      }
-      else {
-         // On affiche une erreur si on a atteint la fin du fichier sans section EOI
-         return (erreur_t) {.code = ERR_NO_EOI, .com = "L'image se termine sans EOI", .must_free = false};
+      // Si on a atteint un EOI avant un SOS dans le premier passage
+      if (img->section->eoi_done && premier_passage) {
+         return (erreur_t) {.code = ERR_EOI_BEFORE_SOS, .com = "Image sans image", .must_free = false};
       }
    }
 
@@ -266,10 +257,19 @@ erreur_t decode_entete(FILE *fichier, bool premier_passage, img_t *img) {
 }
 
 
-static erreur_t soi(FILE *fichier) {
+static erreur_t verif_soi(FILE *fichier) {
    uint16_t marqueur = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    if (marqueur != (uint16_t) 0xffd8) {
       return (erreur_t) {.code = ERR_NO_SOI, .com = "L'image doit commencer par 0xffd8 (SOI)", .must_free = false};
+   }
+   return (erreur_t) {.code = SUCCESS};
+}
+
+
+static erreur_t verif_eoi(FILE *fichier) {
+   uint16_t marqueur = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
+   if (marqueur != (uint16_t) 0xffd9) {
+      return (erreur_t) {.code = ERR_NO_EOI, .com = "L'image doit finir par 0xffd9 (EOI)", .must_free = false};
    }
    return (erreur_t) {.code = SUCCESS};
 }
@@ -318,7 +318,7 @@ static erreur_t marqueur(FILE *fichier, img_t *img) {
          err = app0(fichier, img);
          break;
       case (uint8_t) 0xfe:   // Section COMM
-         err = com(fichier);
+         err = com(fichier, img);
          break; 
       default: 
          char *str = malloc(sizeof(char)*80);
@@ -350,15 +350,21 @@ static erreur_t app0(FILE *fichier, img_t *img) {
 }
 
 
-static erreur_t com(FILE *fichier) {
+static erreur_t com(FILE *fichier, img_t *img) {
    // Vérification de la longueur de la section COM
    uint16_t length = ((uint16_t)fgetc(fichier) << 8) + fgetc(fichier);
    if (length < 2) {
       return (erreur_t) {.code = ERR_COM_LEN, .com = "[COM] Longueur section COM incorrecte", .must_free = false};
    }
 
-   // On ignore les commentaires
-   fseek(fichier, length-2, SEEK_CUR);
+   // On récupère le commentaire 
+   char *comment = malloc(sizeof(char) * (length-2));
+   (void) !fread(comment, length-2, 1, fichier);
+
+   // On stocke le commentaire dans img
+   img->com->nb++;
+   img->com->com = realloc(img->com->com, sizeof(char*) * img->com->nb);
+   img->com->com[img->com->nb - 1] = comment;
    return (erreur_t) {.code = SUCCESS};
 }
 

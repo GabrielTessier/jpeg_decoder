@@ -18,6 +18,9 @@ static void free_section_done(section_done_t *section);
 // Libère les informations complémentaires
 static void free_other(other_t *other);
 
+// Libère les commentaires de l'image
+static void free_commentaires(com_t *com);
+
 
 
 static void free_qtables(qtable_prec_t **qtables) {
@@ -59,20 +62,30 @@ static void free_other(other_t *other) {
    free(other);
 }
 
+static void free_commentaires(com_t *com) {
+   for (int i=0; i<com->nb; i++) {
+      free(com->com[i]);
+   }
+   free(com->com);
+   free(com);
+}
+
 void free_img(img_t *img) {
    free_qtables(img->qtables);
    free_htables(img->htables);
    free_comps(img->comps);
    free_section_done(img->section);
    free_other(img->other);
+   free_commentaires(img->com);
    free(img);
 }
 
 img_t* init_img() {
-   img_t *img   = calloc(1,sizeof(img_t));
-   img->htables = calloc(1,sizeof(htables_t));
-   img->comps   = calloc(1,sizeof(comps_t));
-   img->section = calloc(1,sizeof(section_done_t));
-   img->other   = calloc(1,sizeof(other_t));
+   img_t *img    = calloc(1,sizeof(img_t));
+   img->htables  = calloc(1,sizeof(htables_t));
+   img->comps    = calloc(1,sizeof(comps_t));
+   img->section  = calloc(1,sizeof(section_done_t));
+   img->other    = calloc(1,sizeof(other_t));
+   img->com      = calloc(1,sizeof(com_t));
    return img;
 }

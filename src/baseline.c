@@ -44,7 +44,7 @@ static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, bloc
       return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
    }
 
-   // On décode un bloc de l'image (et on chronomètre le temps)
+   // On décode un bloc de l'image
    uint16_t skip_bloc;
    erreur_t err = decode_bloc_acdc(bs, img, hdc, hac, sortie, dc_prec + comp, &skip_bloc);
    if (err.code) return err;
@@ -52,7 +52,7 @@ static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, bloc
       return (erreur_t) {.code = ERR_AC_BAD, .com = "Symbole RLE interdit en baseline", .must_free = false};
    }
    
-   // On fait la quantification inverse (et on chronomètre le temps)
+   // On fait la quantification inverse
    iquant(sortie, img->other->ss, img->other->se, qtable->qtable);
    
    return (erreur_t) {.code = SUCCESS};
@@ -77,7 +77,7 @@ void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_p
 }
 
 erreur_t decode_baseline_image(FILE *infile, img_t *img) {
-   print_huffman_quant_table(img);
+   if (all_option.print_tables) print_huffman_quant_table(img);
    
    uint8_t nbcomp = img->comps->nb;
    // Calcul des coefficients pour la DCT inverse (lente)
@@ -156,9 +156,9 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
                erreur_t err = decode_bloc_baseline(bs, img, indice_comp, bloc, dc_prec);
                stop_timer(&timer_decode_bloc);
                if (err.code) {
-		  baseline_free(img, outputfile, ycc, dc_prec, rgb, bs);
-		  return err;
-	       }
+                  baseline_free(img, outputfile, ycc, dc_prec, rgb, bs);
+                  return err;
+               }
 
                start_timer(&timer_izz);
                bloct16_t *bloc_zz = izz(bloc);

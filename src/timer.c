@@ -33,12 +33,12 @@ void stop_timer(my_timer_t *timer) {
 }
 
 void print_timer(char* text, my_timer_t *timer) {
-  if (all_option.print_time) {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    uint64_t tt = cast_time(t);
-    uint64_t total = timer->sum;
-    if (timer->state) total += tt-timer->init;
-    fprintf(stdout, "%s : %f s\n", text, (float) total/1000000);
-  }
+   if (all_option.print_time) {
+      struct timeval t;
+      gettimeofday(&t, NULL);
+      uint64_t tt = cast_time(t);
+      uint64_t total = timer->sum;
+      if (timer->state) total += tt-timer->init;
+      fprintf(stdout, "%s : %f s\n", text, (float) total/1000000);
+   }
 }

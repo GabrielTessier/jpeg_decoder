@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
    if (all_option.verbose) {
       printf("Taille de l'image : %d x %d\n", img->width, img->height);
       if (img->section->num_sof == 0) printf("Décodage baseline\n");
-      if (img->section->num_sof == 2) printf("Décodage baseline\n");
+      if (img->section->num_sof == 2) printf("Décodage progressif\n");
    }
 
    if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);
