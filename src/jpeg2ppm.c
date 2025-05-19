@@ -45,7 +45,6 @@ static erreur_t verif_option_io(int argc, char **argv) {
          print_v("Création du dosier %s\n", folder);
          mkdir(folder, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
       }
-      print_v("outfile : %s\n", all_option.outfile);
       free(outfile_copy);
    }
    
@@ -96,6 +95,7 @@ int main(int argc, char *argv[]) {
    }
 
    if (all_option.verbose) {
+     printf("Outfile : %s\n", out_file_name(img->comps->nb, 0));
      printf("Taille de l'image : %d x %d\n", img->width, img->height);
      if (img->section->num_sof == 0) printf("Décodage baseline\n");
      if (img->section->num_sof == 2) printf("Décodage progressif\n");
