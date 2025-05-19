@@ -7,7 +7,6 @@
 
 #include <entete.h>
 #include <file.h>
-#include <utils.h>
 #include <erreur.h>
 
 
@@ -289,40 +288,40 @@ static erreur_t marqueur(FILE *fichier, img_t *img) {
    // On associe le marqueur à la bonne section
    erreur_t err = {.code = SUCCESS};
    switch (marqueur[1]) {
-      case (uint8_t) 0xc0:   // Section SOF0 (Baseline)
-         img->section->num_sof = 0;
-         err = sof(fichier, img);
-         break;
-      case (uint8_t) 0xc2:   // Section SOF2 (Progressif)
-         img->section->num_sof = 2;
-         err = sof(fichier, img);
-         break;
-      case (uint8_t) 0xc4:   // Section DHT
-         err = dht(fichier, img);
-         break;
-      case (uint8_t) 0xd8:   // Section SOI
-         // On a déja décodé une section SOI au début du fichier
-         // Si on trouve une section SOI ici, on retourne une erreur
-         return (erreur_t) {.code = ERR_SEVERAL_SOI, .com = "Plusieurs SOI", .must_free = false};
-      case (uint8_t) 0xd9:   // Section EOI
-         img->section->eoi_done = true;
-         break;
-      case (uint8_t) 0xda:   // Section SOS
-         err = sos(fichier, img);
-         break;
-      case (uint8_t) 0xdb:   // Section DQT
-         err = dqt(fichier, img);
-         break;
-      case (uint8_t) 0xe0:   // Section APP0
-         err = app0(fichier, img);
-         break;
-      case (uint8_t) 0xfe:   // Section COMM
-         err = com(fichier, img);
-         break; 
-      default: 
-         char *str = malloc(sizeof(char)*80);
-         sprintf(str, "Marqueur inconnu : %x", marqueur[1]);
-         return (erreur_t) {.code = ERR_MARKER_UNKNOWN, .com = str, .must_free = true};
+   case (uint8_t) 0xc0:   // Section SOF0 (Baseline)
+      img->section->num_sof = 0;
+      err = sof(fichier, img);
+      break;
+   case (uint8_t) 0xc2:   // Section SOF2 (Progressif)
+      img->section->num_sof = 2;
+      err = sof(fichier, img);
+      break;
+   case (uint8_t) 0xc4:   // Section DHT
+      err = dht(fichier, img);
+      break;
+   case (uint8_t) 0xd8:   // Section SOI
+      // On a déja décodé une section SOI au début du fichier
+      // Si on trouve une section SOI ici, on retourne une erreur
+      return (erreur_t) {.code = ERR_SEVERAL_SOI, .com = "Plusieurs SOI", .must_free = false};
+   case (uint8_t) 0xd9:   // Section EOI
+      img->section->eoi_done = true;
+      break;
+   case (uint8_t) 0xda:   // Section SOS
+      err = sos(fichier, img);
+      break;
+   case (uint8_t) 0xdb:   // Section DQT
+      err = dqt(fichier, img);
+      break;
+   case (uint8_t) 0xe0:   // Section APP0
+      err = app0(fichier, img);
+      break;
+   case (uint8_t) 0xfe:   // Section COMM
+      err = com(fichier, img);
+      break; 
+   default: 
+      char *str = malloc(sizeof(char)*80);
+      sprintf(str, "Marqueur inconnu : %x", marqueur[1]);
+      return (erreur_t) {.code = ERR_MARKER_UNKNOWN, .com = str, .must_free = true};
    }
    if (err.code) return err;
    return (erreur_t) {.code = SUCCESS};
@@ -522,7 +521,7 @@ static erreur_t dht(FILE *fichier, img_t *img) {
       if ((octet & 0b11100000) != 0) {
          return (erreur_t) {.code = ERR_DHT_START_0, .com = "[DHT] 3 premiers bits de la section DHT doivent valoir 0", .must_free = false};
       }
-	    
+            
       // On récupère le type de la table (true pour DC, false pour AC)
       bool is_dc = (octet & 0b00010000) == 0;
 

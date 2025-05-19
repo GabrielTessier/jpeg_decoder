@@ -3,11 +3,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include <utils.h>
 #include <vld.h>
 #include <img.h>
 #include <erreur.h>
 #include <bitstream.h>
+
 
 // Retourne la valeur correspondant à <indice> sachant la magnitude <magnitude>.
 static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice);
@@ -125,33 +125,33 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
       uint8_t alpha = symb_decode->symb >> 4;
       uint8_t gamma = symb_decode->symb & 0b00001111;
       if (gamma == 0) {
-	 if (alpha == 0) {   // 0x00 EOB_0
-	    *skip_bloc = 1;
-	    return (erreur_t) {.code=SUCCESS};
-	 } else {
-	    // EOB_alpha (valide seulement en mode progressif)
-	    if (num_sof == 0) {
-	       char *str = malloc(80);
-	       sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
-	       return (erreur_t) {.code=ERR_AC_BAD, .com=str, .must_free = true};
-	    } else if (num_sof == 2) {
-	       uint16_t indice;
-	       erreur_t err = read_indice(bs, alpha, &indice);
-	       if (err.code) return err;
-	       *skip_bloc = indice + (1<<alpha);
-	       return (erreur_t) {.code=SUCCESS};
-	    } else {
-	       char *str = malloc(27);
-	       sprintf(str, "Numéro sof invalide : %d", num_sof);
-	       return (erreur_t) {.code=ERR_SOF_BAD, .com=str, .must_free = true};
-	    }
-	 }
+         if (alpha == 0) {   // 0x00 EOB_0
+            *skip_bloc = 1;
+            return (erreur_t) {.code=SUCCESS};
+         } else {
+            // EOB_alpha (valide seulement en mode progressif)
+            if (num_sof == 0) {
+               char *str = malloc(80);
+               sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
+               return (erreur_t) {.code=ERR_AC_BAD, .com=str, .must_free = true};
+            } else if (num_sof == 2) {
+               uint16_t indice;
+               erreur_t err = read_indice(bs, alpha, &indice);
+               if (err.code) return err;
+               *skip_bloc = indice + (1<<alpha);
+               return (erreur_t) {.code=SUCCESS};
+            } else {
+               char *str = malloc(27);
+               sprintf(str, "Numéro sof invalide : %d", num_sof);
+               return (erreur_t) {.code=ERR_SOF_BAD, .com=str, .must_free = true};
+            }
+         }
       } else {  // 0xalpha gamma  (alpha coef nul puis coef de magnitude gamma)
-	 *sortie_id += alpha;
-	 erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*sortie_id));
-	 if (err.code) return err;
-	 sortie->data[*sortie_id] = sortie->data[*sortie_id]*(1<<al);
-	 (*sortie_id)++;
+         *sortie_id += alpha;
+         erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*sortie_id));
+         if (err.code) return err;
+         sortie->data[*sortie_id] = sortie->data[*sortie_id]*(1<<al);
+         (*sortie_id)++;
       }
    }
    *skip_bloc = 0;
@@ -170,10 +170,10 @@ static erreur_t correction_n_coef(bitstream_t *bs, img_t *img, uint16_t n, int16
    int i=0;
    while (i<n) {
       if (coefs[*indice_coef] != 0) {
-	 erreur_t err = correction_coef(bs, img, coefs + (*indice_coef));
-	 if (err.code) return err;
+         erreur_t err = correction_coef(bs, img, coefs + (*indice_coef));
+         if (err.code) return err;
       } else {
-	 i++;
+         i++;
       }
       (*indice_coef)++;
    }
@@ -211,8 +211,8 @@ static erreur_t skip_16_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, blo
 erreur_t correction_eob(bitstream_t *bs, img_t *img, blocl16_t *sortie, uint64_t *sortie_id) {
    while (*sortie_id <= img->other->se) {
       if (sortie->data[*sortie_id] != 0) {
-	 erreur_t err = correction_coef(bs, img, &(sortie->data[*sortie_id]));
-	 if (err.code) return err;
+         erreur_t err = correction_coef(bs, img, &(sortie->data[*sortie_id]));
+         if (err.code) return err;
       }
       (*sortie_id)++;
    }
@@ -227,22 +227,22 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
       uint8_t alpha = symb_decode->symb >> 4;
       uint8_t gamma = symb_decode->symb & 0b00001111;
       if (gamma == 0) {
-	 if (alpha == 0) {
-	    *skip_bloc = 1;
-	 } else {
-	    uint16_t indice;
-	    erreur_t err = read_indice(bs, alpha, &indice);
-	    if (err.code) return err;
-	    *skip_bloc = indice + (1<<alpha);
-	 }
-	 erreur_t err = correction_eob(bs, img, sortie, sortie_id);
-	 if (err.code) return err;
-	 return (erreur_t) {.code=SUCCESS};
+         if (alpha == 0) {
+            *skip_bloc = 1;
+         } else {
+            uint16_t indice;
+            erreur_t err = read_indice(bs, alpha, &indice);
+            if (err.code) return err;
+            *skip_bloc = indice + (1<<alpha);
+         }
+         erreur_t err = correction_eob(bs, img, sortie, sortie_id);
+         if (err.code) return err;
+         return (erreur_t) {.code=SUCCESS};
       } else if (gamma == 1) {
-	 erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, sortie_id);
-	 if (err.code) return err;
+         erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, sortie_id);
+         if (err.code) return err;
       } else {
-	 return (erreur_t) {.code = ERR_AC_BAD, .com = "En progressif les AC qui ne sont pas sur le premier scan doivent être 0xRRRRSSSS avec SSSS=0 ou 1", .must_free = false};
+         return (erreur_t) {.code = ERR_AC_BAD, .com = "En progressif les AC qui ne sont pas sur le premier scan doivent être 0xRRRRSSSS avec SSSS=0 ou 1", .must_free = false};
       }
    }
    *skip_bloc = 0;
@@ -260,7 +260,7 @@ static erreur_t get_huffman_symbole(bitstream_t *bs, huffman_tree_t **ht, bool *
       if (code_que_un != NULL && bit == 0) *code_que_un = false;
       // Si on a atteint une feuille
       if ((*ht)->fils[1] == NULL && (*ht)->fils[0] == NULL) {
-	 return (erreur_t) {.code = SUCCESS};
+         return (erreur_t) {.code = SUCCESS};
       }
    }
 }
@@ -268,7 +268,7 @@ static erreur_t get_huffman_symbole(bitstream_t *bs, huffman_tree_t **ht, bool *
 static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie) {
    if (img->other->ah != 0) {
       if (img->other->ah - img->other->al != 1) {
-	 return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
+         return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
       }
       erreur_t err = decode_coef_DC_subsequent_scan(bs, img, sortie->data);
       if (err.code) return err;
@@ -277,7 +277,7 @@ static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, 
       bool code_que_un = true;
       erreur_t err = get_huffman_symbole(bs, &symb_decode, &code_que_un);
       if (code_que_un) {
-	 return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n", .must_free = false};
+         return (erreur_t) {.code=ERR_HUFF_CODE_1, .com="Le code de huffman avec que des 1 est utilisé\n", .must_free = false};
       }
       err = decode_coef_DC_first_scan(bs, img, symb_decode, sortie->data);
       if (err.code) return err;
@@ -294,12 +294,12 @@ static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t*
       if (err.code) return err;
       
       if (img->other->ah == 0) {
-	 err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &sortie_id, skip_bloc);
+         err = decode_coef_AC_first_scan(bs, img, symb_decode, sortie, &sortie_id, skip_bloc);
       } else {
-	 if (img->other->ah - img->other->al != 1) {
-	    return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
-	 }
-	 err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &sortie_id, skip_bloc);
+         if (img->other->ah - img->other->al != 1) {
+            return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
+         }
+         err = decode_coef_AC_subsequent_scan(bs, img, symb_decode, sortie, &sortie_id, skip_bloc);
       }
       if (err.code) return err;
       if (*skip_bloc != 0) break;
@@ -328,7 +328,7 @@ static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman
       if (err.code) return err;
 
       if (img->other->ah == 0) {
-	 sortie->data[0] += *dc_prec;
+         sortie->data[0] += *dc_prec;
       }
       *dc_prec = sortie->data[0];
    } else {

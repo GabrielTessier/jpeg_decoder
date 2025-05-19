@@ -79,20 +79,20 @@ static erreur_t decode_progressif_dc(bitstream_t *bs, img_t *img, blocl16_t ***s
       uint64_t mcuX = i % img->nbmcuH;
       uint64_t mcuY = i / img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
-	 int16_t indice_comp = get_composante(img, k);
-	 if (indice_comp == -1) break;
-	 uint8_t hs = img->comps->comps[indice_comp]->hsampling;
-	 uint8_t vs = img->comps->comps[indice_comp]->vsampling;
-	 uint64_t nbH = img->nbmcuH * hs;
-	 for (uint8_t by = 0; by < vs; by++) {
-	    for (uint8_t bx = 0; bx < hs; bx++) {
-	       uint64_t blocX = mcuX * hs + bx;
-	       uint64_t blocY = mcuY * vs + by;
-	       uint16_t skip_bloc;
-	       erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &skip_bloc);
-	       if (err.code) return err;
-	    }
-	 }
+         int16_t indice_comp = get_composante(img, k);
+         if (indice_comp == -1) break;
+         uint8_t hs = img->comps->comps[indice_comp]->hsampling;
+         uint8_t vs = img->comps->comps[indice_comp]->vsampling;
+         uint64_t nbH = img->nbmcuH * hs;
+         for (uint8_t by = 0; by < vs; by++) {
+            for (uint8_t bx = 0; bx < hs; bx++) {
+               uint64_t blocX = mcuX * hs + bx;
+               uint64_t blocY = mcuY * vs + by;
+               uint16_t skip_bloc;
+               erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &skip_bloc);
+               if (err.code) return err;
+            }
+         }
       }
    }
    free(dc_prec);
@@ -120,15 +120,15 @@ static erreur_t decode_progressif_ac(bitstream_t *bs, img_t *img, blocl16_t ***s
       uint64_t blocX = i % nbH;
       uint64_t blocY = i / nbH;
       if (skip_blocs == 0) {
-	 erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY*nb_totalH + blocX], NULL, &skip_blocs);
-	 if (err.code) return err;
+         erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY*nb_totalH + blocX], NULL, &skip_blocs);
+         if (err.code) return err;
       } else {
-	 if (img->other->ah != 0) {
-	    uint64_t resi = img->other->ss;
-	    erreur_t err = correction_eob(bs, img, sortieq[indice_comp][blocY*nb_totalH + blocX], &resi);
-	    if (err.code) return err;
-	 }
-	 skip_blocs--;
+         if (img->other->ah != 0) {
+            uint64_t resi = img->other->ss;
+            erreur_t err = correction_eob(bs, img, sortieq[indice_comp][blocY*nb_totalH + blocX], &resi);
+            if (err.code) return err;
+         }
+         skip_blocs--;
       }
    }
    return (erreur_t) {.code = SUCCESS};
@@ -188,7 +188,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       if (err.code) {
          free(bs);
          free_sortie(img, sortie);
-	      return err;
+	 return err;
       }
 
       free(bs);
@@ -217,33 +217,33 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
          uint64_t mcuY = i / img->nbmcuH;
          for (uint8_t k = 0; k < nbcomp; k++) {
             // print_v("COMP %d\n", k);
-         qtable_prec_t *qtable = NULL;
-         qtable = img->qtables[img->comps->comps[k]->idq];
-         if (qtable == NULL) {
-            char *str = malloc(80);
-            sprintf(str, "Pas de table de quantification pour la composante %d", k);
-            return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
-	      }
-	    
-         uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
-         for (uint8_t by = 0; by < img->comps->comps[k]->vsampling; by++) {
-            for (uint8_t bx = 0; bx < img->comps->comps[k]->hsampling; bx++) {
-               // print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
-               uint64_t blocX = mcuX * img->comps->comps[k]->hsampling + bx;
-               uint64_t blocY = mcuY * img->comps->comps[k]->vsampling + by;
-               blocl16_t *quant = (blocl16_t*) calloc(1, sizeof(blocl16_t));
-               for (int i=0; i<64; i++) quant->data[i] = sortie[k][blocY * nbH + blocX]->data[i];
-               iquant(quant, 0, 63, qtable->qtable);
-               bloct16_t *bloc_zz = izz(quant);
-               free(quant);
+	    qtable_prec_t *qtable = NULL;
+	    qtable = img->qtables[img->comps->comps[k]->idq];
+	    if (qtable == NULL) {
+	       char *str = malloc(80);
+	       sprintf(str, "Pas de table de quantification pour la composante %d", k);
+	       return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
+	    }
+            
+	    uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+	    for (uint8_t by = 0; by < img->comps->comps[k]->vsampling; by++) {
+	       for (uint8_t bx = 0; bx < img->comps->comps[k]->hsampling; bx++) {
+		  // print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
+		  uint64_t blocX = mcuX * img->comps->comps[k]->hsampling + bx;
+		  uint64_t blocY = mcuY * img->comps->comps[k]->vsampling + by;
+		  blocl16_t *quant = (blocl16_t*) calloc(1, sizeof(blocl16_t));
+		  for (int i=0; i<64; i++) quant->data[i] = sortie[k][blocY * nbH + blocX]->data[i];
+		  iquant(quant, 0, 63, qtable->qtable);
+		  bloct16_t *bloc_zz = izz(quant);
+		  free(quant);
 
-               bloctu8_t *bloc_idct;
-               if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
-               else bloc_idct = idct(bloc_zz, stockage_coef);
-               free(bloc_zz);
+		  bloctu8_t *bloc_idct;
+		  if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
+		  else bloc_idct = idct(bloc_zz, stockage_coef);
+		  free(bloc_zz);
 
-               if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
-               ycc[k][by * nbH + blocX] = bloc_idct;
+		  if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
+		  ycc[k][by * nbH + blocX] = bloc_idct;
                }
             }
          }
@@ -269,7 +269,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       fclose(outputfile);
       free_ycc(img, ycc);
 
-      char str[40];
+      char str[43];
       sprintf(str, "Décodage de l'image n°%ld", nb_passage_sos);
       print_timer(str, &timer_image);
       sprintf(str, "Ecriture de l'image n°%ld", nb_passage_sos);

@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -32,9 +31,9 @@ static erreur_t verif_option_io(int argc, char **argv) {
    // Vérification qu'une image est passée en paramètre
    if (all_option.filepath == NULL) print_help(&all_option);
    if (access(all_option.filepath, R_OK)) {
-     char *com = (char*) calloc(18+strlen(all_option.filepath), sizeof(char));
-     sprintf(com, "Pas de fichier '%s'", all_option.filepath);
-     return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = com};
+      char *com = (char*) calloc(18+strlen(all_option.filepath), sizeof(char));
+      sprintf(com, "Pas de fichier '%s'", all_option.filepath);
+      return (erreur_t) {.code = ERR_INVALID_FILE_PATH, .com = com};
    }
    // Création du dossier contenant l'image ppm en sortie
    if (all_option.outfile != NULL) {
@@ -60,8 +59,8 @@ int main(int argc, char *argv[]) {
    
    erreur_t err = verif_option_io(argc, argv);
    if (err.code) {
-     print_erreur(err);
-     return err.code;
+      print_erreur(err);
+      return err.code;
    }
 
    FILE *fichier;
@@ -96,18 +95,18 @@ int main(int argc, char *argv[]) {
    }
 
    if (all_option.verbose) {
-     char *out_file = out_file_name(img->comps->nb, 0);
-     printf("Outfile : %s\n", out_file);
-     free(out_file);
-     printf("Taille de l'image : %d x %d\n", img->width, img->height);
-     if (img->section->num_sof == 0) printf("Décodage baseline\n");
-     if (img->section->num_sof == 2) printf("Décodage progressif\n");
-     if (img->com->nb != 0) {
-       printf("Commentaire : \n");
-       for (int i=0; i<img->com->nb; i++) {
-	 printf("%s\n", img->com->com[i]);
-       }
-     }
+      char *out_file = out_file_name(img->comps->nb, 0);
+      printf("Outfile : %s\n", out_file);
+      free(out_file);
+      printf("Taille de l'image : %d x %d\n", img->width, img->height);
+      if (img->section->num_sof == 0) printf("Décodage baseline\n");
+      if (img->section->num_sof == 2) printf("Décodage progressif\n");
+      if (img->com->nb != 0) {
+         printf("Commentaire : \n");
+         for (int i=0; i<img->com->nb; i++) {
+            printf("%s\n", img->com->com[i]);
+         }
+      }
    }
 
    if (img->section->num_sof == 0) err = decode_baseline_image(fichier, img);

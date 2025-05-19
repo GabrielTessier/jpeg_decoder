@@ -3,6 +3,7 @@
 #include <ycc2rgb.h>
 #include <jpeg2ppm.h>
 
+
 // Retourne <val> si <val> est dans l'intervalle [0, 255], sinon retourne la
 // borne de l'intervalle la plus proche de <val>.
 static double clamp(double val);
