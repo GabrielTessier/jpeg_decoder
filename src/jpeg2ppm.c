@@ -95,7 +95,9 @@ int main(int argc, char *argv[]) {
    }
 
    if (all_option.verbose) {
-     printf("Outfile : %s\n", out_file_name(img->comps->nb, 0));
+     char *out_file = out_file_name(img->comps->nb, 0);
+     printf("Outfile : %s\n", out_file);
+     free(out_file);
      printf("Taille de l'image : %d x %d\n", img->width, img->height);
      if (img->section->num_sof == 0) printf("Décodage baseline\n");
      if (img->section->num_sof == 2) printf("Décodage progressif\n");
