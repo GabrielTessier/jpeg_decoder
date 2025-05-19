@@ -72,6 +72,13 @@ struct other_s {
 };
 typedef struct other_s other_t;
 
+struct com_s {
+   int nb;
+   char **com;
+};
+typedef struct com_s com_t;
+
+
 // Structure contennant les informations de l'entête de l'image
 struct img_s {
    uint16_t height;            // Hauteur
@@ -81,11 +88,12 @@ struct img_s {
    comps_t *comps;             // Composantes de l'image
    section_done_t *section;    // Avancement des sections 
    other_t *other;             // Autres informations à vérifier
+   com_t *com;
    uint8_t max_hsampling;	    // Sampling horizontale maximal
    uint8_t max_vsampling;	    // Sampling verticale maximal
-   uint64_t nbmcuH;		    // Nombre de mcu horizontalement
-   uint64_t nbmcuV;		    // Nombre de mcu verticalement
-   uint64_t nbMCU;		        // Nombre total de mcu
+   uint64_t nbmcuH;		       // Nombre de mcu horizontalement
+   uint64_t nbmcuV;		       // Nombre de mcu verticalement
+   uint64_t nbMCU;		       // Nombre total de mcu
 };
 typedef struct img_s img_t;
 
