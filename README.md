@@ -14,22 +14,16 @@
 
 ## Utilisation 
 
-Usage : ./jpeg2ppm [option] fichier  
-<style>
-td, th {
-   border: none!important;
-}
-</style>
-| Option :     |                     |                                                            |
-| -v           | --verbose           | Affiche des informations suplémentaire durant l'exécution. |
-|              |                     |                                                            |
-| -t           | --timer             | Affiche le temps d'exécution de chaque partie.             |
-| -h           | --help              | Affiche cette aide.                                        |
-| -f           | --no-fast-idct      | N'utilise pas l'IDCT rapide.                               |
-|              | --tables            | Affiche les tables de Huffman et de quantification.        |
-| -o <fichier> | --outfile=<fichier> | Placer la sortie dans le fichier.                          |
-|              |                     |                                                            |
-
+<pre>
+Usage : ./jpeg2ppm [option] fichier
+Option : 
+  -v             --verbose              Affiche des informations suplémentaire durant l'exécution.
+  -t             --timer                Affiche le temps d'exécution de chaque partie.
+  -h             --help                 Affiche cette aide.
+  -f             --no-fast-idct         N'utilise pas la fast IDCT.
+                 --tables               Affiche les tables de Huffman et de quantification
+  -o &#60fichier&#62   --outfile=&#60fichier&#62    Placer la sortie dans le fichier.
+</pre>
 
 ## Différentes versions disponibles
 
