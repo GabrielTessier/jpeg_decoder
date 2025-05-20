@@ -28,6 +28,11 @@ static erreur_t verif_option_io(int argc, char **argv) {
    erreur_t err = set_option(&all_option, argc, argv);
    if (err.code) return err;
 
+   if (all_option.print_help) {
+      print_help(&all_option);
+      return (erreur_t) {.code = SUCCESS};
+   }
+
    // Vérification qu'une image est passée en paramètre
    if (all_option.filepath == NULL) {
       print_help(&all_option);
@@ -65,6 +70,7 @@ int main(int argc, char *argv[]) {
       print_erreur(err);
       return err.code;
    }
+   if (all_option.print_help) return 0;
 
    FILE *fichier;
    err = ouverture_fichier_in(&fichier);

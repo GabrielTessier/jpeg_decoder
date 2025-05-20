@@ -44,6 +44,8 @@ static erreur_t set_idct_nofast_param(all_option_t *all_option);
 static erreur_t set_outfile(all_option_t *all_option, char *file);
 // Affiche les tables de huffman et de quantification
 static erreur_t print_tables(all_option_t *all_option);
+// Active l'option pour afficher l'aide
+static erreur_t set_print_help(all_option_t *all_option);
 // Retourne un tableau 2x1 contenant la longueur maximale des noms de paramètre,
 // et la longueur maximale des noms d'option suivi de leur paramètre
 // (pour l'affichage de l'aide avec la fonction 'print_help)
@@ -56,7 +58,7 @@ static erreur_t try_apply_poption(all_option_t *all_option, char *name, char *ne
 static const option_t OPTION[5] = {
    {"v", "verbose", set_verbose_param, "Affiche des informations suplémentaire durant l'exécution."},
    {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
-   {"h", "help", print_help, "Affiche cette aide."},
+   {"h", "help", set_print_help, "Affiche cette aide."},
    {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas la fast IDCT."},
    {NULL, "tables", print_tables, "Affiche les tables de Huffman et de quantification"}};
 
@@ -86,6 +88,11 @@ static erreur_t set_outfile(all_option_t *all_option, char* file) {
 
 static erreur_t print_tables(all_option_t *all_option) {
    all_option->print_tables = true;
+   return (erreur_t) {.code = SUCCESS};
+}
+
+static erreur_t set_print_help(all_option_t *all_option) {
+   all_option->print_help = true;
    return (erreur_t) {.code = SUCCESS};
 }
 
