@@ -15,13 +15,20 @@
 ## Utilisation 
 
 Usage : ./jpeg2ppm [option] fichier  
-Option :  
-  -v             --verbose              Affiche des informations suplémentaire durant l'exécution.  
-  -t             --timer                Affiche le temps d'exécution de chaque partie.  
-  -h             --help                 Affiche cette aide.  
-  -f             --no-fast-idct         N'utilise pas l'IDCT rapide.  
-                 --tables               Affiche les tables de Huffman et de quantification.  
-  -o <fichier>   --outfile=<fichier>    Placer la sortie dans le fichier.  
+<style>
+td, th {
+   border: none!important;
+}
+</style>
+| Option :     |                     |                                                            |
+| -v           | --verbose           | Affiche des informations suplémentaire durant l'exécution. |
+|              |                     |                                                            |
+| -t           | --timer             | Affiche le temps d'exécution de chaque partie.             |
+| -h           | --help              | Affiche cette aide.                                        |
+| -f           | --no-fast-idct      | N'utilise pas l'IDCT rapide.                               |
+|              | --tables            | Affiche les tables de Huffman et de quantification.        |
+| -o <fichier> | --outfile=<fichier> | Placer la sortie dans le fichier.                          |
+|              |                     |                                                            |
 
 
 ## Différentes versions disponibles
@@ -35,8 +42,8 @@ Option :
 
 ## Commandes utiles
 
-Compilation :			`make`
-Exécution des tests : 	`make test_run`
+Compilation :			`make`  
+Exécution des tests : 	`make test_run`  
 
 
 # Planning
