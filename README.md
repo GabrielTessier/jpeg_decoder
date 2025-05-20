@@ -5,11 +5,11 @@
 * Décodage baseline et progressif d'images au format JPEG/JPG.  
   Pour le progressif, prise en charge de 8 bits de précision pour les composantes uniquement  
 * IDCT rapide : Implémentation de la méthode de Loeffler.  
-* Écriture dans le fichier de sortie une ligne de MCU à la fois.
+* Écriture dans le fichier de sortie une ligne de MCU à la fois.  
   => empreinte mémoire réduite
 * Trace de l'exécution du décodage progressif : les images intermédiaires sont sauvegardées.  
   Ces images sont enregistrées sous les noms `<entryfile>-<id>.ppm`.  
-* Gestions des erreurs : Les différents problèmes de formattage du fichier sont remontés lors de l'exécution, permettant un retour sur des fichiers invalides.  
+* Gestions des erreurs : Les différents problèmes de formatage du fichier sont remontés lors de l'exécution, permettant un retour sur des fichiers invalides.  
 * Options : diverses options sont disponibles à l'exécution en ligne de commande, cf usage.  
 
 ## Utilisation 
@@ -17,21 +17,21 @@
 <pre>
 Usage : ./jpeg2ppm [option] fichier
 Option : 
-  -v             --verbose              Affiche des informations suplémentaire durant l'exécution.
+  -v             --verbose              Affiche des informations supplémentaires durant l'exécution.
   -t             --timer                Affiche le temps d'exécution de chaque partie.
   -h             --help                 Affiche cette aide.
-  -f             --no-fast-idct         N'utilise pas la fast IDCT.
+  -f             --no-fast-idct         N'utilise pas l'IDCT rapide.
                  --tables               Affiche les tables de Huffman et de quantification
-  -o &#60fichier&#62   --outfile=&#60fichier&#62    Placer la sortie dans le fichier.
+  -o &#60fichier&#62   --outfile=&#60fichier&#62    Place la sortie dans le fichier.
 </pre>
 
 ## Différentes versions disponibles
 
-* version de base : `./bin/jpeg2ppm_sans_opt` optimisation `-02` avec gcc
-* version de débug : `./bin/jpeg2ppm_debug` `-Wall -Wextra` pour les warnings, `-fsanitize=address,undefined` pour la gestion de la mémoire, `-g` pour gdb en particulier
-* version de profilage : `./bin/jpeg2ppm_prof` flags `-pg` pour profilage temporel avec gprof
-* version rapide : `./bin/jpeg2ppm_fast` optimisation `-Ofast` avec gcc
-* tests intégrés : exécutés avec `make test_run`, test unitaires sur les différents modules du décodeur
+* **Version de base** : `./bin/jpeg2ppm_sans_opt` optimisation `-02` avec gcc
+* **Version de débug** : `./bin/jpeg2ppm_debug` `-Wall -Wextra` pour les avertissements, `-fsanitize=address,undefined` pour la gestion de la mémoire, `-g` pour gdb en particulier
+* **Version de profilage** : `./bin/jpeg2ppm_prof` flags `-pg` pour profilage temporel avec gprof
+* **Version rapide** : `./bin/jpeg2ppm_fast` optimisation `-Ofast` avec gcc
+* **Tests intégrés** : exécutés avec `make test_run`, test unitaires sur les différents modules du décodeur
 
 
 ## Commandes utiles
@@ -41,17 +41,6 @@ Exécution des tests : 	`make test_run`
 
 
 # Planning
-
-**Planning prévisionnel :**  
-
-| Version | Nom de code   | Caractéristiques                                         | Temps estimé |
-|:-------:|:--------------|:---------------------------------------------------------|:-------------|
-| 1       | Invader       | Décodeur d'images 8x8 en niveaux de gris                 | J+ 4         |
-| 2       | Noir et blanc | Extension à des images grises comportant plusieurs blocs | J + 6        |
-| 3       | Couleur       | Extension à des images en couleur                        | J+8          |
-| 4       | Sous-ech      | Extension avec des images avec sous-échantionnage        | J +10        |
-
-**Planning réel :**  
 
 | Version | Nom de code   | Caractéristiques                                                              | Temps |
 |:-------:|:--------------|:------------------------------------------------------------------------------|:------|
@@ -74,7 +63,7 @@ Exécution des tests : 	`make test_run`
 | vld         | Décode les coefficients DC et AC d'un bloc                                                                | Gabriel, Albin           |
 | iqzz        | Inverse la quantification et transforme le vecteur 1x64 en un tableau 8x8                                 | Philippe                 |
 | idct        | Passage du domaine spectral au domaine spatial avec la transformée en cosinus discrète inverse            | Philippe                 |
-| idct_op     | Implémentation de l'idct rapide                                                                           | Philippe                 |
+| idct_opt     | Implémentation de l'IDCT rapide                                                                           | Philippe                 |
 | ycc2rgb     | Transforme les composantes Y, $C_b$, $C_r$ en R, G, B                                                     | Gabriel                  |
 | baseline    | Décode complètement une image en mode baseline                                                            | Gabriel, Philippe, Albin |
 | progressive | Décode complètement une image en mode progressif                                                          | Gabriel, Albin           |
@@ -116,7 +105,7 @@ p| iqzz        | iquant                   | blocl16_t *entree <br> uint8_t s_sta
 |:-------------:|------------------------------------------------------------------|-----------------|
 | entete_test   | Teste le décodage d'entêtes correctes ou contenant des erreurs   | Philippe, Albin |
 | iqzz_test     | Teste les fonctions izz et iq du module iqzz                     | Philippe        |
-| idct_opt_test | Compare le résultat de l'idct rapide à celui de l'idct classique | Philippe        |
+| idct_opt_test | Compare le résultat de l'IDCT rapide à celui de l'IDCT classique | Philippe        |
 | vld_test      | Teste le décodage d'un bloc de DC et d'AC                        | Gabriel         |
 
 

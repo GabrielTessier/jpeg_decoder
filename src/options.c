@@ -56,14 +56,14 @@ static erreur_t try_apply_poption(all_option_t *all_option, char *name, char *ne
 
 
 static const option_t OPTION[5] = {
-   {"v", "verbose", set_verbose_param, "Affiche des informations suplémentaire durant l'exécution."},
+   {"v", "verbose", set_verbose_param, "Affiche des informations supplémentaires durant l'exécution."},
    {"t", "timer", set_timer_param, "Affiche le temps d'exécution de chaque partie."},
    {"h", "help", set_print_help, "Affiche cette aide."},
-   {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas la fast IDCT."},
+   {"f", "no-fast-idct", set_idct_nofast_param, "N'utilise pas l'IDCT rapide."},
    {NULL, "tables", print_tables, "Affiche les tables de Huffman et de quantification"}};
 
 static const poption_t OPTION_PARAMETRE[1] = {
-   {"o", "outfile", set_outfile, "fichier", "Placer la sortie dans le fichier."}};
+   {"o", "outfile", set_outfile, "fichier", "Place la sortie dans le fichier."}};
 
 static erreur_t set_verbose_param(all_option_t *all_option) {
    all_option->verbose = 1;
