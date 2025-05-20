@@ -13,12 +13,17 @@
 #include <vld.h>
 #include <baseline.h>
 
+
 extern all_option_t all_option;
 
-// Renvoie un bloc décodé en baseline après quantification inverse
+// Place un bloc décodé en baseline après quantification inverse dans <*sortie>,
+// lu à partir de <bs>.
+// img : contient les informations sur l'image, nécessaires au décodage et à la déquantification.
+// comp : indice de la composante traitée
 static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec);
 
-// Libère la mémoire allouer par decode_baseline_image
+// Libère la mémoire allouée par decode_baseline_image.
+// Les paramètres sont les différents objets à libérer.
 static void baseline_free(img_t *img, FILE *outputfile, bloctu8_t ***ycc, int16_t *dc_prec, char *rgb, bitstream_t *bs);
 
 
@@ -31,7 +36,7 @@ static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, bloc
    hac = img->htables->ac[img->comps->comps[comp]->idhac];
    qtable = img->qtables[img->comps->comps[comp]->idq];
 
-   // S'il manque une table on exit avec une erreur
+   // S'il manque une table on retourne une erreur
    if (hdc == NULL) {
       char *str = malloc(80);
       sprintf(str, "Pas de table de huffman DC pour la composante %d", comp);
@@ -56,7 +61,7 @@ static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, bloc
       return (erreur_t) {.code = ERR_AC_BAD, .com = "Symbole RLE interdit en baseline", .must_free = false};
    }
    
-   // On fait la quantification inverse
+   // On fait la quantification inverse (en place)
    iquant(sortie, img->other->ss, img->other->se, qtable->qtable);
    
    return (erreur_t) {.code = SUCCESS};
@@ -100,18 +105,18 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    init_timer(&timer_image);
    start_timer(&timer_image);
 
-   // id, facteur horizontal, facteur vertical pour y, cb, et cr
-   // nombre de bloc horizontalement pour y, cb, cr
-   // et un tableau rgb utiliser pour l'écriture dans le fichier ppm
+   // Id, facteur horizontal, facteur vertical pour y, cb, et cr
    uint8_t y_id, cb_id, cr_id, yhf, yvf, cbhf, cbvf, crhf, crvf;
+   // Nombre de bloc horizontalement pour y, cb, cr
    uint64_t nb_blocYH, nb_blocCbH, nb_blocCrH;
+   // Tableau utilisé pour l'écriture dans le fichier ppm
    char *rgb;
    if (nbcomp == 3) get_ycc_info(img, &y_id, &cb_id, &cr_id, &yhf, &yvf, &cbhf, &cbvf, &crhf, &crvf, &nb_blocYH, &nb_blocCbH, &nb_blocCrH, &rgb);
 
    FILE *outputfile = ouverture_fichier_out(nbcomp, 0);
 
    // P5 : noir et blanc
-   // P6 : couleur rgb
+   // P6 : couleur RGB
    if (nbcomp == 1) {
       fprintf(outputfile, "P5\n");
    } else if (nbcomp == 3) {
@@ -120,7 +125,7 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
       fclose(outputfile);
       return (erreur_t) {.code = ERR_NB_COMP, .com = "Il faut une ou trois composante", .must_free = false};
    }
-   fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hateur
+   fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hauteur
    fprintf(outputfile, "255\n");
 
    // Initialisation du tableau ycc :
@@ -144,7 +149,7 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    init_timer(&timer_ecriture);
    
 
-   // Tableau contenant les dc précédent le bloc en cours de traitement (initialement 0 pour toutes les composantes)
+   // Tableau contenant les DC précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
 
    bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
@@ -155,14 +160,15 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
       uint64_t mcuX = i % img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
          int16_t indice_comp = get_composante(img, k);
-	 if (indice_comp == -1) break;   // Si un scan ne contient pas toutes les composantes
+         if (indice_comp == -1) break;   // Si un scan ne contient pas toutes les composantes
          uint64_t nbH = img->nbmcuH * img->comps->comps[indice_comp]->hsampling;
-	 // On itère sur chaque bloc de la MCU
+         // On itère sur chaque bloc de la MCU
          for (uint8_t by = 0; by < img->comps->comps[indice_comp]->vsampling; by++) {
             for (uint8_t bx = 0; bx < img->comps->comps[indice_comp]->hsampling; bx++) {
                uint64_t blocX = mcuX * img->comps->comps[indice_comp]->hsampling + bx;
                blocl16_t *bloc = (blocl16_t*) calloc(1, sizeof(blocl16_t));
                
+               // Décodage d'un bloc (baseline) et déquantification
                start_timer(&timer_decode_bloc);
                erreur_t err = decode_bloc_baseline(bs, img, indice_comp, bloc, dc_prec);
                stop_timer(&timer_decode_bloc);
@@ -171,11 +177,13 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
                   return err;
                }
 
+	       // Inversion de la transformation zig-zag
                start_timer(&timer_izz);
                bloct16_t *bloc_zz = izz(bloc);
                stop_timer(&timer_izz);
                free(bloc);
 
+	       // IDCT
                bloctu8_t *bloc_idct;
                start_timer(&timer_idct);
                if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
@@ -188,11 +196,11 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
             }
          }
       }
-      // Ecrit une ligne de mcu
+      // Écrit une ligne de MCUs dans le fichier de destination
       if (i % img->nbmcuH == img->nbmcuH - 1) {
          stop_timer(&timer_image);
          start_timer(&timer_ecriture);
-	 erreur_t err;
+         erreur_t err;
          if (nbcomp == 1) {
             err = save_mcu_ligne_bw(outputfile, img, ycc);
          } else if (nbcomp == 3) {
@@ -211,6 +219,7 @@ erreur_t decode_baseline_image(FILE *infile, img_t *img) {
    baseline_free(img, outputfile, ycc, dc_prec, rgb, bs);
    if (err.code) return err;
 
+   // Affichage des chronomètres dans la sortie standard conditionné aux options en ligne de commande
    print_timer("Décodage DC/AC et Quantification", &timer_decode_bloc);
    print_timer("IZZ", &timer_izz);
    print_timer("IDCT", &timer_idct);

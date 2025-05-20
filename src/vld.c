@@ -73,6 +73,10 @@ static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman
 
 static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice) {
    if (magnitude == 0) return 0;
+   // EX : pour magnitue de 3 :
+   //      -7, -6, -5, -4, 4, 5, 6, 7
+   //      min = 4
+   //      max = 7
    int16_t min = 1<<(magnitude-1);
    int16_t max = (min<<1)-1;
    if (indice < min) return indice-max;  // Négatif
@@ -81,6 +85,7 @@ static int16_t get_val_from_magnitude(uint16_t magnitude, uint16_t indice) {
 
 static erreur_t read_indice(bitstream_t *bs, uint8_t nb_bit, uint16_t *indice) {
    *indice = 0;
+   // Pour chaque bit on l'ajoute par la gauche à indice
    while (nb_bit > 0) {
       uint8_t bit;
       erreur_t err = read_bit(bs, &bit);
@@ -102,8 +107,11 @@ static erreur_t read_val_from_magnitude(bitstream_t *bs, uint8_t magnitude, int1
 
 static erreur_t decode_coef_DC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, int16_t *coef_dc) {
    int16_t val;
+   if (symb_decode->symb > 11) return (erreur_t) {.code = ERR_DC_BAD, .com = "La magnitude doit être inférieur ou égale à 11"};
    erreur_t err = read_val_from_magnitude(bs, symb_decode->symb, &val);
    if (err.code) return err;
+   // Dans le cas baseline al = 0 donc le coef est val
+   // Dans le cas progressif il faut multiplier par 2^al
    *coef_dc = val*(1<<img->other->al);
    return (erreur_t) {.code = SUCCESS};
 }
@@ -112,6 +120,7 @@ static erreur_t decode_coef_DC_subsequent_scan(bitstream_t *bs, img_t *img, int1
    uint8_t bit;
    erreur_t err = read_bit(bs, &bit);
    if (err.code) return err;
+   // Le bit lut est le al-ieme bit de coef_dc
    *coef_dc |= ((int16_t)bit)<<img->other->al;
    return (erreur_t) {.code = SUCCESS};
 }
@@ -119,23 +128,29 @@ static erreur_t decode_coef_DC_subsequent_scan(bitstream_t *bs, img_t *img, int1
 static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, blocl16_t *sortie, uint64_t *sortie_id, uint16_t *skip_bloc) {
    const uint8_t num_sof = img->section->num_sof;
    const uint8_t al = img->other->al;
-   if (symb_decode->symb == 0xf0) {  // ZRL
+   if (symb_decode->symb == 0xf0) {  // ZRL (on saute 16 coef)
       *sortie_id += 16;
    } else {
-      uint8_t alpha = symb_decode->symb >> 4;
-      uint8_t gamma = symb_decode->symb & 0b00001111;
+      const uint8_t alpha = symb_decode->symb >> 4;
+      const uint8_t gamma = symb_decode->symb & 0b00001111;
       if (gamma == 0) {
          if (alpha == 0) {   // 0x00 EOB_0
             *skip_bloc = 1;
             return (erreur_t) {.code=SUCCESS};
          } else {
             // EOB_alpha (valide seulement en mode progressif)
-            if (num_sof == 0) {
+            if (num_sof == 0) {  // baseline
                char *str = malloc(80);
                sprintf(str, "Code invalide pour AC (%x) car mode baseline", symb_decode->symb);
                return (erreur_t) {.code=ERR_AC_BAD, .com=str, .must_free = true};
-            } else if (num_sof == 2) {
+            } else if (num_sof == 2) {  // progressif
                uint16_t indice;
+	       // EOB_14 est le maximum
+	       if (alpha > 14) {
+		  char *str = (char*) malloc(sizeof(char)*27);
+		  sprintf(str, "EOB%d interdit (max = 14)", alpha);
+		  return (erreur_t) {.code = ERR_AC_BAD, .com = str, .must_free = true};
+	       }
                erreur_t err = read_indice(bs, alpha, &indice);
                if (err.code) return err;
                *skip_bloc = indice + (1<<alpha);
@@ -148,6 +163,7 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
          }
       } else {  // 0xalpha gamma  (alpha coef nul puis coef de magnitude gamma)
          *sortie_id += alpha;
+	 if (gamma > 10) return (erreur_t) {.code = ERR_AC_BAD, .com = "La magnitude doit être inférieur ou égale à 10"};
          erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*sortie_id));
          if (err.code) return err;
          sortie->data[*sortie_id] = sortie->data[*sortie_id]*(1<<al);
@@ -183,6 +199,7 @@ static erreur_t correction_n_coef(bitstream_t *bs, img_t *img, uint16_t n, int16
 static erreur_t correction_n_coef_jusqua_zero(bitstream_t *bs, img_t *img, uint16_t n, int16_t *coefs, uint64_t *indice_coef) {
    erreur_t err = correction_n_coef(bs, img, n, coefs, indice_coef);
    if (err.code) return err;
+   // On lit jusqu'au prochain coefficient nul
    while (coefs[*indice_coef] != 0) {
       erreur_t err = correction_coef(bs, img, &(coefs[*indice_coef]));
       if (err.code) return err;
@@ -226,7 +243,7 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
    } else {
       uint8_t alpha = symb_decode->symb >> 4;
       uint8_t gamma = symb_decode->symb & 0b00001111;
-      if (gamma == 0) {
+      if (gamma == 0) {    // EOB
          if (alpha == 0) {
             *skip_bloc = 1;
          } else {
@@ -238,7 +255,7 @@ static erreur_t decode_coef_AC_subsequent_scan(bitstream_t *bs, img_t *img, huff
          erreur_t err = correction_eob(bs, img, sortie, sortie_id);
          if (err.code) return err;
          return (erreur_t) {.code=SUCCESS};
-      } else if (gamma == 1) {
+      } else if (gamma == 1) {  // 0x alpha 1
          erreur_t err = skip_n_coef_AC_subsequent_scan(bs, img, alpha, sortie, sortie_id);
          if (err.code) return err;
       } else {
@@ -266,13 +283,14 @@ static erreur_t get_huffman_symbole(bitstream_t *bs, huffman_tree_t **ht, bool *
 }
 
 static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie) {
-   if (img->other->ah != 0) {
+   if (img->other->ah != 0) {  // Progressif scan ultérieur au premier
       if (img->other->ah - img->other->al != 1) {
          return (erreur_t) {.code = ERR_DIFF_AH_AL, "La différence entre ah et al devrait être 1", .must_free = false};
       }
       erreur_t err = decode_coef_DC_subsequent_scan(bs, img, sortie->data);
       if (err.code) return err;
-   } else {
+   } else {  // Premier scan
+      // On décode le symbole de Huffman puis on décode le coefficient
       huffman_tree_t *symb_decode = ht;
       bool code_que_un = true;
       erreur_t err = get_huffman_symbole(bs, &symb_decode, &code_que_un);
@@ -286,7 +304,7 @@ static erreur_t decode_coef_DC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, 
 }
 
 static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t* ht, blocl16_t *sortie, uint16_t *skip_bloc) {
-   uint64_t sortie_id = img->other->ss; // indice de où on en est dans res
+   uint64_t sortie_id = img->other->ss; // indice de où on en est dans sortie (le coefficient en cours de traitement)
    *skip_bloc = 0;
    while (sortie_id <= img->other->se) {
       huffman_tree_t *symb_decode = ht;
@@ -309,6 +327,8 @@ static erreur_t decode_list_coef_AC(bitstream_t *bs, img_t *img, huffman_tree_t*
 }
 
 static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
+   // Un coefficient DC puis 63 coefficients AC
+   
    erreur_t err = decode_coef_DC(bs, img, hdc, sortie);
    if (err.code) return err;
 
@@ -323,6 +343,7 @@ static erreur_t decode_bloc_acdc_baseline(bitstream_t *bs, img_t *img, huffman_t
 }
 
 static erreur_t decode_bloc_acdc_progressif(bitstream_t *bs, img_t *img, huffman_tree_t *hdc, huffman_tree_t *hac, blocl16_t *sortie, int16_t *dc_prec, uint16_t *skip_bloc) {
+   // Si ss = 0 alors on décode seulement DC sinon on décode seulement AC
    if (img->other->ss == 0) {
       erreur_t err = decode_coef_DC(bs, img, hdc, sortie);
       if (err.code) return err;

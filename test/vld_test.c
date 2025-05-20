@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
    ac->fils[1]->fils[1]->fils[1]->fils[0]->symb = 0x22;
    ac->fils[1]->fils[1]->fils[1]->fils[1] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
    ac->fils[1]->fils[1]->fils[1]->fils[1]->fils[0] = (huffman_tree_t*) calloc(1, sizeof(huffman_tree_t));
-   ac->fils[1]->fils[1]->fils[1]->fils[1]->fils[0]->symb = 0x3b;
+   ac->fils[1]->fils[1]->fils[1]->fils[1]->fils[0]->symb = 0x3a;
    // 0	        -> 0x00
    // 10	-> 0xf0
    // 110	-> 0x80 (interdit en baseline)
@@ -81,8 +81,8 @@ int main(int argc, char **argv) {
 
    // DC = 6
    // AC = 000 1026 0...
-   uint8_t bloc6[] = {0b01101111, 0b01000000, 0b00100000};  // DC : 0(3) 110(6) // AC : 11110(0x3b) 10000000010(1026) 0(EOB)
-   int16_t out6[] = {6, 0, 0, 0, 1026, 0};
+   uint8_t bloc6[] = {0b01101111, 0b01000000, 0b00100000};  // DC : 0(3) 110(6) // AC : 11110(0x3a) 1000000001(513) 0(EOB)
+   int16_t out6[] = {6, 0, 0, 0, 513, 0};
 
    int nb_test = 6;
    int bsize[] = {1, 1, 2, 2, 1, 3};
@@ -117,6 +117,7 @@ int main(int argc, char **argv) {
       uint16_t skip_bloc;
       erreur_t err = decode_bloc_acdc(bs, img, dc, ac, bl, &dc_prec, &skip_bloc);
       if (err.code != errcode[test]) {
+	 printf("%s\n", err.com);
 	 test_res(false, argv, "%s (Code de retour invalide : reçu : %d, attendu : %d)", name[test], err.code, errcode[test]);
       } else {
 	 bool passed = true;
