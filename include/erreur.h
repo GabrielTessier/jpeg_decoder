@@ -12,6 +12,7 @@ enum erreur_code_e {
    // erreurs vld
    ERR_0XFF00,
    ERR_AC_BAD,
+   ERR_DC_BAD,
    ERR_SOF_BAD,
    ERR_HUFF_CODE_1,
    ERR_DIFF_AH_AL,
