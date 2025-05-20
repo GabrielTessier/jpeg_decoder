@@ -97,21 +97,24 @@ static void free_sortie(img_t *img, blocl16_t ***sortie) {
 
 static erreur_t decode_progressif_dc(bitstream_t *bs, img_t *img, blocl16_t ***sortieq) {
    const uint8_t nbcomp = img->comps->nb;
+   // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
    int16_t *dc_prec = (int16_t *)calloc(nbcomp, sizeof(int16_t));
    for (uint64_t i = 0; i < img->nbMCU; i++) { // parcours des MCUs
-      uint64_t mcuX = i % img->nbmcuH;
-      uint64_t mcuY = i / img->nbmcuH;
+      const uint64_t mcuX = i % img->nbmcuH;
+      const uint64_t mcuY = i / img->nbmcuH;
       for (uint8_t k = 0; k < nbcomp; k++) {
-         int16_t indice_comp = get_composante(img, k);
+         const int16_t indice_comp = get_composante(img, k);
          if (indice_comp == -1) break; // cas où la composante n'est pas renseignée dans <*img>
-         uint8_t hs = img->comps->comps[indice_comp]->hsampling;
-         uint8_t vs = img->comps->comps[indice_comp]->vsampling;
-         uint64_t nbH = img->nbmcuH * hs;
+         const uint8_t hs = img->comps->comps[indice_comp]->hsampling;
+         const uint8_t vs = img->comps->comps[indice_comp]->vsampling;
+         const uint64_t nbH = img->nbmcuH * hs;
+         // Parcours les blocs de la MCU
          for (uint8_t by = 0; by < vs; by++) {
             for (uint8_t bx = 0; bx < hs; bx++) {
-               uint64_t blocX = mcuX * hs + bx;
-               uint64_t blocY = mcuY * vs + by;
+               const uint64_t blocX = mcuX * hs + bx;
+               const uint64_t blocY = mcuY * vs + by;
                uint16_t skip_bloc;
+               // Décodage du bloc
                erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY * nbH + blocX], dc_prec, &skip_bloc);
                if (err.code) return err;
             }
@@ -125,27 +128,36 @@ static erreur_t decode_progressif_dc(bitstream_t *bs, img_t *img, blocl16_t ***s
 static erreur_t decode_progressif_ac(bitstream_t *bs, img_t *img, blocl16_t ***sortieq) {
    uint16_t skip_blocs = 0;
    int16_t indice_comp = get_composante(img, 0);
-   if (indice_comp == -1) return (erreur_t) {.code = ERR_COMP_ID, "Aucune composante dans le scan", .must_free = false};
+   // cas où la composante n'est pas renseignée dans <*img>
+   if (indice_comp == -1) return (erreur_t) {.code = ERR_COMP_ID, .com = "Aucune composante dans le scan", .must_free = false};
 
    const uint64_t nb_blocH = ceil((double)img->width / 8);
    const uint64_t nb_blocV = ceil((double)img->height / 8);
-   
+
+   // Nombre de blocs horizontalement et verticalement dans la MCU
    const uint8_t hs = img->comps->comps[indice_comp]->hsampling;
    const uint8_t vs = img->comps->comps[indice_comp]->vsampling;
+   // facteur d'échantillonnage horizontal et vertical
    const uint8_t hf = img->max_hsampling / hs;
    const uint8_t vf = img->max_vsampling / vs;
-   
+
+   // nb_totalH : nombre de bloc horizontalement en complétant la dernière MCU
    const uint64_t nb_totalH = img->nbmcuH * hs;
+   // nbH : nombre de bloc horizontalement sans compléter la dernière MCU
+   // nbV : nombre de bloc verticalement sans compléter la dernière MCU
    const uint64_t nbH = ceil((double)nb_blocH / hf);
    const uint64_t nbV = ceil((double)nb_blocV / vf);
-   
+
+   // Parcours de tous les blocs de l'image
    for (uint64_t i = 0; i < nbH*nbV; i++) {
       uint64_t blocX = i % nbH;
       uint64_t blocY = i / nbH;
+      // Si skip_blocs != 0 alors il y a eu un EOB et donc on corrige le bloc à la place de le décoder
       if (skip_blocs == 0) {
          erreur_t err = decode_bloc_progressive(bs, img, indice_comp, sortieq[indice_comp][blocY*nb_totalH + blocX], NULL, &skip_blocs);
          if (err.code) return err;
       } else {
+         // On ne corrige que dans les approximations successives
          if (img->other->ah != 0) {
             uint64_t resi = img->other->ss;
             erreur_t err = correction_eob(bs, img, sortieq[indice_comp][blocY*nb_totalH + blocX], &resi);
@@ -187,11 +199,13 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
    char *rgb;
    if (nbcomp == 3) get_ycc_info(img, &y_id, &cb_id, &cr_id, &yhf, &yvf, &cbhf, &cbvf, &crhf, &crvf, &nb_blocYH, &nb_blocCbH, &nb_blocCrH, &rgb);
 
+   // Indice du scan en cours
    uint64_t nb_passage_sos = 1;
 
    my_timer_t timer_image;
    my_timer_t timer_ecriture;
 
+   // Décodage de toute l'image
    while (!img->section->eoi_done) {
       // Initialisation du chronomètre
       init_timer(&timer_image);
@@ -200,7 +214,8 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
 
       bitstream_t *bs = (bitstream_t*) malloc(sizeof(bitstream_t));
       init_bitstream(bs, infile);
-      // Tableau contenant les dc précédant le bloc en cours de traitement (initialement 0 pour toutes les composantes)
+
+      // Décode le scan (DC ou AC)
       erreur_t err;
       if (img->other->se == 0) err = decode_progressif_dc(bs, img, sortie);
       else err = decode_progressif_ac(bs, img, sortie);
@@ -210,6 +225,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
          return err;
       }
 
+      // Terminer octet en cours avant de décoder des données d'entête
       err = finir_octet(bs);
       if (err.code) {
          free(bs);
@@ -219,9 +235,9 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
 
       free(bs);
 
+      // Écriture du scan
       FILE *outputfile = ouverture_fichier_out(nbcomp, nb_passage_sos);
 
-      // On décode bit par bit, <off> est l'indice du bit dans l'octet en cours de lecture
       if (nbcomp == 1) fprintf(outputfile, "P5\n");
       else if (nbcomp == 3) fprintf(outputfile, "P6\n");
       fprintf(outputfile, "%d %d\n", img->width, img->height); // largeur, hauteur
@@ -237,12 +253,11 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
          ycc[i] = (bloctu8_t **)calloc(nbH * nbV, sizeof(bloctu8_t *));
       }
 
+      // On termine le décodage des MCU et on écrit l'image ppm dans un fichier de sortie
       for (uint64_t i = 0; i < img->nbMCU; i++) {
-         // print_v("MCU %d\n", i);
          uint64_t mcuX = i % img->nbmcuH;
          uint64_t mcuY = i / img->nbmcuH;
          for (uint8_t k = 0; k < nbcomp; k++) {
-            // print_v("COMP %d\n", k);
             qtable_prec_t *qtable = NULL;
             qtable = img->qtables[img->comps->comps[k]->idq];
             if (qtable == NULL) {
@@ -250,30 +265,34 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
                sprintf(str, "Pas de table de quantification pour la composante %d", k);
                return (erreur_t) {.code = ERR_NO_HT, .com = str, .must_free = true};
             }
-            
+
+            // Nombre de bloc horizontalement (en complétant la MCU)
             uint64_t nbH = img->nbmcuH * img->comps->comps[k]->hsampling;
+            // Parcours sur les blocs de la MCU
             for (uint8_t by = 0; by < img->comps->comps[k]->vsampling; by++) {
                for (uint8_t bx = 0; bx < img->comps->comps[k]->hsampling; bx++) {
-                  // print_v("BLOC %d\n", by*img->comps->comps[k]->hsampling+bx);
                   uint64_t blocX = mcuX * img->comps->comps[k]->hsampling + bx;
                   uint64_t blocY = mcuY * img->comps->comps[k]->vsampling + by;
+                  // quantification inverse
                   blocl16_t *quant = (blocl16_t*) calloc(1, sizeof(blocl16_t));
                   for (int i=0; i<64; i++) quant->data[i] = sortie[k][blocY * nbH + blocX]->data[i];
                   iquant(quant, 0, 63, qtable->qtable);
+                  // zig-zag inverse
                   bloct16_t *bloc_zz = izz(quant);
                   free(quant);
-
+                  // DCT inverse
                   bloctu8_t *bloc_idct;
                   if (all_option.idct_fast) bloc_idct = idct_opt(bloc_zz);
                   else bloc_idct = idct(bloc_zz, stockage_coef);
                   free(bloc_zz);
-
+                  // Stockage dans ycc
                   if (ycc[k][by * nbH + blocX] != NULL) free(ycc[k][by * nbH + blocX]);
                   ycc[k][by * nbH + blocX] = bloc_idct;
                }
             }
          }
-         if (i % img->nbmcuH == img->nbmcuH - 1) { // affichage une ligne de mcu
+         // Si une ligne de MCU, alors on écrit dans le fichier ppm
+         if (i % img->nbmcuH == img->nbmcuH - 1) {
             stop_timer(&timer_image);
             start_timer(&timer_ecriture);
             erreur_t err;
@@ -301,6 +320,7 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       sprintf(str, "Ecriture de l'image n°%ld", nb_passage_sos);
       print_timer(str, &timer_ecriture);
 
+      // On décode les entêtes avant le scan suivant
       err = decode_entete(infile, false, img);
       if (err.code) {
          free_sortie(img, sortie);
@@ -309,7 +329,8 @@ erreur_t decode_progressive_image(FILE *infile, img_t *img) {
       }
       nb_passage_sos++;
    }
-   
+
+   // Création d'un lien symbolique pour la dernière image décodée
    char *base_out_name = out_file_name(nbcomp, 0);
    char *out_name = out_file_name(nbcomp, nb_passage_sos-1);
    char *sl = strrchr(out_name, '/');
