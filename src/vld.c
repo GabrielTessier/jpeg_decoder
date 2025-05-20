@@ -102,6 +102,7 @@ static erreur_t read_val_from_magnitude(bitstream_t *bs, uint8_t magnitude, int1
 
 static erreur_t decode_coef_DC_first_scan(bitstream_t *bs, img_t *img, huffman_tree_t *symb_decode, int16_t *coef_dc) {
    int16_t val;
+   if (symb_decode->symb > 11) return (erreur_t) {.code = ERR_DC_BAD, .com = "La magnitude doit être inférieur ou égale à 11"};
    erreur_t err = read_val_from_magnitude(bs, symb_decode->symb, &val);
    if (err.code) return err;
    *coef_dc = val*(1<<img->other->al);
@@ -136,6 +137,11 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
                return (erreur_t) {.code=ERR_AC_BAD, .com=str, .must_free = true};
             } else if (num_sof == 2) {
                uint16_t indice;
+	       if (alpha > 14) {
+		  char *str = (char*) malloc(sizeof(char)*27);
+		  sprintf(str, "EOB%d interdit (max = 14)", alpha);
+		  return (erreur_t) {.code = ERR_AC_BAD, .com = str, .must_free = true};
+	       }
                erreur_t err = read_indice(bs, alpha, &indice);
                if (err.code) return err;
                *skip_bloc = indice + (1<<alpha);
@@ -148,6 +154,7 @@ static erreur_t decode_coef_AC_first_scan(bitstream_t *bs, img_t *img, huffman_t
          }
       } else {  // 0xalpha gamma  (alpha coef nul puis coef de magnitude gamma)
          *sortie_id += alpha;
+	 if (gamma > 10) return (erreur_t) {.code = ERR_AC_BAD, .com = "La magnitude doit être inférieur ou égale à 10"};
          erreur_t err = read_val_from_magnitude(bs, gamma, sortie->data + (*sortie_id));
          if (err.code) return err;
          sortie->data[*sortie_id] = sortie->data[*sortie_id]*(1<<al);
