@@ -14,6 +14,7 @@ struct all_option_s {
    char *filepath;
    char *outfile;
    bool print_tables;
+   bool print_help;
 };
 typedef struct all_option_s all_option_t;
 
