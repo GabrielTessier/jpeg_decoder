@@ -76,7 +76,7 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | decoder_utils | Contient des fonctions utilisées pour les	modes baseline et progressif   									   | Gabriel                  |
 | erreur   		| Contient les codes et la structure pour la gestion d'erreur												   | Philippe                 |
 | file   		| Implémente le type abstrait file pour effectuer un parcours en largeur dans un arbre  					   | Gabriel, Albin           |
-| img   		| Contient la structure `img` et les fonctions pour l'initialisée et la libérée							   	   | Albin                    |
+| img   		| Contient la structure `img` et les fonctions pour l'initialiser et la libérer							   	   | Albin                    |
 | options   	| Permet la gestion d'options									 											   | Gabriel                  |
 | timer   		| Permet d'initialiser, de démarrer	et d'arrêter un chronomètres								               | Gabriel, Philippe, Albin |
 | utils   		| Contient des fonctions utilisées par les autres modules (affichage verbose, ouverture/fermeture de fichiers) | Gabriel, Philippe        |
