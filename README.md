@@ -64,8 +64,8 @@ Rajouter **régulièrement** des informations sur l'avancement de votre projet e
 | idct        | calc_coef        	     | float stockage_coef[8][8][8][8]                                                                                                                                           | float stockage_coef[8][8][8][8]                      |
 | idct_opt    | idct_opt         	     | bloct16_t *mcu                                                                                                              											  	 | (bloctu8_t *) bloc de sortie alloué dans idct_opt    |
 | ycc2rgb     | ycc2rgb_pixel    	     | uint8_t y <br> uint8_t cb <br> uint8_t cr <br> rgb_t *rgb                                                                                                                 | rgb_t *rgb                                           |
-| baseline	  | decode_baseline_image    | FILE *infile <br> img_t *img                                                                                                              								 | $\O$											 	 	|
-| progressive | decode_progressive_image | FILE *infile <br> img_t *img                                                                                                              						  	  	 | $\O$											 	 	|
+| baseline	  | decode_baseline_image    | FILE *infile <br> img_t *img                                                                                                              								 | $\emptyset$										 	|
+| progressive | decode_progressive_image | FILE *infile <br> img_t *img                                                                                                              						  	  	 | $\emptyset$									 	 	|
 
 
 **Modules annexes**

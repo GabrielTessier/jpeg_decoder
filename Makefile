@@ -76,8 +76,8 @@ entete_test: $(OBJ_DIR)/test/entete_test.o $(OBJ_DIR)/$(TEST_OPTION)/entete.o $(
 vld_test: $(OBJ_DIR)/test/vld_test.o $(OBJ_DIR)/$(TEST_OPTION)/vld.o $(OBJ_DIR)/$(TEST_OPTION)/utils.o $(OBJ_DIR)/$(TEST_OPTION)/options.o $(OBJ_DIR)/$(TEST_OPTION)/bitstream.o $(OBJ_DIR)/test/test_utils.o
 	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
-%_test: $(OBJ_DIR)/test/%_test.o $(OBJ_DIR)/$(TEST_OPTION)/%.o $(OBJ_DIR)/test/test_utils.o 
-	$(LD) $(OBJ_DIR)/test/$@.o $(OBJ_DIR)/$(TEST_OPTION)/$(patsubst %_test,%.o,$@) $(OBJ_DIR)/test/test_utils.o $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
+iqzz_test: $(OBJ_DIR)/test/iqzz_test.o $(OBJ_DIR)/$(TEST_OPTION)/iqzz.o $(OBJ_DIR)/test/test_utils.o 
+	$(LD) $^ $(LDFLAGS_TEST) -o $(BIN_DIR)/$@
 
 $(OBJ_DIR)/debug/%.o: src/%.c
 	$(CC) -c $(CFLAGS_DEBUG) $< -o $@
