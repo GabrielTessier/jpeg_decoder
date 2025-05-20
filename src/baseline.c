@@ -18,8 +18,9 @@ extern all_option_t all_option;
 
 // Place un bloc décodé en baseline après quantification inverse dans <*sortie>,
 // lu à partir de <bs>.
-// img : contient les informations sur l'image, nécessaires au décodage et à la déquantification.
-// comp : indice de la composante traitée
+// img     : contient les informations sur l'image, nécessaires au décodage et à la déquantification.
+// comp    : indice de la composante traitée
+// dc_prec : tableau 1xnb_comp contenant les coefficients DC précédents pour chaque composante (nécessaire au décodage du suivant)
 static erreur_t decode_bloc_baseline(bitstream_t *bs, img_t *img, int comp, blocl16_t *sortie, int16_t *dc_prec);
 
 // Libère la mémoire allouée par decode_baseline_image.
