@@ -4,6 +4,7 @@ images/**
 obj/**
 out/**
 bin/**
+!bin/jpeg2blabla
 gmon.out
 jpeg2ppm
 compile_flags.txt
